@@ -1,0 +1,138 @@
+# Review critica di sdlc-playbook 0.4.0
+
+- Data: 2026-10-23
+- Oggetto: playbook (`docs/playbook-ai-software-lifecycle.md`), 14 skill, 2 hook, subagent `sdlc-reviewer`, 10 script
+- Revisore: Claude (Opus 5.5) su richiesta del proprietario del repository
+- Codice del plugin: **non modificato**. Il commit di import contiene lo zip 0.4.0 così com'è; questa review elenca i
+  problemi, non li corregge.
+
+## Sintesi
+
+L'impianto è buono: non-scope obbligatorio, test di caratterizzazione nel brownfield, "comportamento da NON
+cambiare" nei bug, criteri di stop oggettivi per il loop, limiti dichiarati con onestà nel README. I problemi seri
+sono tre:
+
+1. **Garanzie solo apparenti.** Approvazioni, tracciabilità e stop del loop sono controllati da script che
+   verificano la *presenza* di testo che l'agente stesso può scrivere.
+2. **Meccanismi in conflitto.** Il TDD richiede test rossi; l'hook `Stop` e il prompt del loop spingono l'agente a
+   renderli verdi.
+3. **Mai provato end-to-end.** Il README lo ammette (skill mai eseguite da un agente reale, hook mai in una sessione
+   vera, loop mai con `claude -p`). In più, su Windows nativo la suite del plugin fallisce e su Linux pulito gli hook
+   non partono.
+
+## Ambienti e risultati
+
+| Ambiente | Come | Suite del plugin (61 test) | Note |
+|---|---|---|---|
+| Windows 11, Python 3.13, console cp1252 | `python -m unittest discover -s tests` | **3 errori** | Encoding: vedi B1 |
+| Linux: Ubuntu 24.04 su WSL2, Python 3.12.3, filesystem ext4 | clone del repository, stesso comando | **OK** | Anche con `LC_ALL=C` |
+| GitHub Actions (`.github/workflows/ci.yml`) | push su `main` | vedi sezione "CI su GitHub" | |
+
+Le prove sugli script (sezione B) sono state ripetute su entrambe le piattaforme con lo stesso esito, salvo dove
+indicato: i difetti di logica non dipendono dal sistema operativo.
+
+## A. Criticità di processo (playbook)
+
+**A1. I gate umani non sono applicati.** "Approvata da / data" è un campo di testo che compila l'agente; gli script
+verificano solo che non sia vuoto o un segnaposto. L'approvazione non è legata a una versione: una spec modificata
+dopo l'ok resta `approved`.
+*Proposta:* approvazione come atto che l'agente non può compiere (review di PR con CODEOWNERS su `docs/specs/**`,
+commit firmato dell'umano); in alternativa minima, hash della spec approvata registrato nel piano e `spec_lint` che
+fallisce se il file cambia.
+
+**A2. Il TDD è in conflitto con l'automazione.** Le task di test devono finire rosse ("atteso: rosso"), ma:
+- l'hook `Stop` impedisce di fermarsi con `verify` rosso, quindi spinge l'agente a implementare subito o a
+  indebolire i test;
+- `PROMPT.md` del loop dice "se fallisce correggi, a verde commit" e non conosce le task "atteso: rosso".
+
+La regola "i test rossi non si committano da soli" elimina anche il punto di controllo più utile: con i test
+committati prima dell'implementazione si potrebbe verificare che il commit di implementazione non li tocchi.
+*Proposta:* commit dei test rossi (marcati `xfail`/skip con ID, o CI tollerante sul branch) e un controllo che i file
+di test non cambino nel commit di implementazione senza approvazione.
+
+**A3. La tracciabilità non regge più spec.** Gli AC ripartono da AC-001 in ogni spec, `trace_check` cerca in tutti i
+test. Una citazione in un commento (`# TODO AC-003`) vale come test. Lo script misura citazioni, non test che esistono
+e passano (prova B4).
+*Proposta:* ID qualificati (`SPEC-002/AC-001`) e, dove possibile, report dei test eseguiti (JUnit XML).
+
+**A4. Lo stop del loop dipende da ciò che dichiara l'agente.** Esce con `verify` verde e caselle spuntate, ma le
+caselle le spunta l'agente. *Proposta:* aggiungere `trace_check` e `diff_scope` al criterio di uscita.
+
+**A5. Review poco indipendente.** Stesso modello in contesto fresco: errori correlati. Il subagent "in sola lettura"
+ha `Bash`, quindi la sola lettura è un'istruzione, non un vincolo. Il principio 5 ("non rileggi ogni riga") lascia un
+vuoto di responsabilità. *Proposta:* review umana obbligatoria sulle aree sensibili, o un modello diverso per la
+review; strumenti del subagent senza scrittura.
+
+**A6. Cerimonia e gate fatigue.** Circa 7 documenti e 4-5 gate per feature; la soglia "feature piccola" ("descrivi il
+diff in una frase") è vaga. Documentazione duplicata (spec, pagina d'area, README, ADR, mappa): T-SYNC rischia di
+diventare un rituale. *Proposta:* livelli espliciti S/M/L con criteri oggettivi (file toccati, API pubbliche, aree
+sensibili); dopo `implemented` la spec diventa archivio e la fonte viva sono pagina d'area e test.
+
+**A7. Sicurezza fuori perimetro, ma è il rischio tipico del codice generato.** Il template di `verify` non ha audit
+delle dipendenze né scansione dei segreti; "nuove dipendenze solo con ADR" non è controllato da nessuno script; il
+loop gira senza supervisione e non si parla di prompt injection. *Proposta:* `diff_scope` segnala modifiche a
+manifest e lockfile; gitleaks e audit delle dipendenze come step di `verify`.
+
+**A8. Lavoro in team non previsto.** Numeri `SPEC-NNN` che collidono tra branch; `state.py` considera solo la prima
+spec attiva; nessun flusso per modificare una spec approvata; i problemi della review non diventano task (dopo un
+"non conforme" `state.py` rimanda a `sdlc-implement`, che non trova task aperte).
+
+## B. Difetti confermati negli script e negli hook
+
+| # | Dove | Problema | Windows | Linux |
+|---|---|---|---|---|
+| B1 | tutti gli script | Stampano testo non ASCII ("è") con l'encoding della console. Su Windows è cp1252: chi legge in UTF-8 (test, agente) riceve caratteri illeggibili o `None`. Manca `sys.stdout.reconfigure(encoding="utf-8")` | 3 test falliscono | OK |
+| B2 | `hooks/hooks.json` | Lancia `python ...`. Su Ubuntu pulito `python` non esiste (c'è solo `python3`): l'hook esce 127, che per Claude Code è un errore **non bloccante**, quindi `SDLC_ENFORCE_VERIFY` e `SDLC_GUARD` non hanno effetto e nessuno se ne accorge. Su Windows `python` può mancare dal PATH (per questo `tasks.json` usa `py -3`) | rischio | **confermato** (exit 127) |
+| B3 | `diff_scope.py` | `lstrip("./")` toglie tutti i punti iniziali: `.github/` diventa `github/` e non corrisponde mai. In un repo git reale con `- Non modificare: .github/`, una modifica a `.github/workflows/ci.yml` dà solo un avviso "fuori piano" ed exit 0 | confermato | confermato |
+| B4 | `trace_check.py` | Ricerca globale degli ID: una SPEC-002 senza test propri risulta coperta al 100% dai test di SPEC-001; un commento TODO conta come test | confermato | confermato |
+| B5 | `diff_scope.py` | Legge solo la prima riga `Non modificare:`; `- src/a.py (nuovo): ...` diventa il percorso `src/a.py (nuovo)`; i test non elencati nel piano producono rumore "fuori piano" | confermato | confermato |
+| B6 | `spec_lint.py --tasks` | Accetta il template con i segnaposto (`verifica: \`<comando test mirato>\``). È voluto: `test_coerenza` verifica che il template passi il lint. Ma allora il lint non distingue un `tasks.md` compilato da uno copiato | confermato | confermato |
+| B7 | `spec_lint.py --plan` | Controllo per sottostringa: basta citare gli AC in una frase qualsiasi; `AC-1` risulta presente dentro `AC-10` | confermato | confermato |
+| B8 | `loop.py` | Il progresso è calcolato da `git status --porcelain`, che riporta solo i nomi dei file. Prova: un agente che aggiunge una riga per iterazione allo stesso file (già modificato, non ancora committato) viene fermato per "nessun progresso" dopo 2 iterazioni con `--stall 2`, mentre il lavoro avanzava. Inoltre: nessun timeout per iterazione, exit code dell'agente ignorato, baseline verde non controllata | — | **confermato** |
+| B9 | `stop_verify.py` | Blocca una volta sola (`stop_hook_active`); esegue il `verify` completo a ogni fine turno, anche quando l'utente fa solo una domanda | per costruzione | per costruzione |
+| B10 | `pretool_guard.py` | Aggirabile: `rm -r -f`, `rm --recursive --force`, `git push origin +main`, `Remove-Item -Recurse`, `shutil.rmtree`, `Select-String .env`, `cp .env`, tool Grep sul file passano tutti. `ENV_FILE` non ignora le maiuscole (`.ENV` su Windows), non gestisce gli stream NTFS (`.env::$DATA`), e con JSON illeggibile lascia passare (fail-open) | confermato | confermato |
+| B11 | repository del plugin | Non ha un proprio `.gitattributes`, che il playbook raccomanda: su Windows con `core.autocrlf=true` gli script vanno in CRLF nella copia di lavoro | osservato | — |
+
+## C. Skill
+
+- **`sdlc-loop`:** nessuna configurazione dei permessi. `claude -p` senza allowlist o si blocca (stallo) o spinge a
+  `--dangerously-skip-permissions`. Serve un `settings.json` di esempio con allowlist e deny-list.
+- **`sdlc-init`:** copia gli script nel progetto senza intestazione di versione né percorso di aggiornamento: copie
+  e plugin divergono nel tempo.
+- **`sdlc-spec`, `sdlc-plan`, `sdlc-review-diff`:** l'agente scrive il nome dell'approvatore senza sapere chi sia
+  (rischio "Approvata da: utente").
+- **`sdlc-tests-from-ac` + `sdlc-implement`:** stesso agente e spesso stessa sessione scrivono test e codice; lo spot
+  check umano prima dell'implementazione è l'unico argine (vedi A2).
+- **`sdlc-review-diff`:** review unica a fine feature su un diff grande; i problemi trovati non diventano task.
+- **Punti di forza:** `sdlc-characterize` (rottura deliberata e ripristino), `sdlc-bugfix` (riproduzione obbligatoria,
+  "da NON cambiare", 3 tentativi), STOP espliciti, `sdlc-next` che si basa sullo script e non sulla conversazione.
+
+## D. Priorità
+
+1. Approvazioni legate a PR o hash, non a un campo di testo (A1).
+2. Risolvere il conflitto TDD/hook/loop; commit dei test rossi e controllo "test intoccati" (A2).
+3. ID degli AC qualificati per spec (A3, B4).
+4. Rendere gli hook affidabili: interprete risolto in modo portabile (`python3`/`py -3`) e fallimento visibile (B2).
+5. Correggere B1, B3, B5-B8.
+6. Permessi nativi dell'agente e sandbox al posto del guard a regex; file di permessi pronto per il loop (B10, C).
+7. Audit delle dipendenze e scansione dei segreti in `verify` (A7).
+8. Prova end-to-end su un greenfield e un brownfield reali prima di distribuire.
+
+## CI su GitHub
+
+Esito del workflow `.github/workflows/ci.yml` sul commit di import `0e748d2`
+([run #1](https://github.com/jumping2000/sdd-playbook/actions/runs/39994902377)):
+
+| Job | Esito | Note |
+|---|---|---|
+| `test (ubuntu-latest)` | **successo** | Coerente con la prova su WSL |
+| `test (windows-latest)` | **fallito** nello step `python -m unittest discover -s tests -v` (exit 1, 25 s) | Il log richiede il login a GitHub e non è stato letto; l'esito è coerente con B1, riprodotto in locale |
+
+Avviso del runner su entrambi i job: `actions/checkout@v4` e `actions/setup-python@v5` usano Node.js 20, deprecato.
+Lo stesso vale per il template `skills/sdlc-init/references/ci-github-actions.yml`, quindi anche per la CI che
+`sdlc-init` genera nei progetti: va aggiornato alle versioni correnti delle action (fissate per SHA nei contesti
+regolati).
+
+Conclusione per piattaforma: **Linux** è la piattaforma su cui il plugin funziona come dichiarato, a parte gli hook
+che su un'installazione pulita non partono (B2). **Windows nativo**, indicato come supportato, non passa la propria
+suite.
