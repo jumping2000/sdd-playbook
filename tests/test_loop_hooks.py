@@ -7,8 +7,9 @@ import shutil
 import stat
 import sys
 import unittest
+import uuid
 
-from common import HOOKS, TmpDir, copia_script, esegui, git, repo_git, scrivi
+from common import HOOKS, SPEC_OK, TmpDir, copia_script, esegui, git, repo_git, scrivi
 
 PY = os.path.basename(sys.executable)
 SH = shutil.which("sh")
@@ -57,7 +58,7 @@ class TestLoop(unittest.TestCase):
             progetto(d, DUE)
             r = loop(d)
             self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
-            self.assertIn("OK: verify verde e nessuna task T-nn aperta", r.stdout)
+            self.assertIn("OK: verify verde, nessuna task T-nn aperta", r.stdout)
             testo = (d / "docs/specs/001-x/tasks.md").read_text(encoding="utf-8")
             self.assertIn("[ ] T-DOC", testo)
             self.assertIn("[ ] T-SYNC", testo)
@@ -105,6 +106,19 @@ class TestLoop(unittest.TestCase):
             r = loop(d, "--max", "6", "--stall", "2")
             self.assertEqual(r.returncode, 0, r.stdout)
             self.assertEqual((d / "src.txt").read_text().count("+"), 4)
+
+    def test_controlli_finali_bloccano_la_chiusura(self):
+        with TmpDir() as d:
+            progetto(d, DUE)
+            copia_script(d, ["loop", "spec_lint", "trace_check", "diff_scope"])
+            scrivi(d, "docs/specs/001-x/spec.md", SPEC_OK)
+            scrivi(d, "tests/test_export.py", "def test_AC_001(): pass\n")
+            r = loop(d, "--max", "3")
+            self.assertEqual(r.returncode, 1, r.stdout)
+            self.assertIn("controlli finali non superati: trace_check", r.stdout)
+            self.assertIn("diff_scope non ha potuto completare", r.stdout)  # repo senza main: avviso, non errore
+            scrivi(d, "tests/test_export.py", "def test_AC_001(): pass\ndef test_AC_002(): pass\n")
+            self.assertEqual(loop(d).returncode, 0)
 
     def test_timeout_e_codice_di_uscita_dell_agente(self):
         with TmpDir() as d:
@@ -182,7 +196,19 @@ class TestHook(unittest.TestCase):
         scrivi(d, "scripts/verify.py", f"import sys\nprint('esito di prova')\nsys.exit({0 if verify_ok else 1})\n")
         ev = {"cwd": str(d), **(evento or {})}
         return esegui([sys.executable, str(HOOKS / "stop_verify.py")], d, stdin=json.dumps(ev),
-                      env={"SDLC_ENFORCE_VERIFY": "1" if attivo else "0"})
+                      env={"SDLC_ENFORCE_VERIFY": "1" if attivo else "0", "SDLC_STOP_MAX": "3"})
+
+    def test_stop_hook_contatore_per_sessione(self):
+        with TmpDir() as d:
+            ev = {"session_id": f"test-{uuid.uuid4().hex}"}
+            risultati = [self.stop(d, False, ev) for _ in range(4)]
+            self.assertEqual([r.returncode for r in risultati], [2, 2, 2, 0])
+            self.assertIn("blocco 3/3", risultati[2].stderr)
+            self.assertIn("dopo 3 blocchi", risultati[3].stdout)
+            self.assertEqual(self.stop(d, False, ev).returncode, 2)  # contatore ripartito
+            self.assertEqual(self.stop(d, True, ev).returncode, 0)  # verde: azzera
+            self.assertIn("blocco 1/3", self.stop(d, False, ev).stderr)
+            self.assertEqual(self.stop(d, True, ev).returncode, 0)
 
     def test_stop_hook(self):
         with TmpDir() as d:

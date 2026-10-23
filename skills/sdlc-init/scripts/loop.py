@@ -7,7 +7,9 @@ Uso:
 
 Legge PROMPT.md dalla cartella della spec e lo passa all'agente da stdin (evita i limiti di
 lunghezza della riga di comando su Windows). Si ferma quando:
-  - verify è verde e non ci sono task T-nn aperte          -> exit 0
+  - verify è verde, non ci sono task T-nn aperte e i controlli finali passano -> exit 0
+    (controlli finali: trace_check.py sulla spec e diff_scope.py sulla cartella, se presenti in scripts/;
+    le caselle le spunta l'agente, questi controlli no. Se diff_scope non può calcolare il diff è un avviso)
   - raggiunto il tetto --max di iterazioni                  -> exit 1
   - nessun progresso per --stall iterazioni consecutive     -> exit 1
     (progresso = cambia tasks.md, l'HEAD di git o il contenuto dell'albero di lavoro)
@@ -76,6 +78,23 @@ def verify_verde() -> bool:
     return subprocess.run([sys.executable, "scripts/verify.py"]).returncode == 0
 
 
+def controlli_finali(feature: Path) -> list[str]:
+    """Controlli che non dipendono da ciò che dichiara l'agente. Restituisce i controlli falliti."""
+    falliti = []
+    controlli = [("trace_check", [str(feature / "spec.md")]), ("diff_scope", [str(feature)])]
+    for nome, args in controlli:
+        script = Path("scripts") / f"{nome}.py"
+        if not script.is_file() or (nome == "trace_check" and not (feature / "spec.md").is_file()):
+            print(f"[WARN] controllo finale saltato: {nome} (script o spec mancante)", flush=True)
+            continue
+        codice = subprocess.run([sys.executable, str(script), *args]).returncode
+        if codice == 1 or (codice != 0 and nome == "trace_check"):
+            falliti.append(nome)
+        elif codice != 0:
+            print(f"[WARN] {nome} non ha potuto completare il controllo (exit {codice})", flush=True)
+    return falliti
+
+
 def opzione(argv: list[str], nome: str, default: str) -> str:
     return argv[argv.index(nome) + 1] if nome in argv and argv.index(nome) + 1 < len(argv) else default
 
@@ -125,8 +144,8 @@ def main(argv: list[str]) -> int:
 
     prompt = (feature / "PROMPT.md").read_text(encoding="utf-8")
     if not task_aperte(feature):
-        print("Nessuna task T-nn aperta: controllo solo verify")
-        return 0 if verify_verde() else 1
+        print("Nessuna task T-nn aperta: controllo verify e controlli finali")
+        return 0 if verify_verde() and not controlli_finali(feature) else 1
     if not verify_verde():
         if rossa:
             print(f"Baseline rossa attesa: fase rossa dopo {rossa}")
@@ -139,8 +158,12 @@ def main(argv: list[str]) -> int:
         print(f"== iterazione {i}/{massimo} ==", flush=True)
         esegui_agente([eseguibile, *agente[1:]], prompt, timeout)
         if verify_verde() and not task_aperte(feature):
-            print("OK: verify verde e nessuna task T-nn aperta. Prossimi passi: review, T-DOC, T-SYNC")
-            return 0
+            falliti = controlli_finali(feature)
+            if not falliti:
+                print("OK: verify verde, nessuna task T-nn aperta, controlli finali superati. "
+                      "Prossimi passi: review, T-DOC, T-SYNC")
+                return 0
+            print(f"Task chiuse ma controlli finali non superati: {', '.join(falliti)}", flush=True)
         attuale = impronta(feature)
         fermi = fermi + 1 if attuale == precedente else 0
         precedente = attuale

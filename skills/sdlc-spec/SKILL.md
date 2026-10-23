@@ -33,7 +33,12 @@ Se la modifica si descrive con un diff di una frase, proponi una spec minima e d
 Chiedi l'approvazione esplicita. Solo dopo una conferma chiara **e** il nome dell'approvatore:
 - compila `Approvata da / data` (nome e data di oggi) e imposta `Stato: approved`;
 - chiudi o elimina le domande aperte risolte (la sezione deve contenere solo "nessuna");
+- calcola l'hash con `python scripts/spec_lint.py <spec> --hash` e scrivilo in `- Hash:`;
 - riesegui `spec_lint.py`: deve passare.
+
+Da qui ogni modifica al corpo della spec fa decadere l'approvazione (l'hash non corrisponde più): torna in bozza e
+chiedi di nuovo. L'approvazione vera è il merge della PR di design su `main` (playbook §1.2): spec, piano e task vanno
+insieme in quella PR, che apre l'utente o l'identità bot dell'agente, mai unita dall'agente.
 
 Non approvare di tua iniziativa e non inferire il consenso dal silenzio. Non avviare piano né codice.
 Prossimo passo: `sdlc-plan`.

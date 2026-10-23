@@ -3,6 +3,7 @@
 - Stato: draft
 - Proprietario: <nome>
 - Approvata da / data: <nome, aaaa-mm-gg>
+- Hash: <da calcolare dopo l'approvazione con spec_lint.py --hash>
 
 ## Problema e obiettivo
 <perché esiste questa feature; criterio di successo misurabile>

@@ -137,7 +137,7 @@ Conclusione per piattaforma: **Linux** è la piattaforma su cui il plugin funzio
 che su un'installazione pulita non partono (B2). **Windows nativo**, indicato come supportato, non passa la propria
 suite.
 
-## Stato delle correzioni (0.5.0 e 0.6.0)
+## Stato delle correzioni (0.5.0-0.7.0)
 
 | Punto | Stato | Come |
 |---|---|---|
@@ -151,4 +151,7 @@ suite.
 | B8 | corretto | impronta con `git diff HEAD` e contenuto dei non tracciati; `--timeout`; exit code riportato; baseline controllata |
 | B11 | corretto | `.gitattributes` con LF |
 | A2 | corretto | commit `Test-Lock` dei test rossi + controllo in `diff_scope.py`; fase rossa nell'hook `Stop` e in `loop.py`; `PROMPT.md` e skill aggiornati |
-| B9, B10, A1, A3-A8, C | aperti | non compresi in queste correzioni (A3 è coperto per la parte degli ID; resta il collegamento ai report dei test eseguiti) |
+| A1 | corretto (0.7.0) | hash anti-deriva su spec e piano; approvazione = merge della PR di design su `main` protetto (`spec_lint.py --base`), con identità separata dell'agente; template CODEOWNERS e PR. La protezione del branch va configurata sulla piattaforma |
+| A4 | corretto (0.7.0) | il loop chiude con successo solo se passano anche `trace_check.py` e `diff_scope.py` |
+| B9 | corretto in parte (0.7.0) | contatore per sessione (`SDLC_STOP_MAX`); resta il `verify` completo a ogni fine turno, riducibile con `SDLC_VERIFY_ARGS` |
+| B10, A3 (report eseguiti), A5-A8, C | aperti | pianificati nei rilasci 0.8.0-0.11.0 (ID e ciclo di vita, livelli, verifica con JUnit, sicurezza e manutenzione) |

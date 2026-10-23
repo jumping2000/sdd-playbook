@@ -16,8 +16,9 @@ Playbook §3.7 e §4 (fase 9). Una spec non riconciliata smette di essere fonte 
 
 1. **Leggi** spec, codice finale e, se esiste, `docs/system/<area>.md`.
 2. **Confronta la spec con il comportamento reale.** Ogni scostamento è o un difetto del codice (nuovo bug:
-   `sdlc-bugfix`) o un cambio di requisito (aggiorna la spec **con l'approvazione dell'utente**). Non
-   cancellare la discrepanza in silenzio.
+   `sdlc-bugfix`) o un cambio di requisito (aggiorna la spec **con l'approvazione dell'utente**, poi aggiorna
+   `Approvata da / data` e `- Hash:` con `python scripts/spec_lint.py <spec> --hash`; la modifica finisce nella PR
+   di implementazione e la approva chi la unisce). Non cancellare la discrepanza in silenzio.
 3. **Pagina d'area:** crea o aggiorna `docs/system/<area>.md` da `references/area-template.md`: comportamento
    attuale (solo ciò che è vero nel codice), vincoli, test di caratterizzazione, riferimenti. Aggiungi la spec
    in "Specifiche collegate" e imposta "Ultimo allineamento" alla data di oggi.

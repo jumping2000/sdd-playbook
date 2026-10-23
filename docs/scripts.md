@@ -51,13 +51,22 @@ python scripts/state.py [--json] [radice]
 ### spec_lint.py
 
 ```
-python scripts/spec_lint.py <spec.md> [--plan <plan.md>] [--tasks <tasks.md>]
+python scripts/spec_lint.py <spec.md> [--plan <plan.md>] [--tasks <tasks.md>] [--base <ref>]
+python scripts/spec_lint.py <file.md> --hash
 ```
+
+**Approvazione.** `--hash` stampa l'hash del corpo del file (dalla prima sezione `## ` in poi, fine riga e spazi
+finali normalizzati), da scrivere in `- Hash:` dopo l'approvazione. Una spec `approved`/`implemented` senza hash, o con
+un hash che non corrisponde più al contenuto, è un errore. Un piano approvato deve avere `- Hash:` valido e
+`- Basato su spec:` uguale all'hash attuale della spec: se la spec cambia, il piano decade. Con `--base <ref>` spec e
+piano devono esistere su `<ref>` ed essere identici alla copia di lavoro: il merge della PR di design su un branch
+protetto è l'approvazione che l'agente non può darsi da solo (playbook §1.2).
 
 | Modalità | Errori rilevati |
 |---|---|
-| spec | stato non valido; sezioni mancanti; ID REQ/AC duplicati; REQ senza AC; AC che cita REQ inesistenti; non-scope assente o con segnaposto; se `approved`/`implemented`: approvatore mancante o domande aperte (avviso se restano `[ASSUNZIONE]`) |
-| `--plan` | sezione `## Strategia di test` mancante; AC della spec assenti da quella sezione (ID esatto: `AC-001` non vale per `AC-0011`); avviso se il piano non è approvato |
+| spec | stato non valido; sezioni mancanti; ID REQ/AC duplicati; REQ senza AC; AC che cita REQ inesistenti; non-scope assente o con segnaposto; se `approved`/`implemented`: approvatore mancante, hash mancante o non corrispondente, domande aperte (avviso se restano `[ASSUNZIONE]`) |
+| `--plan` | sezione `## Strategia di test` mancante; AC della spec assenti da quella sezione (ID esatto: `AC-001` non vale per `AC-0011`); piano approvato con hash non valido o basato su un'altra versione della spec; avviso se il piano non è approvato |
+| `--base` | spec o piano assenti su `<ref>` o diversi dalla versione su `<ref>` |
 | `--tasks` | nessuna task; task `T-nn` senza `verifica:` o `copre:` o con segnaposto `<...>`; ID duplicati; `T-DOC` o `T-SYNC` mancanti; AC non coperto da nessuna task |
 
 ### trace_check.py
@@ -148,7 +157,10 @@ python scripts/loop.py docs/specs/001-x [--max 15] [--stall 3] [--timeout 1800] 
 ```
 
 Legge `PROMPT.md` dalla cartella della spec e lo passa all'agente da stdin. Dopo ogni iterazione esegue `verify`.
-Si ferma con exit `0` se `verify` è verde e non restano task `T-nn` aperte (`T-DOC` e `T-SYNC` restano fuori); con
+Si ferma con exit `0` se `verify` è verde, non restano task `T-nn` aperte (`T-DOC` e `T-SYNC` restano fuori) **e i
+controlli finali passano**: `trace_check.py` sulla spec e `diff_scope.py` sulla cartella, se presenti in `scripts/`. Le
+caselle le spunta l'agente; questi due controlli no. Se `diff_scope` non può calcolare il diff (exit `2`, per esempio
+senza ref di base) è un avviso; con
 exit `1` al tetto `--max` o dopo `--stall` iterazioni senza cambiamenti (tasks.md, HEAD di git, **contenuto** delle
 modifiche tracciate e non tracciate: un agente che lavora sempre sullo stesso file non è in stallo). Ogni iterazione dura al
 massimo `--timeout` secondi: oltre, l'agente viene terminato e il loop prosegue; un codice di uscita diverso da zero viene
@@ -172,8 +184,10 @@ Python 3 esce `1` con un messaggio, cioè un errore visibile ma non bloccante.
 ### Hook `Stop` — `hooks/stop_verify.py`
 
 Abilitazione: `SDLC_ENFORCE_VERIFY=1`. Se `scripts/verify.py` esiste ed è rosso, esce con codice 2 e riporta le ultime
-30 righe all'agente, che non può dichiarare il lavoro finito. Non agisce se `stop_hook_active` è vero (evita cicli), se il
-progetto non ha `verify.py`, o se una spec è in **fase rossa** (in `docs/specs/*/tasks.md` l'ultima task `T-nn` chiusa è
+30 righe all'agente, che non può dichiarare il lavoro finito. Blocca fino a `SDLC_STOP_MAX` volte di fila per sessione
+(default 3; contatore per `session_id` nella cartella temporanea, azzerato quando `verify` torna verde), poi lascia fermare
+l'agente con un avviso per l'utente (`systemMessage`). Senza `session_id` blocca una volta sola (`stop_hook_active`).
+Non agisce se il progetto non ha `verify.py`, o se una spec è in **fase rossa** (in `docs/specs/*/tasks.md` l'ultima task `T-nn` chiusa è
 marcata "atteso: rosso" e la successiva è aperta): lì i test rossi sono il risultato atteso. `SDLC_VERIFY_ARGS` restringe la
 verifica (es. `--fast`).
 

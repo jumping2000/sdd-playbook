@@ -34,7 +34,9 @@ per `.vscode/tasks.json` fai il merge dei task, senza sostituire il file.
    - `docs/constitution.md` da `references/constitution.md.tmpl`, e le cartelle `docs/specs/`, `docs/system/`,
      `docs/bugs/`, `docs/adr/` (con `.gitkeep`);
    - il workflow CI da `references/ci-github-actions.yml`, completando il setup del toolchain; togli
-     `windows-latest` se il team non sviluppa su Windows.
+     `windows-latest` se il team non sviluppa su Windows;
+   - `.github/CODEOWNERS` da `references/CODEOWNERS.tmpl` (chiedi chi approva; l'identità dell'agente non va
+     elencata) e `.github/pull_request_template.md` da `references/pull_request_template.md`.
 6. **Esegui** `python scripts/verify.py` e riporta l'esito così com'è. Se è rosso perché mancano i test,
    non è un errore dell'inizializzazione: segnalalo.
 7. **Esegui** `python scripts/state.py` per mostrare lo stato risultante.
@@ -46,3 +48,7 @@ principi e stack. Non creare spec, non committare e non proseguire senza rispost
 
 Segnala anche due limiti: la CI generata non è stata eseguita (il primo run va controllato) e gli hook
 opzionali del plugin (Claude Code) non sono attivati da questa skill.
+
+Chiedi infine quale configurazione di identità adotta l'utente (playbook §1.2: agente senza push, oppure account bot
+o token senza diritti di merge) e ricordagli cosa deve impostare lui sulla piattaforma: protezione di `main` con PR,
+review dei code owner e CI obbligatorie. Non puoi farlo tu e non devi chiedere credenziali.

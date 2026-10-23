@@ -134,8 +134,26 @@ verify:
 | Ambiente | Container, worktree o macchina isolata per i loop autonomi; niente accesso a produzione né a segreti |
 | Gate tecnici | Branch protetto, PR obbligatoria, CI obbligatoria. Opzionali (Claude Code, plugin §11): hook `Stop` che impedisce di dichiarare completato senza `verify` verde, hook `PreToolUse` che blocca i comandi a rischio. Sono una rete di sicurezza, non un sandbox |
 | Tracciabilità | Commit con trailer `Spec: SPEC-001` e `Agent: <nome/versione>`; PR template con link alla spec, output di `verify`, elenco degli AC coperti |
-| Approvazioni | Spec, piano e decisione sulla review portano nome e data dell'approvatore (campi nei template, §3); in contesti regolati l'approvatore è il product owner o l'analista, non lo sviluppatore che lancia l'agente |
+| Identità dell'agente | Separata da quella di chi approva (vedi sotto): l'agente non deve poter unire una PR su `main` né approvarla |
+| Approvazioni | Il **merge della PR di design** (spec, piano, task) su `main` protetto, con review dei code owner obbligatoria (`CODEOWNERS` su `docs/specs/` e sui test), è l'approvazione: `spec_lint.py --base main` lo verifica. Nei documenti restano nome, data e **hash del contenuto approvato**: se il contenuto cambia, l'approvazione decade. In contesti regolati l'approvatore è il product owner o l'analista, non lo sviluppatore che lancia l'agente |
 | Log delle azioni | `progress.md` per i loop; per audit formale usa i log dell'agente e della CI, non la chat |
+
+**Perché l'identità separata.** Approvazioni, caselle spuntate e trailer sono testo che l'agente può scrivere: l'unico
+controllo che non può aggirare è un'azione che la piattaforma consente solo a te. Se l'agente usa le tue credenziali git,
+per GitHub siete la stessa persona e la regola "review obbligatoria" non distingue chi ha approvato. Due configurazioni,
+equivalenti per gli script (che guardano solo lo stato di git su `main`):
+
+| Configurazione | L'agente | Tu | Adatta a |
+|---|---|---|---|
+| **Agente senza push** | Committa solo in locale, su branch di feature | Pubblichi i branch, apri le PR, approvi e unisci | Chi lavora da solo; nessuna configurazione |
+| **Account bot o token** | Pubblica branch e apre PR con un account bot o un token fine-grained **senza** diritti di merge né di amministrazione | Approvi come code owner e unisci | Team, loop autonomi, CI che apre PR |
+
+Da configurare sulla piattaforma (il plugin fornisce solo i template `CODEOWNERS` e della PR): protezione di `main` con PR
+obbligatoria, review dei code owner obbligatoria e CI obbligatoria.
+
+Flusso di una feature: **PR di design** (spec, piano e task approvati in conversazione, con hash) → merge su `main` =
+approvazione → branch di implementazione da `main` → `spec_lint.py <spec> --plan <plan> --base main` deve passare prima
+del codice → **PR di implementazione**, in cui chi approva rilegge per primi i commit `Test-Lock`.
 
 ---
 
@@ -174,7 +192,7 @@ Regola per le feature piccole: se descrivi il diff in una frase, salta piano e t
 
 {{FILE skills/sdlc-spec/references/spec-template.md markdown}}
 
-Qualità minima di una spec: nomina file/interfacce coinvolti, dichiara il non-scope, chiude con un controllo end-to-end che dimostra la feature. Lo stato `approved` richiede approvatore e data compilati e nessuna domanda aperta (`spec_lint.py` lo controlla).
+Qualità minima di una spec: nomina file/interfacce coinvolti, dichiara il non-scope, chiude con un controllo end-to-end che dimostra la feature. Lo stato `approved` richiede approvatore e data compilati, nessuna domanda aperta e l'**hash del corpo** (`- Hash:`, calcolato con `spec_lint.py --hash` dopo l'approvazione): `spec_lint.py` segnala se il contenuto è cambiato dopo l'ok. Il piano riporta in più `- Basato su spec:` con l'hash della spec su cui è stato approvato, e decade se la spec cambia.
 
 ### 3.4 `plan.md`
 
@@ -299,7 +317,7 @@ L'idea è il cosiddetto "Ralph loop": un ciclo esterno che riesegue l'agente fin
 
 ### 7.2 Regole
 
-- **Criteri di stop oggettivi:** `verify` verde **e** nessuna task `T-nn` aperta in `tasks.md`, non "mi sembra a posto". Un `verify` verde da solo non basta: dopo la prima task il codice può essere verde con tutto il resto ancora da fare.
+- **Criteri di stop oggettivi:** `verify` verde, nessuna task `T-nn` aperta in `tasks.md` **e** `trace_check.py` e `diff_scope.py` superati, non "mi sembra a posto". Un `verify` verde da solo non basta: dopo la prima task il codice può essere verde con tutto il resto ancora da fare. E le caselle le spunta l'agente: per questo contano i due controlli finali, che non dipendono da lui.
 - **Il loop copre solo le task `T-nn`.** `T-DOC` e `T-SYNC` si eseguono dopo la review, con il gate umano in mezzo.
 - **Tetto di iterazioni** sempre impostato (es. 10-20): senza, il loop consuma token a vuoto.
 - **Rilevamento dello stallo:** se per K iterazioni consecutive non cambia nulla (task, commit, contenuto dell'albero di lavoro), il loop si ferma.
@@ -435,7 +453,7 @@ a ogni punto di approvazione) e **script** (controlli deterministici copiati nel
 
 | Hook | Abilitazione | Effetto |
 |---|---|---|
-| `Stop` | `SDLC_ENFORCE_VERIFY=1` (e `SDLC_VERIFY_ARGS`, per es. `--fast`) | Se `verify` è rosso, l'agente non può dichiarare il lavoro finito, salvo fase rossa; evita i cicli con `stop_hook_active` |
+| `Stop` | `SDLC_ENFORCE_VERIFY=1` (e `SDLC_VERIFY_ARGS`, per es. `--fast`; `SDLC_STOP_MAX`, default 3) | Se `verify` è rosso, l'agente non può dichiarare il lavoro finito, salvo fase rossa; blocca fino a `SDLC_STOP_MAX` volte per sessione, poi lascia fermare l'agente avvisando l'utente |
 | `PreToolUse` | `SDLC_GUARD=1` | Blocca force push, `reset --hard`, cancellazioni ricorsive, download-ed-esegui, lettura di `.env` |
 
 **Subagent (solo Claude Code):** `sdlc-reviewer`, revisore indipendente in sola lettura usato da `sdlc-review-diff`. Con altri agenti la review si fa in una sessione nuova con le stesse istruzioni.

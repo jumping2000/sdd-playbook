@@ -1,6 +1,6 @@
 # Architettura del plugin
 
-Documento di progetto **come costruito** (versione 0.6.0): scelte, struttura, contratti tra i file e limiti.
+Documento di progetto **come costruito** (versione 0.7.0): scelte, struttura, contratti tra i file e limiti.
 
 ## Obiettivo e criterio di successo
 
@@ -22,7 +22,7 @@ Il plugin è fatto bene se:
 | Dove vivono gli script | In `skills/sdlc-init/scripts/`, copiati nel progetto da `sdlc-init` | Percorso fisso (`python scripts/...`) uguale in entrambi gli agenti; il progetto resta verificabile senza il plugin |
 | Portabilità | Solo libreria standard, nessun comando di shell, liste di argomenti | Windows nativo incluso |
 | Contesto | `SKILL.md` sotto le 150 righe; template in `references/` | Il contesto è una risorsa scarsa |
-| Gate umani | Ogni skill che produce un documento da approvare termina con **STOP**; le approvazioni portano nome e data e sono controllate dagli script | Principio 5 del playbook |
+| Gate umani | Ogni skill che produce un documento da approvare termina con **STOP**; le approvazioni portano nome, data e hash del contenuto approvato (che decade se il contenuto cambia); l'approvazione vera è il merge della PR di design su `main` protetto, che l'agente non può fare con un'identità separata | Principio 5 del playbook; i campi testuali li può scrivere l'agente, il merge no |
 | Skill con effetti | `sdlc-loop` prepara ma non lancia; i commit solo se autorizzati, mai su `main` | Limitare i danni di un agente autonomo |
 | Parti per singolo agente | Claude Code: subagent `sdlc-reviewer` e hook opt-in. Codex: nessuna (review in sessione nuova) | Le skill restano uguali; cambia solo l'orchestrazione |
 | Coerenza documentale | Il playbook è **generato** dai file del plugin (`tools/build_playbook.py`) e i test controllano riferimenti incrociati | Script, template e documentazione non possono divergere in silenzio |
@@ -85,8 +85,8 @@ Gli script leggono pochi campi con convenzioni fisse. Se si cambia un template v
 
 | File | Campi e strutture lette | Script |
 |---|---|---|
-| `spec.md` | titolo `# SPEC-nnn: ...`; `- Stato:` (`draft`, `approved`, `implemented`, `superseded`); `- Approvata da / data:`; sezioni `## Problema e obiettivo`, `Scope`, `Requisiti`, `Acceptance criteria`, `Domande aperte`; riga `**Non-scope (esplicito):**`; `- REQ-nnn`; `- AC-nnn [REQ-nnn]`; marcatore `[ASSUNZIONE]` | `spec_lint`, `state`, `trace_check`, `sync_check` |
-| `plan.md` | `- Approvato da / data:`; sezione `## Componenti e file da creare/modificare` con righe `- percorso: ...` (percorso = prima parola o testo tra backtick); sezione `## Strategia di test ...` con gli ID AC esatti e, se c'è, la colonna `Dove` | `spec_lint`, `state`, `diff_scope` |
+| `spec.md` | titolo `# SPEC-nnn: ...`; `- Stato:` (`draft`, `approved`, `implemented`, `superseded`); `- Approvata da / data:`; `- Hash: sha256:...` del corpo (dalla prima sezione `## `); sezioni `## Problema e obiettivo`, `Scope`, `Requisiti`, `Acceptance criteria`, `Domande aperte`; riga `**Non-scope (esplicito):**`; `- REQ-nnn`; `- AC-nnn [REQ-nnn]`; marcatore `[ASSUNZIONE]` | `spec_lint`, `state`, `trace_check`, `sync_check` |
+| `plan.md` | `- Approvato da / data:`; `- Basato su spec:` (hash della spec); `- Hash:` del corpo; sezione `## Componenti e file da creare/modificare` con righe `- percorso: ...` (percorso = prima parola o testo tra backtick); sezione `## Strategia di test ...` con gli ID AC esatti e, se c'è, la colonna `Dove` | `spec_lint`, `state`, `diff_scope` |
 | `tasks.md` | righe `- [ ] T-nn ...` con i campi `verifica:` (comando tra backtick) e `copre:` (ID degli AC), senza segnaposto; `T-DOC`, `T-SYNC`; la marcatura `atteso: rosso` sulle task di test definisce la **fase rossa** (ultima task `T-nn` chiusa con la marcatura, successiva aperta) | `spec_lint`, `state`, `loop`, `sync_check`, hook `Stop` |
 | commit git | trailer `Test-Lock: T-nn` sul commit dei test rossi: blocca i suoi file di test | `diff_scope` |
 | file di test | citazioni `SPEC-nnn/AC-nnn` (o `SPEC001_AC001`), oppure `# SPEC-nnn` nel file più `AC-nnn`; righe `TODO`/`FIXME`/`XXX` ignorate | `trace_check`, `sync_check` |
@@ -129,6 +129,9 @@ Un campo con segnaposto `<...>` o vuoto vale come **non compilato**.
 - **Hook di Claude Code:** codice di uscita 2 come blocco e formato del JSON sono quelli attesi, non osservati in una sessione.
   Il comando passa da `sh hooks/run.sh`: su Windows richiede che Claude Code esegua gli hook con una shell che trovi `sh`
   (Git for Windows); non verificato in una sessione reale.
+- **Approvazioni:** l'hash ferma la deriva involontaria, non un agente che ricalcola l'hash e riscrive il campo. Contro
+  questo serve il merge su `main` protetto con un'identità separata (`spec_lint.py --base`): la protezione del branch e
+  CODEOWNERS vanno configurati sulla piattaforma, il plugin fornisce solo i template.
 - **Fase rossa e `Test-Lock`:** si basano su convenzioni (marcatura nelle task, trailer nei commit) che l'agente potrebbe
   usare a sproposito; la review umana resta il controllo finale.
 - **`claude -p` da stdin:** la lettura del prompt da stdin con `-p` va verificata sulla versione in uso.

@@ -34,6 +34,8 @@ Playbook §3.5 e §4 (fase 4).
      `docs/system/`, poi `Stato: implemented`: `sdlc-sync`). Non hanno `copre:`: si eseguono dopo la review.
    - Se la spec è piccola, poche task: non gonfiare il piano.
 3. **Controlla** con `python scripts/spec_lint.py <spec> --tasks <tasks>`: deve passare.
+4. Dopo il via dell'utente, spec, piano e task vanno nella **PR di design** (playbook §1.2): committali su un branch
+   dedicato. Se l'agente non ha diritto di push, la pubblica l'utente; in ogni caso la unisce solo l'utente.
 
 ## STOP
 

@@ -9,8 +9,10 @@ Playbook §4 (fase 6) e §6. Lavora sulle sole task numerate `T-nn`: `T-DOC` e `
 
 ## Precondizioni
 
-- Spec approvata, piano approvato, `tasks.md` valido
-  (`python scripts/spec_lint.py <spec> --plan <plan> --tasks <tasks>`: nessun errore).
+- Spec approvata, piano approvato, `tasks.md` valido, e spec e piano **già uniti su `main`** con la PR di design
+  (`python scripts/spec_lint.py <spec> --plan <plan> --tasks <tasks> --base main`: nessun errore). Se `--base`
+  fallisce, l'approvazione non c'è ancora: fermati. Senza PR di design (progetto che non la usa), l'utente lo dice
+  esplicitamente e si omette `--base`.
 - Sei su un **branch di feature**, non su `main`/`master`/un branch protetto. Altrimenti proponi di crearlo e
   attendi conferma.
 - Esegui `python scripts/verify.py` **prima di iniziare**: serve una baseline. Se è già rossa, segnalalo

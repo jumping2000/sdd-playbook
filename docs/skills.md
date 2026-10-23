@@ -8,8 +8,9 @@ del processo stanno nel [playbook](playbook-ai-software-lifecycle.md), che ogni 
 - Gli script si chiamano come `python scripts/<nome>.py` dalla radice del progetto: li copia `sdlc-init`.
   Se un progetto è stato inizializzato con una versione precedente, copia lo script mancante da
   `skills/sdlc-init/scripts/`.
-- Ogni skill che produce un documento da approvare termina con **STOP**: chiede l'approvazione con nome e data e
-  non avvia la fase successiva.
+- Ogni skill che produce un documento da approvare termina con **STOP**: chiede l'approvazione con nome e data,
+  registra l'hash del contenuto approvato (`spec_lint.py --hash`) e non avvia la fase successiva. Spec, piano e task
+  vanno poi nella PR di design: il merge su `main`, che fa solo l'umano, è l'approvazione (playbook §1.2).
 - Le skill non committano senza autorizzazione dell'utente e mai su `main`/`master`.
 - Quando un requisito è ambiguo, si fermano e chiedono: non assumono.
 
@@ -105,7 +106,8 @@ del processo stanno nel [playbook](playbook-ai-software-lifecycle.md), che ogni 
 
 ### sdlc-implement
 
-- **Precondizioni:** spec, piano e task validi; branch di feature; `verify` eseguito prima di iniziare (baseline).
+- **Precondizioni:** spec, piano e task validi e già uniti su `main` (`spec_lint.py ... --base main`); branch di
+  feature; `verify` eseguito prima di iniziare (baseline).
 - **Ciclo:** prima task `T-nn` aperta → implementa solo quella → comando di `verifica:` e `verify` completo →
   verde: spunta, commit con trailer `Spec:` e `Agent:`; rosso: massimo 3 tentativi poi si ferma e chiede. Non modifica
   i test bloccati da un commit `Test-Lock`.

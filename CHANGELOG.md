@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.7.0
+Primo rilascio del piano sulle criticità di processo (`REVIEW.md`): fiducia nelle attestazioni (A1, A4, B9).
+- Hash anti-deriva: spec approvata e piano approvato riportano `- Hash:` del proprio corpo; il piano riporta anche
+  `- Basato su spec:`. `spec_lint.py` segnala hash mancanti o non corrispondenti, `--hash` lo calcola; `state.py`
+  considera decadute le approvazioni non valide e lo dice nel motivo.
+- Approvazione tramite merge: `spec_lint.py --base <ref>` richiede che spec e piano siano su `<ref>` e identici.
+  Playbook §1.2: identità separata per l'agente (senza push, oppure bot o token senza diritti di merge), PR di design,
+  protezione di `main` con review dei code owner. Nuovi template `CODEOWNERS.tmpl` e `pull_request_template.md`,
+  creati da `sdlc-init`.
+- `loop.py`: chiude con successo solo se passano anche `trace_check.py` e `diff_scope.py` (controlli finali).
+- Hook `Stop`: blocca fino a `SDLC_STOP_MAX` volte di fila per sessione (default 3), poi lascia fermare l'agente con un
+  avviso; il contatore si azzera quando `verify` torna verde.
+- Skill `sdlc-spec`, `sdlc-plan`, `sdlc-tasks`, `sdlc-implement`, `sdlc-sync`, `sdlc-loop`, `sdlc-init` aggiornate.
+
 ## 0.6.0
 Correzione del punto B4 della review (`REVIEW.md`): tracciabilità degli AC per spec.
 - `trace_check.py` attribuisce ogni citazione a una spec: `SPEC-nnn/AC-nnn` (o `SPEC001_AC001`) vale per quella spec;

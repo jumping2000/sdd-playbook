@@ -5,12 +5,22 @@ Uso:
   python scripts/spec_lint.py docs/specs/001-x/spec.md
   python scripts/spec_lint.py docs/specs/001-x/spec.md --plan docs/specs/001-x/plan.md
   python scripts/spec_lint.py docs/specs/001-x/spec.md --tasks docs/specs/001-x/tasks.md
+  python scripts/spec_lint.py docs/specs/001-x/spec.md --plan docs/specs/001-x/plan.md --base main
+  python scripts/spec_lint.py docs/specs/001-x/spec.md --hash      # stampa l'hash da scrivere in "- Hash:"
 
-Exit code 0 = nessun errore (gli avvisi non bloccano). Solo stdlib, cross-platform.
+Approvazione (playbook §1.2):
+  - hash anti-deriva: una spec approved/implemented e un piano approvato riportano "- Hash: sha256:..." del proprio
+    corpo (dalla prima sezione "## " in poi); se il corpo cambia, l'approvazione decade. Il piano riporta anche
+    "- Basato su spec: sha256:..." e decade se la spec cambia.
+  - --base <ref>: spec (e piano) devono esistere su <ref> ed essere identici: il merge della PR di design su un
+    branch protetto è l'approvazione, e l'agente non può farlo da solo.
+Exit code 0 = nessun errore (gli avvisi non bloccano). Solo stdlib + git (per --base), cross-platform.
 """
 from __future__ import annotations
 
+import hashlib
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -47,6 +57,54 @@ def campo(testo: str, nome: str) -> str | None:
 def pulisci(valore: str | None) -> str:
     """Valore del campo senza commenti HTML."""
     return re.sub(r"<!--.*?-->", "", valore or "").strip()
+
+
+def impronta(testo: str) -> str:
+    """Hash del corpo (dalla prima sezione "## "): l'intestazione con stato, approvatore e hash non conta."""
+    righe = testo.replace("\r\n", "\n").split("\n")
+    inizio = next((i for i, r in enumerate(righe) if r.startswith("## ")), len(righe))
+    corpo = "\n".join(r.rstrip() for r in righe[inizio:]).strip("\n")
+    return "sha256:" + hashlib.sha256(corpo.encode("utf-8")).hexdigest()
+
+
+def problemi_hash(testo: str, cosa: str) -> list[str]:
+    registrato = pulisci(campo(testo, "Hash"))
+    if not registrato or PLACEHOLDER.search(registrato):
+        return [f"{cosa}: approvazione senza '- Hash:' (calcolalo con: python scripts/spec_lint.py <file> --hash)"]
+    if registrato != impronta(testo):
+        return [f"{cosa}: contenuto modificato dopo l'approvazione (Hash non corrisponde): torna in bozza e fai riapprovare"]
+    return []
+
+
+def approvazione_piano(spec: str, plan: str) -> list[str]:
+    """Problemi dell'approvazione di un piano già marcato come approvato."""
+    err = problemi_hash(plan, "Piano")
+    base = pulisci(campo(plan, "Basato su spec"))
+    if not base or PLACEHOLDER.search(base):
+        err.append("Piano approvato senza '- Basato su spec: sha256:...'")
+    elif base != impronta(spec):
+        err.append("Piano basato su un'altra versione della spec ('Basato su spec' diverso): riapprova il piano")
+    return err
+
+
+def piano_approvato(plan: str) -> bool:
+    appr = pulisci(campo(plan, "Approvato da / data"))
+    return bool(appr) and not PLACEHOLDER.search(appr)
+
+
+def su_base(percorso: str, ref: str) -> list[str]:
+    """Il file deve esistere su <ref> ed essere identico alla copia di lavoro (fine riga a parte)."""
+    p = Path(percorso)
+    try:
+        r = subprocess.run(["git", "-C", str(p.parent), "show", f"{ref}:./{p.name}"], capture_output=True)
+    except OSError:
+        return ["git non disponibile: impossibile verificare --base"]
+    if r.returncode != 0:
+        return [f"{p.as_posix()} non è su {ref}: l'approvazione passa dal merge della PR di design"]
+    su_ref = r.stdout.decode("utf-8", "replace").replace("\r\n", "\n").strip()
+    if su_ref != p.read_text(encoding="utf-8").replace("\r\n", "\n").strip():
+        return [f"{p.as_posix()} è diverso dalla versione su {ref}: le modifiche vanno riapprovate con una PR"]
+    return []
 
 
 def parse_spec(testo: str):
@@ -97,6 +155,7 @@ def lint_spec(testo: str) -> tuple[list[str], list[str]]:
         appr = pulisci(campo(testo, "Approvata da / data"))
         if not appr or PLACEHOLDER.search(appr):
             err.append("Spec approvata ma 'Approvata da / data' non compilato")
+        err += problemi_hash(testo, "Spec")
         aperte = [
             r.strip() for r in sez.get("Domande aperte", [])
             if r.strip().startswith(("-", "*")) and not re.match(r"^[-*]\s*(nessuna|none)\b", r.strip(), re.I)
@@ -117,8 +176,9 @@ def lint_plan(spec: str, plan: str) -> tuple[list[str], list[str]]:
         nel_piano = set(re.findall(r"\bAC-\d+\b", "\n".join(strategia)))
         err = [f"{ac} non compare nel piano (strategia di test)" for ac in acs if ac not in nel_piano]
     avv = []
-    appr = pulisci(campo(plan, "Approvato da / data"))
-    if not appr or PLACEHOLDER.search(appr):
+    if piano_approvato(plan):
+        err += approvazione_piano(spec, plan)
+    else:
         avv.append("Piano non ancora approvato ('Approvato da / data' vuoto)")
     return err, avv
 
@@ -159,16 +219,25 @@ def main(argv: list[str]) -> int:
         return 2
     spec_path, opts = argv[0], argv[1:]
     spec = leggi(spec_path)
+    if "--hash" in opts:
+        print(impronta(spec))
+        return 0
     err, avv = lint_spec(spec)
+    da_confrontare = [spec_path]
     for i, o in enumerate(opts):
         if o == "--plan" and i + 1 < len(opts):
             e, a = lint_plan(spec, leggi(opts[i + 1]))
             err += e
             avv += a
+            da_confrontare.append(opts[i + 1])
         if o == "--tasks" and i + 1 < len(opts):
             e, a = lint_tasks(spec, leggi(opts[i + 1]))
             err += e
             avv += a
+    if "--base" in opts and opts.index("--base") + 1 < len(opts):
+        ref = opts[opts.index("--base") + 1]
+        for f in da_confrontare:
+            err += su_base(f, ref)
     for a in avv:
         print(f"[WARN] {a}")
     for e in err:

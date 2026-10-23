@@ -6,7 +6,7 @@ import unittest
 from pathlib import Path
 
 from common import (AREA_OK, PLAN_OK, REVIEW_OK, ROOT, SCRIPTS, SPEC_OK, TASKS_OK, TmpDir, carica, copia_script,
-                    esegui, leggi, scrivi)
+                    esegui, git, leggi, repo_git, scrivi)
 
 spec_lint = carica("spec_lint")
 state = carica("state")
@@ -54,6 +54,47 @@ class TestSpecLint(unittest.TestCase):
         self.assertTrue(any("AC-001" in e for e in spec_lint.lint_plan(SPEC_OK, PLAN_OK.replace("| AC-001 |", "| AC-0011 |"))[0]))
         senza = PLAN_OK.replace("## Strategia di test (mappata sugli AC)", "## Note")
         self.assertTrue(any("Strategia di test" in e for e in spec_lint.lint_plan(SPEC_OK, senza)[0]))
+
+    def test_hash_anti_deriva_della_spec(self):
+        self.assertEqual(spec_lint.lint_spec(SPEC_OK.replace("Stato: approved", "Stato: implemented"))[0], [])
+        modificata = SPEC_OK.replace("Esportare il report in CSV.", "Esportare il report in CSV e XLSX.")
+        self.assertTrue(any("modificato dopo l'approvazione" in e for e in spec_lint.lint_spec(modificata)[0]))
+        senza = "\n".join(r for r in SPEC_OK.splitlines() if not r.startswith("- Hash:"))
+        self.assertTrue(any("senza '- Hash:'" in e for e in spec_lint.lint_spec(senza)[0]))
+        bozza = senza.replace("Stato: approved", "Stato: draft")
+        self.assertEqual(spec_lint.lint_spec(bozza)[0], [])
+        self.assertEqual(spec_lint.impronta(SPEC_OK), spec_lint.impronta(SPEC_OK.replace("\n", "\r\n")))
+
+    def test_piano_decade_se_cambia_la_spec(self):
+        self.assertEqual(spec_lint.lint_plan(SPEC_OK, PLAN_OK)[0], [])
+        nuova = SPEC_OK.replace("Esportare il report in CSV.", "Esportare il report.")
+        self.assertTrue(any("altra versione della spec" in e for e in spec_lint.lint_plan(nuova, PLAN_OK)[0]))
+        piano = PLAN_OK.replace("nuova funzione di export", "funzione di export riscritta")
+        self.assertTrue(any("Piano: contenuto modificato" in e for e in spec_lint.lint_plan(SPEC_OK, piano)[0]))
+
+    def test_hash_e_base_da_riga_di_comando(self):
+        with TmpDir() as d:
+            copia_script(d)
+            repo_git(d, "main")
+            scrivi(d, "docs/specs/001-x/spec.md", SPEC_OK)
+            scrivi(d, "docs/specs/001-x/plan.md", PLAN_OK)
+            r = esegui([sys.executable, "scripts/spec_lint.py", "docs/specs/001-x/spec.md", "--hash"], d)
+            self.assertEqual(r.stdout.strip(), spec_lint.impronta(SPEC_OK))
+            args = [sys.executable, "scripts/spec_lint.py", "docs/specs/001-x/spec.md", "--plan",
+                    "docs/specs/001-x/plan.md", "--base", "main"]
+            r = esegui(args, d)
+            self.assertEqual(r.returncode, 1, r.stdout)
+            self.assertIn("non è su main", r.stdout)
+            git(d, "add", "-A")
+            git(d, "commit", "-qm", "design approvato")
+            git(d, "checkout", "-qb", "feature/x")
+            self.assertEqual(esegui(args, d).returncode, 0)
+            scrivi(d, "docs/specs/001-x/plan.md", PLAN_OK + "\n")
+            self.assertEqual(esegui(args, d).returncode, 0)  # differenze di spazi finali non contano
+            scrivi(d, "docs/specs/001-x/plan.md", PLAN_OK.replace("Anna Rossi", "Agente"))
+            r = esegui(args, d)
+            self.assertEqual(r.returncode, 1)
+            self.assertIn("diverso dalla versione su main", r.stdout)
 
     def test_task(self):
         self.assertEqual(spec_lint.lint_tasks(SPEC_OK, TASKS_OK)[0], [])
@@ -147,6 +188,21 @@ class TestState(unittest.TestCase):
             self.con_spec(r)
             scrivi(r, "docs/specs/001-x/plan.md", PLAN_OK.replace("Anna Rossi, 2026-10-19", "<nome>"))
         self.assertEqual(self.prossimo(setup)["skill"], "sdlc-plan")
+
+    def test_approvazioni_decadute(self):
+        def spec_cambiata(r):
+            self.con_spec(r, tasks=TASKS_OK)
+            scrivi(r, "docs/specs/001-x/spec.md", SPEC_OK.replace("Esportare il report in CSV.", "Altro."))
+        p = self.prossimo(spec_cambiata)
+        self.assertEqual(p["skill"], "sdlc-spec")
+        self.assertIn("Hash", p["motivo"])
+
+        def piano_cambiato(r):
+            self.con_spec(r, tasks=TASKS_OK)
+            scrivi(r, "docs/specs/001-x/plan.md", PLAN_OK.replace("nuova funzione di export", "altro"))
+        p = self.prossimo(piano_cambiato)
+        self.assertEqual(p["skill"], "sdlc-plan")
+        self.assertIn("va riapprovato", p["motivo"])
 
     def test_brownfield_suggerisce_la_mappa(self):
         def setup(r):

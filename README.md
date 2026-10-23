@@ -1,4 +1,4 @@
-# sdlc-playbook (versione 0.6.0)
+# sdlc-playbook (versione 0.7.0)
 
 Plugin per Claude Code e Codex che accompagna lo sviluppatore lungo tutto il ciclo di vita descritto nel
 [playbook](docs/playbook-ai-software-lifecycle.md): spec, piano, task, test, implementazione, review,
@@ -60,7 +60,12 @@ Gli script restano **nel progetto**: la verifica in CI e da VS Code funziona anc
 |---|---|---|
 | `SDLC_ENFORCE_VERIFY=1` | Abilita l'hook `Stop`: l'agente non può fermarsi con `verify` rosso | spento |
 | `SDLC_VERIFY_ARGS` | Argomenti di `verify.py` per l'hook `Stop` (es. `--fast`) | vuoto (verifica completa) |
+| `SDLC_STOP_MAX` | Quante volte di fila l'hook `Stop` blocca nella stessa sessione prima di lasciar fermare l'agente | 3 |
 | `SDLC_GUARD=1` | Abilita l'hook `PreToolUse`: blocca comandi e letture a rischio | spento |
+
+**Approvazioni.** Per un controllo che l'agente non può aggirare, dagli un'identità separata (nessun diritto di push,
+oppure un account bot o token senza diritti di merge) e proteggi `main` con PR, review dei code owner e CI obbligatorie.
+`sdlc-init` crea `.github/CODEOWNERS` e il template della PR; le regole del branch le imposti tu. Dettagli: playbook §1.2.
 
 Gli hook partono da `hooks/run.sh`, che usa il primo tra `python3`, `python` e `py -3` e richiede `sh` (su Windows quello
 di Git for Windows). In fase rossa (ultima task chiusa "atteso: rosso") l'hook `Stop` non blocca.

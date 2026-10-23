@@ -23,7 +23,8 @@ Playbook §3.4 e §4 (fase 3).
      anche migrazioni e compatibilità all'indietro;
    - la tabella della strategia di test deve contenere **tutti** gli AC della spec;
    - rischi con il modo di verificarli; rilascio e rollback;
-   - non introdurre nulla che la spec non richieda: se serve, è una domanda per l'utente.
+   - non introdurre nulla che la spec non richieda: se serve, è una domanda per l'utente;
+   - `- Basato su spec:` con il valore di `- Hash:` della spec approvata.
 3. **Controlla** con `python scripts/spec_lint.py <spec> --plan <plan>`: deve passare. L'avviso sul piano non
    approvato è atteso a questo punto.
 4. Se il piano richiede una nuova dipendenza o una decisione di architettura, segnalala come candidato ADR
@@ -32,5 +33,7 @@ Playbook §3.4 e §4 (fase 3).
 ## STOP
 
 Riassumi il piano e chiedi l'approvazione esplicita con il nome dell'approvatore. Solo dopo, compila
-`Approvato da / data` e riesegui il lint (l'avviso deve sparire). Non scrivere task né codice senza questo passo.
+`Approvato da / data`, scrivi in `- Hash:` l'output di `python scripts/spec_lint.py <plan> --hash` e riesegui il lint
+con `--plan` (l'avviso deve sparire). Se la spec cambia, il piano decade e va riapprovato. Non scrivere task né codice
+senza questo passo.
 Prossimo passo: `sdlc-tasks`.

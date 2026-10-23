@@ -1,6 +1,8 @@
 # PLAN per SPEC-001
 
 - Approvato da / data: <nome, aaaa-mm-gg>
+- Basato su spec: <Hash della spec approvata>
+- Hash: <da calcolare dopo l'approvazione con spec_lint.py --hash>
 
 ## Approccio scelto e alternative scartate
 <approccio, e almeno una alternativa scartata con il motivo>

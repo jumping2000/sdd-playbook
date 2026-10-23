@@ -247,8 +247,26 @@ jobs:
 | Ambiente | Container, worktree o macchina isolata per i loop autonomi; niente accesso a produzione né a segreti |
 | Gate tecnici | Branch protetto, PR obbligatoria, CI obbligatoria. Opzionali (Claude Code, plugin §11): hook `Stop` che impedisce di dichiarare completato senza `verify` verde, hook `PreToolUse` che blocca i comandi a rischio. Sono una rete di sicurezza, non un sandbox |
 | Tracciabilità | Commit con trailer `Spec: SPEC-001` e `Agent: <nome/versione>`; PR template con link alla spec, output di `verify`, elenco degli AC coperti |
-| Approvazioni | Spec, piano e decisione sulla review portano nome e data dell'approvatore (campi nei template, §3); in contesti regolati l'approvatore è il product owner o l'analista, non lo sviluppatore che lancia l'agente |
+| Identità dell'agente | Separata da quella di chi approva (vedi sotto): l'agente non deve poter unire una PR su `main` né approvarla |
+| Approvazioni | Il **merge della PR di design** (spec, piano, task) su `main` protetto, con review dei code owner obbligatoria (`CODEOWNERS` su `docs/specs/` e sui test), è l'approvazione: `spec_lint.py --base main` lo verifica. Nei documenti restano nome, data e **hash del contenuto approvato**: se il contenuto cambia, l'approvazione decade. In contesti regolati l'approvatore è il product owner o l'analista, non lo sviluppatore che lancia l'agente |
 | Log delle azioni | `progress.md` per i loop; per audit formale usa i log dell'agente e della CI, non la chat |
+
+**Perché l'identità separata.** Approvazioni, caselle spuntate e trailer sono testo che l'agente può scrivere: l'unico
+controllo che non può aggirare è un'azione che la piattaforma consente solo a te. Se l'agente usa le tue credenziali git,
+per GitHub siete la stessa persona e la regola "review obbligatoria" non distingue chi ha approvato. Due configurazioni,
+equivalenti per gli script (che guardano solo lo stato di git su `main`):
+
+| Configurazione | L'agente | Tu | Adatta a |
+|---|---|---|---|
+| **Agente senza push** | Committa solo in locale, su branch di feature | Pubblichi i branch, apri le PR, approvi e unisci | Chi lavora da solo; nessuna configurazione |
+| **Account bot o token** | Pubblica branch e apre PR con un account bot o un token fine-grained **senza** diritti di merge né di amministrazione | Approvi come code owner e unisci | Team, loop autonomi, CI che apre PR |
+
+Da configurare sulla piattaforma (il plugin fornisce solo i template `CODEOWNERS` e della PR): protezione di `main` con PR
+obbligatoria, review dei code owner obbligatoria e CI obbligatoria.
+
+Flusso di una feature: **PR di design** (spec, piano e task approvati in conversazione, con hash) → merge su `main` =
+approvazione → branch di implementazione da `main` → `spec_lint.py <spec> --plan <plan> --base main` deve passare prima
+del codice → **PR di implementazione**, in cui chi approva rilegge per primi i commit `Test-Lock`.
 
 ---
 
@@ -326,6 +344,7 @@ Regola per le feature piccole: se descrivi il diff in una frase, salta piano e t
 - Stato: draft
 - Proprietario: <nome>
 - Approvata da / data: <nome, aaaa-mm-gg>
+- Hash: <da calcolare dopo l'approvazione con spec_lint.py --hash>
 
 ## Problema e obiettivo
 <perché esiste questa feature; criterio di successo misurabile>
@@ -356,7 +375,7 @@ Regola per le feature piccole: se descrivi il diff in una frase, salta piano e t
 - <da chiudere prima del piano>
 ```
 
-Qualità minima di una spec: nomina file/interfacce coinvolti, dichiara il non-scope, chiude con un controllo end-to-end che dimostra la feature. Lo stato `approved` richiede approvatore e data compilati e nessuna domanda aperta (`spec_lint.py` lo controlla).
+Qualità minima di una spec: nomina file/interfacce coinvolti, dichiara il non-scope, chiude con un controllo end-to-end che dimostra la feature. Lo stato `approved` richiede approvatore e data compilati, nessuna domanda aperta e l'**hash del corpo** (`- Hash:`, calcolato con `spec_lint.py --hash` dopo l'approvazione): `spec_lint.py` segnala se il contenuto è cambiato dopo l'ok. Il piano riporta in più `- Basato su spec:` con l'hash della spec su cui è stato approvato, e decade se la spec cambia.
 
 ### 3.4 `plan.md`
 
@@ -364,6 +383,8 @@ Qualità minima di una spec: nomina file/interfacce coinvolti, dichiara il non-s
 # PLAN per SPEC-001
 
 - Approvato da / data: <nome, aaaa-mm-gg>
+- Basato su spec: <Hash della spec approvata>
+- Hash: <da calcolare dopo l'approvazione con spec_lint.py --hash>
 
 ## Approccio scelto e alternative scartate
 <approccio, e almeno una alternativa scartata con il motivo>
@@ -614,7 +635,7 @@ L'idea è il cosiddetto "Ralph loop": un ciclo esterno che riesegue l'agente fin
 
 ### 7.2 Regole
 
-- **Criteri di stop oggettivi:** `verify` verde **e** nessuna task `T-nn` aperta in `tasks.md`, non "mi sembra a posto". Un `verify` verde da solo non basta: dopo la prima task il codice può essere verde con tutto il resto ancora da fare.
+- **Criteri di stop oggettivi:** `verify` verde, nessuna task `T-nn` aperta in `tasks.md` **e** `trace_check.py` e `diff_scope.py` superati, non "mi sembra a posto". Un `verify` verde da solo non basta: dopo la prima task il codice può essere verde con tutto il resto ancora da fare. E le caselle le spunta l'agente: per questo contano i due controlli finali, che non dipendono da lui.
 - **Il loop copre solo le task `T-nn`.** `T-DOC` e `T-SYNC` si eseguono dopo la review, con il gate umano in mezzo.
 - **Tetto di iterazioni** sempre impostato (es. 10-20): senza, il loop consuma token a vuoto.
 - **Rilevamento dello stallo:** se per K iterazioni consecutive non cambia nulla (task, commit, contenuto dell'albero di lavoro), il loop si ferma.
@@ -641,7 +662,9 @@ Uso:
 
 Legge PROMPT.md dalla cartella della spec e lo passa all'agente da stdin (evita i limiti di
 lunghezza della riga di comando su Windows). Si ferma quando:
-  - verify è verde e non ci sono task T-nn aperte          -> exit 0
+  - verify è verde, non ci sono task T-nn aperte e i controlli finali passano -> exit 0
+    (controlli finali: trace_check.py sulla spec e diff_scope.py sulla cartella, se presenti in scripts/;
+    le caselle le spunta l'agente, questi controlli no. Se diff_scope non può calcolare il diff è un avviso)
   - raggiunto il tetto --max di iterazioni                  -> exit 1
   - nessun progresso per --stall iterazioni consecutive     -> exit 1
     (progresso = cambia tasks.md, l'HEAD di git o il contenuto dell'albero di lavoro)
@@ -710,6 +733,23 @@ def verify_verde() -> bool:
     return subprocess.run([sys.executable, "scripts/verify.py"]).returncode == 0
 
 
+def controlli_finali(feature: Path) -> list[str]:
+    """Controlli che non dipendono da ciò che dichiara l'agente. Restituisce i controlli falliti."""
+    falliti = []
+    controlli = [("trace_check", [str(feature / "spec.md")]), ("diff_scope", [str(feature)])]
+    for nome, args in controlli:
+        script = Path("scripts") / f"{nome}.py"
+        if not script.is_file() or (nome == "trace_check" and not (feature / "spec.md").is_file()):
+            print(f"[WARN] controllo finale saltato: {nome} (script o spec mancante)", flush=True)
+            continue
+        codice = subprocess.run([sys.executable, str(script), *args]).returncode
+        if codice == 1 or (codice != 0 and nome == "trace_check"):
+            falliti.append(nome)
+        elif codice != 0:
+            print(f"[WARN] {nome} non ha potuto completare il controllo (exit {codice})", flush=True)
+    return falliti
+
+
 def opzione(argv: list[str], nome: str, default: str) -> str:
     return argv[argv.index(nome) + 1] if nome in argv and argv.index(nome) + 1 < len(argv) else default
 
@@ -759,8 +799,8 @@ def main(argv: list[str]) -> int:
 
     prompt = (feature / "PROMPT.md").read_text(encoding="utf-8")
     if not task_aperte(feature):
-        print("Nessuna task T-nn aperta: controllo solo verify")
-        return 0 if verify_verde() else 1
+        print("Nessuna task T-nn aperta: controllo verify e controlli finali")
+        return 0 if verify_verde() and not controlli_finali(feature) else 1
     if not verify_verde():
         if rossa:
             print(f"Baseline rossa attesa: fase rossa dopo {rossa}")
@@ -773,8 +813,12 @@ def main(argv: list[str]) -> int:
         print(f"== iterazione {i}/{massimo} ==", flush=True)
         esegui_agente([eseguibile, *agente[1:]], prompt, timeout)
         if verify_verde() and not task_aperte(feature):
-            print("OK: verify verde e nessuna task T-nn aperta. Prossimi passi: review, T-DOC, T-SYNC")
-            return 0
+            falliti = controlli_finali(feature)
+            if not falliti:
+                print("OK: verify verde, nessuna task T-nn aperta, controlli finali superati. "
+                      "Prossimi passi: review, T-DOC, T-SYNC")
+                return 0
+            print(f"Task chiuse ma controlli finali non superati: {', '.join(falliti)}", flush=True)
         attuale = impronta(feature)
         fermi = fermi + 1 if attuale == precedente else 0
         precedente = attuale
@@ -927,7 +971,7 @@ a ogni punto di approvazione) e **script** (controlli deterministici copiati nel
 
 | Hook | Abilitazione | Effetto |
 |---|---|---|
-| `Stop` | `SDLC_ENFORCE_VERIFY=1` (e `SDLC_VERIFY_ARGS`, per es. `--fast`) | Se `verify` è rosso, l'agente non può dichiarare il lavoro finito, salvo fase rossa; evita i cicli con `stop_hook_active` |
+| `Stop` | `SDLC_ENFORCE_VERIFY=1` (e `SDLC_VERIFY_ARGS`, per es. `--fast`; `SDLC_STOP_MAX`, default 3) | Se `verify` è rosso, l'agente non può dichiarare il lavoro finito, salvo fase rossa; blocca fino a `SDLC_STOP_MAX` volte per sessione, poi lascia fermare l'agente avvisando l'utente |
 | `PreToolUse` | `SDLC_GUARD=1` | Blocca force push, `reset --hard`, cancellazioni ricorsive, download-ed-esegui, lettura di `.env` |
 
 **Subagent (solo Claude Code):** `sdlc-reviewer`, revisore indipendente in sola lettura usato da `sdlc-review-diff`. Con altri agenti la review si fa in una sessione nuova con le stesse istruzioni.

@@ -14,6 +14,9 @@ import re
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import spec_lint  # noqa: E402
+
 PLACEHOLDER = re.compile(r"<[^<>\n]{1,100}>")
 ESITI = ("conforme", "conforme con riserve", "non conforme")
 SORGENTI = {".py", ".js", ".jsx", ".ts", ".tsx", ".java", ".kt", ".cs", ".go", ".rb", ".php", ".rs", ".c", ".cpp", ".swift"}
@@ -50,13 +53,19 @@ def analizza_spec(d: Path) -> dict:
     aperte = re.findall(r"^\s*-\s+\[ \]\s+(T-[A-Z0-9]+)", tasks, re.M)
     chiuse = re.findall(r"^\s*-\s+\[[xX]\]\s+(T-[A-Z0-9]+)", tasks, re.M)
     numerate = [t for t in aperte if re.fullmatch(r"T-\d+", t)]
+    spec_firmata = _compilato(spec, "Approvata da / data")
+    plan_firmato = _compilato(plan, "Approvato da / data")
+    spec_decaduta = spec_firmata and bool(spec_lint.problemi_hash(spec, "Spec"))
+    plan_decaduto = plan_firmato and bool(spec_lint.approvazione_piano(spec, plan))
     return {
         "id": d.name,
         "spec": bool(spec),
         "stato": (_campo(spec, "Stato").split("|")[0].strip() if spec else "") or "n/d",
-        "spec_approvata": _compilato(spec, "Approvata da / data"),
+        "spec_approvata": spec_firmata and not spec_decaduta,
+        "spec_approvazione_decaduta": spec_decaduta,
         "plan": bool(plan),
-        "plan_approvato": _compilato(plan, "Approvato da / data"),
+        "plan_approvato": plan_firmato and not plan_decaduto,
+        "plan_approvazione_decaduta": plan_decaduto,
         "tasks": bool(tasks),
         "task_chiuse": len(chiuse),
         "task_totali": len(chiuse) + len(aperte),
@@ -102,8 +111,13 @@ def prossimo(infra: dict, codice: bool, mappa: bool, specs: list[dict]) -> dict:
         return {"skill": "sdlc-spec", "motivo": "nessuna spec attiva: parti da una nuova"}
     s = attive[0]
     i = s["id"]
+    if s["spec_approvazione_decaduta"]:
+        return {"skill": "sdlc-spec", "spec": i, "motivo": "approvazione della spec senza Hash valido (mancante o contenuto cambiato): va riapprovata"}
     if not s["spec"] or s["stato"] == "draft" or not s["spec_approvata"]:
         return {"skill": "sdlc-spec", "spec": i, "motivo": "spec da completare e far approvare"}
+    if s["plan_approvazione_decaduta"]:
+        return {"skill": "sdlc-plan", "spec": i,
+                "motivo": "approvazione del piano non valida (Hash mancante o cambiato, o spec diversa): va riapprovato"}
     if not s["plan"] or not s["plan_approvato"]:
         return {"skill": "sdlc-plan", "spec": i, "motivo": "piano mancante o da approvare"}
     if not s["tasks"]:

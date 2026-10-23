@@ -100,6 +100,12 @@ PLAN_OK = """# PLAN per SPEC-001
 | AC-001 | unit |
 | AC-002 | unit |
 """
+_spec_lint = carica("spec_lint")
+APPROVATA = "- Approvata da / data: Anna Rossi, 2026-10-19\n"
+SPEC_OK = SPEC_OK.replace(APPROVATA, APPROVATA + f"- Hash: {_spec_lint.impronta(SPEC_OK)}\n")
+APPROVATO = "- Approvato da / data: Anna Rossi, 2026-10-19\n"
+PLAN_OK = PLAN_OK.replace(APPROVATO, APPROVATO + f"- Basato su spec: {_spec_lint.impronta(SPEC_OK)}\n"
+                          f"- Hash: {_spec_lint.impronta(PLAN_OK)}\n")
 TASKS_OK = """- [ ] T-01 Test — verifica: `pytest -k AC_001` (atteso: rosso) — copre: AC-001, AC-002
 - [ ] T-02 Implementa — verifica: `pytest` — copre: AC-001, AC-002
 - [ ] T-DOC Documentazione
