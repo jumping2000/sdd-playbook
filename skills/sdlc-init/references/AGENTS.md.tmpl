@@ -1,0 +1,26 @@
+# AGENTS.md
+
+## Progetto
+<2-3 righe: cosa fa, stack principale>
+
+## Comandi
+- Setup: `<comando>`
+- Verifica completa (criterio di "fatto"): `python scripts/verify.py`
+- Verifica rapida (solo durante il lavoro): `python scripts/verify.py --fast`
+- Test singolo: `<comando per un test>`
+- Avvio locale: `<comando>`
+
+## Convenzioni
+- <stile, naming, struttura cartelle: solo ciò che non si deduce dal codice>
+- Niente comandi specifici di una shell negli script: devono girare su Windows e Linux.
+
+## Regole
+- Non modificare: <percorsi, es. migrazioni già applicate, codice generato>
+- Ogni modifica di comportamento richiede un test.
+- Non dichiarare un compito completato senza aver eseguito `python scripts/verify.py` con esito positivo.
+- Ambiguità o requisiti mancanti: fermati e chiedi, non assumere.
+- Cambi di comportamento: aggiorna la spec o la pagina d'area in `docs/system/`.
+
+## Documentazione
+- Spec in `docs/specs/<id>/`. Leggi `spec.md` e `plan.md` prima di scrivere codice.
+- Bug non banali: `docs/bugs/`. Comportamento attuale per area: `docs/system/`.

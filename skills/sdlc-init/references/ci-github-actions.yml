@@ -1,0 +1,20 @@
+# Stessa verifica locale e CI. Matrice Windows + Linux: tieni solo ubuntu-latest
+# se il team non sviluppa su Windows. In contesti regolati fissa le action per SHA.
+name: verify
+on:
+  push:
+  pull_request:
+jobs:
+  verify:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      # <setup del toolchain del progetto: dipendenze, runtime, ecc.>
+      - run: python scripts/verify.py

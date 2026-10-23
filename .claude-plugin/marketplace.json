@@ -1,0 +1,14 @@
+{
+  "name": "sdlc-playbook-marketplace",
+  "owner": {
+    "name": "<da-compilare>"
+  },
+  "description": "Marketplace del plugin sdlc-playbook: skill per il ciclo di vita software con coding agent",
+  "plugins": [
+    {
+      "name": "sdlc-playbook",
+      "source": "./",
+      "description": "Skill, script e hook per il ciclo di vita software con coding agent"
+    }
+  ]
+}

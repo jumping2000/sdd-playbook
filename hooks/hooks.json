@@ -1,0 +1,19 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash|PowerShell|Read",
+        "hooks": [
+          { "type": "command", "command": "python \"${CLAUDE_PLUGIN_ROOT}/hooks/pretool_guard.py\"" }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          { "type": "command", "command": "python \"${CLAUDE_PLUGIN_ROOT}/hooks/stop_verify.py\"" }
+        ]
+      }
+    ]
+  }
+}
