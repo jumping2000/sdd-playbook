@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.9.0
+Terzo rilascio del piano sulle criticità di processo: processo proporzionato al rischio (A6, e la parte di A5 sulle
+aree sensibili).
+- Livelli S, M, L (playbook §2.1): campo `- Livello:` nella spec, controllato da `spec_lint.py` (avviso se manca: vale
+  M) e incluso nell'hash, così abbassarlo dopo l'approvazione la fa decadere. Gli hash delle spec senza il campo non
+  cambiano.
+- `diff_scope.py` segnala come errore il **livello sottostimato**: un file nelle nuove righe `- Aree sensibili:` di
+  `AGENTS.md` richiede L; un manifest o lockfile delle dipendenze, o più di 3 file di produzione, richiedono almeno M.
+  Nel livello S senza piano il confronto con il piano è saltato.
+- Livello S: niente piano né `review.md`, `T-DOC` facoltativa, pagina d'area facoltativa (`state.py`, `spec_lint.py`,
+  `sync_check.py`).
+- Livello L: `review.md` richiede `- Revisione umana del diff:` (`state.py`, `sync_check.py`); ADR per le decisioni prese.
+- Template di spec, review e `AGENTS.md` aggiornati; skill `sdlc-spec`, `sdlc-plan`, `sdlc-tasks`, `sdlc-implement`,
+  `sdlc-review-diff`, `sdlc-sync`, `sdlc-next`, `sdlc-init`, `sdlc-loop` aggiornate. Playbook: principio 5 e nuovo §2.1.
+
 ## 0.8.0
 Secondo rilascio del piano sulle criticità di processo: ID e ciclo di vita delle spec, lavoro in team (A8).
 - ID della spec = data + slug (`docs/specs/2026-10-24-export-csv/`, titolo `# SPEC-2026-10-24-export-csv: ...`):

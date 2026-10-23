@@ -6,6 +6,8 @@ Sola lettura. Il suggerimento segue il flusso del playbook: init -> (map-codebas
 tasks -> implement -> review-diff -> docs -> sync. Bug aperti e sdlc-loop sono segnalati a parte.
 Con più spec attive ognuna ha il suo passo successivo; la riga PROSSIMO riguarda la spec indicata con --spec, quella
 il cui nome di cartella compare nel branch corrente, o l'unica attiva. Altrimenti chiede di scegliere.
+Livelli (playbook §2): una spec S salta piano e review.md; una spec L richiede anche la revisione umana del diff
+("- Revisione umana del diff:" in review.md).
 Solo stdlib (+ git per il nome del branch, se c'è), cross-platform.
 """
 from __future__ import annotations
@@ -78,6 +80,7 @@ def analizza_spec(d: Path) -> dict:
         "id_titolo": f"SPEC-{sid}" if sid else None,
         "spec": bool(spec),
         "stato": stato,
+        "livello": spec_lint.livello(spec),
         "spec_approvata": spec_firmata and not spec_decaduta and stato != "in-revisione",
         "spec_approvazione_decaduta": spec_decaduta,
         "plan": bool(plan),
@@ -95,6 +98,7 @@ def analizza_spec(d: Path) -> dict:
         "sync_aperta": "T-SYNC" in aperte,
         "review": _campo(review, "Esito") if review else None,
         "review_valida": _campo(review, "Esito") in ESITI if review else False,
+        "revisione_umana": _compilato(review, "Revisione umana del diff"),
     }
 
 
@@ -107,6 +111,8 @@ def prossimo_della_spec(s: dict) -> dict:
         return {"skill": "sdlc-spec", "spec": i, "motivo": "approvazione della spec senza Hash valido (mancante o contenuto cambiato): va riapprovata"}
     if not s["spec"] or s["stato"] == "draft" or not s["spec_approvata"]:
         return {"skill": "sdlc-spec", "spec": i, "motivo": "spec da completare e far approvare"}
+    if s["livello"] == "S":
+        return prossimo_livello_s(s)
     if s["plan_approvazione_decaduta"]:
         return {"skill": "sdlc-plan", "spec": i,
                 "motivo": "approvazione del piano non valida (Hash mancante o cambiato, o spec diversa): va riapprovato"}
@@ -123,14 +129,38 @@ def prossimo_della_spec(s: dict) -> dict:
     if not s["review_valida"]:
         return {"skill": "sdlc-review-diff", "spec": i, "motivo": "task T-nn completate: manca la review valida (review.md)"}
     if s["review"] == "non conforme":
-        if s["task_review"]:
-            return {"skill": "sdlc-review-diff", "spec": i,
-                    "motivo": "correzioni T-R completate: ripeti la review"}
+        return review_non_conforme(s)
+    if s["livello"] == "L" and not s["revisione_umana"]:
         return {"skill": "sdlc-review-diff", "spec": i,
-                "motivo": "review 'non conforme': trasforma i problemi in task T-R in tasks.md"}
+                "motivo": "livello L: manca la revisione umana del diff ('Revisione umana del diff' in review.md)"}
+    return chiusura(s)
+
+
+def review_non_conforme(s: dict) -> dict:
+    if s["task_review"]:
+        return {"skill": "sdlc-review-diff", "spec": s["id"], "motivo": "correzioni T-R completate: ripeti la review"}
+    return {"skill": "sdlc-review-diff", "spec": s["id"],
+            "motivo": "review 'non conforme': trasforma i problemi in task T-R in tasks.md"}
+
+
+def chiusura(s: dict) -> dict:
     if s["doc_aperta"]:
-        return {"skill": "sdlc-docs", "spec": i, "motivo": "T-DOC aperta"}
-    return {"skill": "sdlc-sync", "spec": i, "motivo": "riconcilia spec e docs/system (T-SYNC) e imposta Stato = implemented"}
+        return {"skill": "sdlc-docs", "spec": s["id"], "motivo": "T-DOC aperta"}
+    return {"skill": "sdlc-sync", "spec": s["id"],
+            "motivo": "riconcilia spec e docs/system (T-SYNC) e imposta Stato = implemented"}
+
+
+def prossimo_livello_s(s: dict) -> dict:
+    """Livello S: niente piano; la review è quella della PR, review.md conta solo se c'è."""
+    i = s["id"]
+    if not s["tasks"]:
+        return {"skill": "sdlc-tasks", "spec": i, "motivo": "livello S: task minime, senza piano"}
+    if s["task_numerate_aperte"]:
+        return {"skill": "sdlc-implement", "spec": i,
+                "motivo": f"task aperte: {s['task_numerate_aperte']}, prossima {s['prossima_task']}"}
+    if s["review"] == "non conforme":
+        return review_non_conforme(s)
+    return chiusura(s)
 
 
 def scegli_spec(attive: list[dict], scelta: str | None, branch: str) -> dict | None:
@@ -206,7 +236,7 @@ def stampa(st: dict) -> None:
     for s in st["specs"]:
         piano = "approvato" if s["plan_approvato"] else ("da approvare" if s["plan"] else "no")
         dopo = f" -> {s['prossimo']['skill']}" if "prossimo" in s else ""
-        print(f"  {s['id']}: stato={s['stato']} approvata={'si' if s['spec_approvata'] else 'no'} piano={piano} "
+        print(f"  {s['id']}: livello={s['livello']} stato={s['stato']} approvata={'si' if s['spec_approvata'] else 'no'} piano={piano} "
               f"task={s['task_chiuse']}/{s['task_totali']} review={s['review'] or 'no'}{dopo}")
     if st["bug_aperti"]:
         print("BUG NON VERIFICATI: " + ", ".join(f"{b['file']} ({b['stato']})" for b in st["bug_aperti"]) + "  -> sdlc-bugfix")

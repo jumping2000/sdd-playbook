@@ -11,6 +11,10 @@ Uso:
 - Test bloccati: i file di test di un commit con trailer "Test-Lock: T-nn" (i test rossi scritti dagli AC)
   non possono cambiare in un commit successivo senza lo stesso trailer, né nelle modifiche non committate
   -> errore (exit 1). Una correzione voluta dei test va in un nuovo commit Test-Lock, motivata nella review.
+- Livello (playbook §2): il diff non deve superare il livello "- Livello:" della spec -> errore (exit 1).
+  Richiede L un file nelle righe "- Aree sensibili: a, b" di AGENTS.md; richiede almeno M una modifica a un
+  manifest o lockfile delle dipendenze, o più di 3 file di produzione (esclusi test, docs/ e *.md).
+  Una spec di livello S non ha piano: il confronto con il piano è saltato.
 - Pianificati ma non toccati: solo informativo.
 Il diff è calcolato dal merge-base con --base (default: il primo tra main, master, origin/main,
 origin/master) e include modifiche non committate e file non tracciati.
@@ -24,12 +28,22 @@ import subprocess
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import spec_lint  # noqa: E402
+
 SEMPRE_AMMESSI = ("docs/system/", "docs/bugs/", "docs/adr/")
 PLACEHOLDER = re.compile(r"<[^<>\n]{1,100}>")
 RIGA_PIANO = re.compile(r"^\s*[-*]\s+(?:`([^`]+)`|([^\s`:]+))")
 TEST_LOCK = re.compile(r"^Test-Lock:\s*\S+", re.M)
 CARTELLE_TEST = {"tests", "test", "__tests__", "spec"}
 NOME_TEST = re.compile(r"(^test_.*|.*_test|.*[._](test|spec)|.*Tests?)\.\w+$")
+MANIFEST = {"package.json", "package-lock.json", "yarn.lock", "pnpm-lock.yaml", "pyproject.toml", "uv.lock",
+            "poetry.lock", "Pipfile", "Pipfile.lock", "setup.py", "setup.cfg", "go.mod", "go.sum", "Cargo.toml",
+            "Cargo.lock", "pom.xml", "build.gradle", "build.gradle.kts", "packages.lock.json", "Directory.Packages.props",
+            "Gemfile", "Gemfile.lock", "composer.json", "composer.lock"}
+MANIFEST_GLOB = ("requirements*.txt", "*.csproj", "*.fsproj", "*.vbproj")
+MAX_FILE_S = 3
+ORDINE = {"S": 0, "M": 1, "L": 2}
 
 
 def git(*args: str) -> tuple[int, str]:
@@ -96,11 +110,42 @@ def percorsi_piano(plan: str) -> list[str]:
     return list(dict.fromkeys(out))
 
 
-def percorsi_vietati(agents: str) -> list[str]:
+def voci_agents(agents: str, nome: str) -> list[str]:
+    """Percorsi di tutte le righe "- <nome>: a, b" di AGENTS.md."""
     voci = []
-    for m in re.finditer(r"^\s*[-*]\s+Non modificare\s*:\s*(.*)$", agents, re.M | re.I):
+    for m in re.finditer(rf"^\s*[-*]\s+{nome}\s*:\s*(.*)$", agents, re.M | re.I):
         voci += [v.strip().strip("`").strip() for v in re.split(r"[,;]", m.group(1))]
     return [v for v in voci if v and not PLACEHOLDER.search(v)]
+
+
+def percorsi_vietati(agents: str) -> list[str]:
+    return voci_agents(agents, "Non modificare")
+
+
+def e_un_manifest(percorso: str) -> bool:
+    nome = normalizza(percorso).split("/")[-1]
+    return nome in MANIFEST or any(fnmatch.fnmatch(nome, g) for g in MANIFEST_GLOB)
+
+
+def di_produzione(percorso: str) -> bool:
+    p = normalizza(percorso)
+    return not (e_un_test(p) or p.startswith("docs/") or p.lower().endswith(".md"))
+
+
+def livello_richiesto(modificati: list[str], agents: str) -> tuple[str, list[str]]:
+    """Livello minimo che il diff richiede e i motivi (playbook §2)."""
+    sensibili = voci_agents(agents, "Aree sensibili")
+    toccati = [f for f in modificati if any(corrisponde(f, s) for s in sensibili)]
+    if toccati:
+        return "L", [f"area sensibile (AGENTS.md): {', '.join(toccati)}"]
+    motivi = []
+    manifest = [f for f in modificati if e_un_manifest(f)]
+    if manifest:
+        motivi.append(f"dipendenze modificate: {', '.join(manifest)}")
+    produzione = [f for f in modificati if di_produzione(f)]
+    if len(produzione) > MAX_FILE_S:
+        motivi.append(f"{len(produzione)} file di produzione (S: al massimo {MAX_FILE_S})")
+    return ("M" if motivi else "S"), motivi
 
 
 def e_un_test(percorso: str) -> bool:
@@ -162,6 +207,17 @@ def test_bloccati(commits: list[tuple[str, bool, list[str]]], sporchi: list[str]
     return sorted(bloccati), violazioni, non_test
 
 
+def problemi_livello(feature: Path, modificati: list[str], agents: str) -> tuple[str, list[str]]:
+    """(livello dichiarato, errori se il diff richiede un livello più alto)."""
+    spec = feature / "spec.md"
+    dichiarato = spec_lint.livello(spec.read_text(encoding="utf-8")) if spec.is_file() else "M"
+    richiesto, motivi = livello_richiesto(modificati, agents)
+    if ORDINE[richiesto] > ORDINE[dichiarato]:
+        return dichiarato, [f"livello sottostimato: la spec dichiara {dichiarato}, il diff richiede almeno "
+                            f"{richiesto} ({'; '.join(motivi)}). Aggiorna il livello e fai riapprovare la spec"]
+    return dichiarato, []
+
+
 def analizza(feature: Path, modificati: list[str], agents: str):
     piano = percorsi_piano((feature / "plan.md").read_text(encoding="utf-8")) if (feature / "plan.md").is_file() else []
     vietati = percorsi_vietati(agents)
@@ -201,11 +257,18 @@ def main(argv: list[str]) -> int:
     modificati = file_modificati(mb)
     agents = Path("AGENTS.md").read_text(encoding="utf-8") if Path("AGENTS.md").is_file() else ""
     piano, violazioni, fuori, non_toccati = analizza(feature, modificati, agents)
+    livello, sottostimato = problemi_livello(feature, modificati, agents)
+    if livello == "S" and not piano:
+        fuori = []  # livello S: nessun piano con cui confrontare
     bloccati, test_toccati, non_test = test_bloccati(commit_del_branch(mb), non_committati())
-    print(f"Base: {base}; file modificati: {len(modificati)}; percorsi nel piano: {len(piano)}; "
+    print(f"Base: {base}; livello: {livello}; file modificati: {len(modificati)}; percorsi nel piano: {len(piano)}; "
           f"test bloccati: {len(bloccati)}")
-    if not piano:
+    if livello == "S" and not piano:
+        print("[INFO] livello S senza piano: confronto con il piano saltato")
+    elif not piano:
         print("[WARN] nessun percorso estratto da plan.md: il confronto con il piano non è affidabile")
+    for e in sottostimato:
+        print(f"[ERRORE] {e}")
     for f in violazioni:
         print(f"[ERRORE] file in zona vietata (AGENTS.md): {f}")
     for f in test_toccati:
@@ -216,7 +279,7 @@ def main(argv: list[str]) -> int:
         print(f"[{'ERRORE' if strict else 'WARN'}] file fuori piano: {f}")
     for p in non_toccati:
         print(f"[INFO] nel piano ma non toccato: {p}")
-    ko = bool(violazioni) or bool(test_toccati) or (strict and bool(fuori))
+    ko = bool(violazioni) or bool(test_toccati) or bool(sottostimato) or (strict and bool(fuori))
     print("SCOPE: " + ("OK" if not ko else "VIOLAZIONI"))
     return 1 if ko else 0
 

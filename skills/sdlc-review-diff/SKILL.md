@@ -11,12 +11,14 @@ Playbook §4 (fase 7), §5 (passo 8) e §3.8. Serve un **contesto indipendente**
 
 - Nessuna task `T-nn` aperta in `tasks.md` e `python scripts/verify.py` verde (eseguilo, mostra l'esito).
 - Sei su un branch di feature con il lavoro committato.
+- Livello M o L (playbook §2.1). Nel livello S basta il punto 1: riporta l'esito all'utente per la PR, senza
+  `review.md` (salvo che l'utente la chieda).
 
 ## Passi
 
 1. **Controlli deterministici:**
-   - `python scripts/diff_scope.py <spec-dir>`: zone vietate e test bloccati (`Test-Lock`) modificati dopo il
-     blocco (errori), file fuori piano (avviso);
+   - `python scripts/diff_scope.py <spec-dir>`: zone vietate, test bloccati (`Test-Lock`) modificati dopo il
+     blocco e livello sottostimato (errori), file fuori piano (avviso);
    - `python scripts/trace_check.py <spec>`: ogni AC ha un test.
 2. **Revisione indipendente.**
    - Claude Code: delega al subagent `sdlc-reviewer`, passando cartella della spec, ref di base e output del punto 1.
@@ -34,5 +36,6 @@ Playbook §4 (fase 7), §5 (passo 8) e §3.8. Serve un **contesto indipendente**
 ## STOP
 
 Presenta il report. **La decisione è dell'utente:** chiedi nome e conferma e compila "Decisione di". Senza
-questa decisione `sync_check.py` non passerà. Non modificare codice in questa skill.
+questa decisione `sync_check.py` non passerà. **Livello L:** l'utente rilegge anche il diff (per primi i file delle
+aree sensibili); compila `- Revisione umana del diff:` solo quando lui conferma di averlo fatto, con nome e data. Non modificare codice in questa skill.
 Prossimo passo se l'esito è accettato: `sdlc-docs`, poi `sdlc-sync`.

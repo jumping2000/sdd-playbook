@@ -20,3 +20,4 @@
 
 ## Decisione umana
 - Decisione di: <nome, aaaa-mm-gg>
+- Revisione umana del diff: <solo livello L: nome di chi ha riletto il diff, aaaa-mm-gg>

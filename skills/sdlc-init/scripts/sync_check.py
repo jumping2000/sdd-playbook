@@ -11,6 +11,8 @@ Verifica:
   4. pagina d'area (--area, o la prima in docs/system/ che cita la spec) con le sezioni richieste,
      "Ultimo allineamento" compilato e la spec tra le "Specifiche collegate"
   5. ogni AC citato in almeno un test di questa spec (trace_check: ID qualificati SPEC-nnn/AC-nnn)
+Livelli (playbook §2): S non richiede review.md (la review è quella della PR) né la pagina d'area; L richiede in
+review.md anche "- Revisione umana del diff:" compilato.
 Exit code: 0 allineato; 1 errori; 2 uso errato. Solo stdlib, cross-platform.
 """
 from __future__ import annotations
@@ -60,6 +62,7 @@ def controlla(feature: Path, area_arg: str | None, tests: list[Path]) -> list[st
         return [f"{spec_p.as_posix()} non trovato"]
     spec = spec_p.read_text(encoding="utf-8")
     spec_id = id_spec(spec, feature)
+    livello = spec_lint.livello(spec)
 
     e, _ = spec_lint.lint_spec(spec, feature.resolve().name)
     err += [f"spec: {x}" for x in e]
@@ -77,7 +80,8 @@ def controlla(feature: Path, area_arg: str | None, tests: list[Path]) -> list[st
 
     rev_p = feature / "review.md"
     if not rev_p.is_file():
-        err.append("review.md mancante (esegui sdlc-review-diff)")
+        if livello != "S":
+            err.append("review.md mancante (esegui sdlc-review-diff)")
     else:
         esito = campo(rev_p.read_text(encoding="utf-8"), "Esito")
         if esito not in ESITI:
@@ -87,9 +91,14 @@ def controlla(feature: Path, area_arg: str | None, tests: list[Path]) -> list[st
         dec = campo(rev_p.read_text(encoding="utf-8"), "Decisione di")
         if not dec or PLACEHOLDER.search(dec):
             err.append("review.md: 'Decisione di' non compilata (la decisione sulla review è dell'umano)")
+        umana = campo(rev_p.read_text(encoding="utf-8"), "Revisione umana del diff")
+        if livello == "L" and (not umana or PLACEHOLDER.search(umana)):
+            err.append("review.md: livello L senza 'Revisione umana del diff' (chi ha riletto il diff, e quando)")
 
     area = trova_area(feature, spec_id, area_arg)
-    if area is None:
+    if area is None and livello == "S":
+        pass  # livello S: la pagina d'area è facoltativa
+    elif area is None:
         err.append(f"nessuna pagina d'area in docs/system/ che citi {spec_id} (usa --area)")
     else:
         t = area.read_text(encoding="utf-8")

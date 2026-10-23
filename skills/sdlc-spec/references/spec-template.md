@@ -1,6 +1,7 @@
 # SPEC-<aaaa-mm-gg-slug, uguale al nome della cartella>: <titolo>
 
 - Stato: draft
+- Livello: <S | M | L: criteri nel playbook §2>
 - Proprietario: <nome>
 - Approvata da / data: <nome, aaaa-mm-gg>
 - Hash: <da calcolare dopo l'approvazione con spec_lint.py --hash>

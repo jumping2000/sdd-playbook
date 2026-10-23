@@ -10,7 +10,7 @@ Lo prepari e lo lanci l'utente, in un terminale e in un ambiente isolato.
 
 ## Precondizioni
 
-- Spec, piano e task validi e approvati con la PR di design:
+- Spec, piano (non nel livello S) e task validi e approvati con la PR di design:
   `python scripts/spec_lint.py <spec> --plan <plan> --tasks <tasks> --base main` senza errori.
 - Il loop chiude con successo solo se, oltre a `verify` verde e task chiuse, passano `trace_check.py` e `diff_scope.py`.
 - Sei su un **branch di feature** (il loop rifiuta main/master) e `verify` è verde sulla baseline, oppure sei in

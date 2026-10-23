@@ -19,6 +19,8 @@ ID e stati (playbook §3.3): titolo "# SPEC-aaaa-mm-gg-slug: ..." con l'ID ugual
 "# SPEC-NNN: ..." resta valido). Stato in-revisione: spec approvata che si sta modificando, con una voce in
 "## Revisioni"; torna approved solo con nuova approvazione e nuovo hash.
 Task: T-nn dal piano (verifica: e copre: obbligatori), T-Rnn dai problemi della review (copre: facoltativo).
+Livello (playbook §2): "- Livello: S | M | L" nella spec; senza il campo vale M (avviso). Il livello entra nell'hash:
+abbassarlo dopo l'approvazione fa decadere l'approvazione. Livello S: niente piano, T-DOC facoltativa.
 Exit code 0 = nessun errore (gli avvisi non bloccano). Solo stdlib + git (per --base), cross-platform.
 """
 from __future__ import annotations
@@ -31,6 +33,7 @@ from datetime import date
 from pathlib import Path
 
 STATI = ("draft", "approved", "in-revisione", "implemented", "superseded")
+LIVELLI = ("S", "M", "L")
 SEZIONI = ("Problema e obiettivo", "Scope", "Requisiti", "Acceptance criteria", "Domande aperte")
 # ID di una spec: data + slug (2026-10-24-export-csv, uguale al nome della cartella) o il vecchio numero (001).
 ID_DATA = r"\d{4}-\d{2}-\d{2}-[a-z0-9]+(?:-[a-z0-9]+)*"
@@ -96,11 +99,30 @@ def problemi_id(testo: str, cartella: str | None) -> list[str]:
     return []
 
 
+def livello_dichiarato(testo: str) -> str | None:
+    """Valore di "- Livello:" (S, M, L, o il testo trovato se non valido); None se manca o è un segnaposto."""
+    v = pulisci(campo(testo, "Livello"))
+    if not v or PLACEHOLDER.search(v):
+        return None
+    return v.split()[0].upper()
+
+
+def livello(testo: str) -> str:
+    """Livello della spec: senza il campo vale M, come prima dei livelli."""
+    v = livello_dichiarato(testo)
+    return v if v in LIVELLI else "M"
+
+
 def impronta(testo: str) -> str:
-    """Hash del corpo (dalla prima sezione "## "): l'intestazione con stato, approvatore e hash non conta."""
+    """Hash del corpo (dalla prima sezione "## "): stato, approvatore e hash non contano, il livello sì.
+
+    Il livello entra solo se dichiarato, così gli hash delle spec scritte prima dei livelli restano validi.
+    """
     righe = testo.replace("\r\n", "\n").split("\n")
     inizio = next((i for i, r in enumerate(righe) if r.startswith("## ")), len(righe))
     corpo = "\n".join(r.rstrip() for r in righe[inizio:]).strip("\n")
+    if (liv := livello_dichiarato(testo)) is not None:
+        corpo = f"Livello: {liv}\n{corpo}"
     return "sha256:" + hashlib.sha256(corpo.encode("utf-8")).hexdigest()
 
 
@@ -167,6 +189,11 @@ def lint_spec(testo: str, cartella: str | None = None) -> tuple[list[str], list[
     if stato not in STATI:
         err.append(f"Stato mancante o non valido (atteso uno tra: {', '.join(STATI)}); trovato '{stato}'")
     err += problemi_id(testo, cartella)
+    liv = livello_dichiarato(testo)
+    if liv is None:
+        avv.append("Livello non indicato ('- Livello: S | M | L', playbook §2): vale M")
+    elif liv not in LIVELLI:
+        err.append(f"Livello non valido '{liv}' (atteso S, M o L)")
     sez = sezioni(testo)
     if stato == "in-revisione" and not voci_compilate(sez.get("Revisioni", [])):
         err.append("Spec in revisione senza una voce in '## Revisioni' (data, cosa cambia e perché)")
@@ -253,7 +280,7 @@ def lint_tasks(spec: str, tasks: str) -> tuple[list[str], list[str]]:
                 err.append(f"{tid}: manca 'copre: AC-nnn'")
     if len(ids) != len(set(ids)):
         err.append("ID task duplicati")
-    for tag in ("T-DOC", "T-SYNC"):
+    for tag in ("T-DOC", "T-SYNC") if livello(spec) != "S" else ("T-SYNC",):  # S: T-DOC facoltativa
         if tag not in ids:
             err.append(f"Manca la task {tag}")
     for ac in acs:

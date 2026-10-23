@@ -9,7 +9,9 @@ Playbook §3.7 e §4 (fase 9). Una spec non riconciliata smette di essere fonte 
 
 ## Precondizioni
 
-- `review.md` valido, con "Decisione di" compilata dall'utente.
+- `review.md` valido, con "Decisione di" compilata dall'utente (livello L: anche "Revisione umana del diff").
+  Livello S: niente `review.md`, ma `python scripts/diff_scope.py <spec-dir>` e `python scripts/trace_check.py <spec>`
+  devono passare.
 - `T-DOC` completata. `T-SYNC` è l'ultima task aperta.
 
 ## Passi
@@ -19,7 +21,7 @@ Playbook §3.7 e §4 (fase 9). Una spec non riconciliata smette di essere fonte 
    `sdlc-bugfix`) o un cambio di requisito (aggiorna la spec **con l'approvazione dell'utente**, poi aggiorna
    `Approvata da / data` e `- Hash:` con `python scripts/spec_lint.py <spec> --hash`; la modifica finisce nella PR
    di implementazione e la approva chi la unisce). Non cancellare la discrepanza in silenzio.
-3. **Pagina d'area:** crea o aggiorna `docs/system/<area>.md` da `references/area-template.md`: comportamento
+3. **Pagina d'area** (facoltativa nel livello S): crea o aggiorna `docs/system/<area>.md` da `references/area-template.md`: comportamento
    attuale (solo ciò che è vero nel codice), vincoli, test di caratterizzazione, riferimenti. Aggiungi la spec
    in "Specifiche collegate" e imposta "Ultimo allineamento" alla data di oggi.
 4. **Chiudi:** imposta `Stato: implemented` nella spec e spunta `T-SYNC` in `tasks.md`.

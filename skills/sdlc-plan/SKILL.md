@@ -11,6 +11,7 @@ Playbook §3.4 e §4 (fase 3).
 
 - `docs/specs/<id>/spec.md` esiste, `Stato: approved`, e `python scripts/spec_lint.py <spec>` passa.
   Altrimenti fermati e indica `sdlc-spec`.
+- Livello M o L (playbook §2.1). Una spec di livello S non ha piano: indica `sdlc-tasks`.
 
 ## Passi
 
@@ -28,7 +29,9 @@ Playbook §3.4 e §4 (fase 3).
 3. **Controlla** con `python scripts/spec_lint.py <spec> --plan <plan>`: deve passare. L'avviso sul piano non
    approvato è atteso a questo punto.
 4. Se il piano richiede una nuova dipendenza o una decisione di architettura, segnalala come candidato ADR
-   (`docs/adr/`); non crearlo senza conferma.
+   (`docs/adr/`); non crearlo senza conferma. Nel livello L l'ADR è dovuto per ogni decisione presa.
+5. Se scopri che la modifica supera il livello della spec (più file, un'area sensibile, una dipendenza), fermati:
+   il livello si cambia nella spec, con una nuova approvazione.
 
 ## STOP
 

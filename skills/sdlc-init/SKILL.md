@@ -27,7 +27,8 @@ per `.vscode/tasks.json` fai il merge dei task, senza sostituire il file.
 4. **Adatta `STEPS` in `scripts/verify.py`** ai comandi reali. Esegui a mano ogni comando prima di
    registrarlo. Non registrare step che il progetto non ha e non inventare test: se non ci sono, dillo.
 5. **Crea** (solo se mancano):
-   - `AGENTS.md` da `references/AGENTS.md.tmpl`, compilato con ciò che hai verificato (sotto le 100 righe);
+   - `AGENTS.md` da `references/AGENTS.md.tmpl`, compilato con ciò che hai verificato (sotto le 100 righe); le
+     `Aree sensibili` (livello L, playbook §2.1) le indica l'utente;
    - `CLAUDE.md` con la sola riga `@AGENTS.md` (niente symlink: su Windows richiedono privilegi);
    - `.gitattributes` da `references/gitattributes.tmpl`;
    - `.vscode/tasks.json` da `references/vscode-tasks.json`;

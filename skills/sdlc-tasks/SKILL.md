@@ -12,6 +12,8 @@ Playbook §3.5 e §4 (fase 4).
 - Spec `approved` e piano con `Approvato da / data` compilato (controlla con
   `python scripts/spec_lint.py <spec> --plan <plan>`: nessun errore e nessun avviso sul piano). Altrimenti
   fermati e indica la skill mancante.
+- **Livello S** (playbook §2.1): niente piano. Bastano `python scripts/spec_lint.py <spec>` senza errori, poche task
+  (test "atteso: rosso", implementazione, `T-SYNC`; `T-DOC` solo se serve) e niente `- Basato su piano:`.
 
 ## Passi
 
@@ -33,8 +35,9 @@ Playbook §3.5 e §4 (fase 4).
      `spec_lint.py <spec> --plan <plan> --tasks <tasks>` e `state.py` chiedono di rivedere le task.
    - Le task `T-Rnn` non si scrivono qui: le aggiunge `sdlc-review-diff` dopo una review non conforme.
    - Ogni AC è coperto da almeno una task; nessuna task tocca ciò che è nel non-scope.
-   - Includi sempre `T-DOC` (documentazione, esempi eseguiti: `sdlc-docs`) e `T-SYNC` (riconciliazione spec e
-     `docs/system/`, poi `Stato: implemented`: `sdlc-sync`). Non hanno `copre:`: si eseguono dopo la review.
+   - Includi sempre `T-DOC` (documentazione, esempi eseguiti: `sdlc-docs`; facoltativa nel livello S) e `T-SYNC`
+     (riconciliazione spec e `docs/system/`, poi `Stato: implemented`: `sdlc-sync`). Non hanno `copre:`: si
+     eseguono dopo la review.
    - Se la spec è piccola, poche task: non gonfiare il piano.
 3. **Controlla** con `python scripts/spec_lint.py <spec> --tasks <tasks>`: deve passare.
 4. Dopo il via dell'utente, spec, piano e task vanno nella **PR di design** (playbook §1.2): committali su un branch

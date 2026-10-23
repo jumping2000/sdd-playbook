@@ -14,7 +14,7 @@ I formati dei file che gli script leggono sono descritti in [architettura.md](ar
 | `spec_lint.py` | spec, plan, tasks, implement, loop | lint di spec, piano e task |
 | `trace_check.py` | tests-from-ac, review-diff | tracciabilità AC → test |
 | `bug_lint.py` | bugfix | completezza del file di un bug |
-| `diff_scope.py` | review-diff | modifiche vs piano e zone vietate |
+| `diff_scope.py` | review-diff, sync, loop | modifiche vs piano, zone vietate, test bloccati e livello |
 | `scan_repo.py` | map-codebase | inventario di una codebase |
 | `docs_check.py` | docs | link ed esempi |
 | `sync_check.py` | sync | chiusura di una feature |
@@ -39,12 +39,18 @@ Exit: `0` verde, `1` almeno uno step rosso o comando non trovato, `2` nessuno st
 ### state.py
 
 Sola lettura. Riporta infrastruttura (`AGENTS.md`, `verify.py`, CI, `docs/`), presenza di codice esistente e della mappa,
-stato di ogni spec con il suo passo successivo (`-> skill`), bug non verificati, branch corrente e la riga `PROSSIMO`.
+stato e livello di ogni spec con il suo passo successivo (`-> skill`), bug non verificati, branch corrente e la riga
+`PROSSIMO`.
 Ordine del suggerimento per una spec: `sdlc-spec` (bozza, `in-revisione`, approvazione decaduta) → `sdlc-plan` (mancante,
 da approvare o decaduto) → `sdlc-tasks` (mancanti o basate su un altro piano) → `sdlc-implement` (task `T-nn`/`T-Rnn`
 aperte) → `sdlc-review-diff` (review mancante; con `non conforme`: creare le `T-R`, o ripetere la review quando sono
 chiuse) → `sdlc-docs` (`T-DOC` aperta) → `sdlc-sync`. Prima di tutto `sdlc-init` e, nel brownfield senza mappa né spec,
 `sdlc-map-codebase`. `scripts/`, `docs/`, `.github/` e `.vscode/` non contano come codice esistente.
+
+**Livelli** (playbook §2.1). Livello S: dopo la spec approvata `sdlc-tasks` (senza piano), poi `sdlc-implement`,
+`sdlc-docs` se `T-DOC` è aperta e `sdlc-sync`; `review.md` conta solo se c'è ed è `non conforme`. Livello L: dopo una
+review accettata serve anche `- Revisione umana del diff:` in `review.md`, altrimenti `sdlc-review-diff`. Senza il campo
+`- Livello:` la spec vale M.
 
 **Più spec attive.** `PROSSIMO` riguarda la spec indicata con `--spec <id>` (nome della cartella o ID del titolo), quella
 il cui nome di cartella compare nel branch corrente (`feat/2026-10-24-export-csv`), o l'unica attiva. Altrimenti riporta
@@ -62,7 +68,7 @@ python scripts/spec_lint.py <file.md> --hash
 ```
 
 **Approvazione.** `--hash` stampa l'hash del corpo del file (dalla prima sezione `## ` in poi, fine riga e spazi
-finali normalizzati), da scrivere in `- Hash:` dopo l'approvazione. Una spec `approved`/`implemented` senza hash, o con
+finali normalizzati, più il livello se la spec lo dichiara: abbassarlo dopo l'approvazione la fa decadere), da scrivere in `- Hash:` dopo l'approvazione. Una spec `approved`/`implemented` senza hash, o con
 un hash che non corrisponde più al contenuto, è un errore. Un piano approvato deve avere `- Hash:` valido e
 `- Basato su spec:` uguale all'hash attuale della spec: se la spec cambia, il piano decade. Con `--base <ref>` spec e
 piano devono esistere su `<ref>` ed essere identici alla copia di lavoro: il merge della PR di design su un branch
@@ -70,10 +76,10 @@ protetto è l'approvazione che l'agente non può darsi da solo (playbook §1.2).
 
 | Modalità | Errori rilevati |
 |---|---|
-| spec | stato non valido (`draft`, `approved`, `in-revisione`, `implemented`, `superseded`); titolo senza ID `# SPEC-<id>:`, data non valida o ID diverso dal nome della cartella; `in-revisione` senza una voce in `## Revisioni`; sezioni mancanti; ID REQ/AC duplicati; REQ senza AC; AC che cita REQ inesistenti; non-scope assente o con segnaposto; se `approved`/`implemented`: approvatore mancante, hash mancante o non corrispondente, domande aperte (avviso se restano `[ASSUNZIONE]`) |
+| spec | stato non valido (`draft`, `approved`, `in-revisione`, `implemented`, `superseded`); livello diverso da S, M, L (avviso se manca: vale M); titolo senza ID `# SPEC-<id>:`, data non valida o ID diverso dal nome della cartella; `in-revisione` senza una voce in `## Revisioni`; sezioni mancanti; ID REQ/AC duplicati; REQ senza AC; AC che cita REQ inesistenti; non-scope assente o con segnaposto; se `approved`/`implemented`: approvatore mancante, hash mancante o non corrispondente, domande aperte (avviso se restano `[ASSUNZIONE]`) |
 | `--plan` | sezione `## Strategia di test` mancante; AC della spec assenti da quella sezione (ID esatto: `AC-001` non vale per `AC-0011`); piano approvato con hash non valido o basato su un'altra versione della spec; avviso se il piano non è approvato |
 | `--base` | spec o piano assenti su `<ref>` o diversi dalla versione su `<ref>` |
-| `--tasks` | nessuna task; task `T-nn` senza `verifica:` o `copre:` o con segnaposto `<...>`; task `T-Rnn` senza `verifica:` o con segnaposto (`copre:` facoltativo); ID duplicati; `T-DOC` o `T-SYNC` mancanti; AC non coperto da nessuna task |
+| `--tasks` | nessuna task; task `T-nn` senza `verifica:` o `copre:` o con segnaposto `<...>`; task `T-Rnn` senza `verifica:` o con segnaposto (`copre:` facoltativo); ID duplicati; `T-SYNC` mancante, o `T-DOC` mancante salvo nel livello S; AC non coperto da nessuna task |
 | `--plan` e `--tasks` insieme | task con `- Basato su piano:` diverso dall'hash del piano (avviso se il campo manca) |
 
 ### trace_check.py
@@ -124,6 +130,11 @@ Calcola i file modificati dal merge-base con il ref di base (default: il primo e
 - **avviso** (errore con `--strict`): file fuori dal piano (esclusi `docs/specs/<questa spec>/`, `docs/system/`,
   `docs/bugs/`, `docs/adr/`). Il piano comprende le righe di "Componenti e file" (percorso = prima parola o testo tra
   backtick, quindi `- src/a.py (nuovo): ...` vale `src/a.py`) e la colonna "Dove" della strategia di test;
+- **errore** (exit 1): **livello sottostimato** (playbook §2.1). Un file nelle righe `- Aree sensibili:` di `AGENTS.md`
+  richiede L; una modifica a un manifest o lockfile delle dipendenze (`package.json`, `pyproject.toml`,
+  `requirements*.txt`, `go.mod`, `*.csproj`, i lockfile, ...) o più di 3 file di produzione (esclusi test, `docs/` e
+  `*.md`) richiedono almeno M. Il livello dichiarato viene da `- Livello:` della spec (M se manca); nel livello S senza
+  piano il confronto con il piano è saltato;
 - **info**: percorsi del piano non toccati.
 
 Percorsi: esatti, cartelle (prefisso) o glob; il prefisso `./` si ignora, i punti iniziali (`.github/`) restano. Exit
@@ -158,6 +169,8 @@ Verifica che: la spec sia valida con `Stato: implemented`; nessuna task sia aper
 diverso da `non conforme`, e la "Decisione di" compilata; esista una pagina d'area (o quella indicata) con le sezioni
 richieste, "Ultimo allineamento" compilato e la spec tra le "Specifiche collegate"; ogni AC sia citato in un test **di
 questa spec**, con le regole di `trace_check.py` (se mancano test e ci sono citazioni ambigue, l'errore lo dice).
+Livello S: `review.md` e pagina d'area facoltative (se `review.md` c'è, si controlla). Livello L: `review.md` deve avere
+anche `- Revisione umana del diff:` compilato.
 
 ### loop.py
 

@@ -15,7 +15,9 @@ del processo stanno nel [playbook](playbook-ai-software-lifecycle.md), che ogni 
 - Quando un requisito è ambiguo, si fermano e chiedono: non assumono.
 
 **Ordine tipico:** `sdlc-init` → (`sdlc-map-codebase` → `sdlc-characterize`) → `sdlc-spec` → `sdlc-plan` →
-`sdlc-tasks` → `sdlc-implement` (o `sdlc-loop`) → `sdlc-review-diff` → `sdlc-docs` → `sdlc-sync`.
+`sdlc-tasks` → `sdlc-implement` (o `sdlc-loop`) → `sdlc-review-diff` → `sdlc-docs` → `sdlc-sync`. Il livello della
+spec (playbook §2.1) lo accorcia o lo rafforza: S salta `sdlc-plan` e `review.md`, L aggiunge ADR e revisione umana
+del diff.
 
 | Skill | Playbook | Produce | Controllo | Gate umano |
 |---|---|---|---|---|
@@ -78,22 +80,22 @@ del processo stanno nel [playbook](playbook-ai-software-lifecycle.md), che ogni 
 
 - **Quando:** dall'idea a una specifica approvabile; anche per completare una bozza.
 - **Cosa fa:** legge `AGENTS.md`, constitution e (brownfield) mappa e pagina d'area; **pone** le domande aperte;
-  scrive `spec.md` con requisiti verificabili, AC Dato/quando/allora, non-scope obbligatorio, assunzioni marcate
-  `[ASSUNZIONE]`; `spec_lint.py` deve passare; nel brownfield propone `sdlc-characterize` se l'area non ha test.
+  scrive `spec.md` con livello proposto (S, M, L con i criteri del playbook §2.1), requisiti verificabili, AC
+  Dato/quando/allora, non-scope obbligatorio, assunzioni marcate `[ASSUNZIONE]`; `spec_lint.py` deve passare; nel brownfield propone `sdlc-characterize` se l'area non ha test.
 - **Approvazione:** solo con conferma esplicita **e** nome dell'approvatore; poi `Stato: approved`.
 
 ### sdlc-plan
 
-- **Precondizione:** spec `approved` e lint verde.
+- **Precondizione:** spec `approved` e lint verde, livello M o L (nel livello S non c'è piano).
 - **Cosa fa:** in sola lettura; `plan.md` con almeno un'alternativa scartata, file in formato `- percorso: cosa
   cambia`, tutti gli AC nella strategia di test, rischi, rilascio e rollback; `spec_lint.py --plan` deve passare.
   Segnala i candidati ADR senza crearli.
 
 ### sdlc-tasks
 
-- **Precondizione:** spec e piano approvati.
+- **Precondizione:** spec e piano approvati (livello S: solo la spec).
 - **Cosa fa:** `tasks.md` con una riga per task nel formato descritto al §3.5 del playbook (azione, `verifica:`, `copre:`), test prima del codice, ogni AC
-  coperto, `T-DOC` e `T-SYNC` sempre presenti; `spec_lint.py --tasks` deve passare.
+  coperto, `T-SYNC` sempre presente e `T-DOC` salvo nel livello S; `spec_lint.py --tasks` deve passare.
 
 ### sdlc-tests-from-ac
 
@@ -125,11 +127,13 @@ del processo stanno nel [playbook](playbook-ai-software-lifecycle.md), che ogni 
 
 ### sdlc-review-diff
 
-- **Precondizioni:** nessuna task `T-nn` aperta, `verify` verde, lavoro committato.
-- **Cosa fa:** `diff_scope.py` e `trace_check.py`; revisione indipendente (subagent `sdlc-reviewer` in Claude Code, altrimenti
+- **Precondizioni:** nessuna task `T-nn` aperta, `verify` verde, lavoro committato. Nel livello S bastano i due
+  controlli deterministici, riportati nella PR.
+- **Cosa fa:** `diff_scope.py` (anche livello sottostimato) e `trace_check.py`; revisione indipendente (subagent `sdlc-reviewer` in Claude Code, altrimenti
   sessione nuova con spec, piano, output degli script e diff); scrive `review.md` con esito, problemi con file e riga,
   tentativi di confutazione.
-- **Gate:** la **decisione è dell'utente** ("Decisione di"); con `non conforme` ogni problema `alta`/`media` diventa una
+- **Gate:** la **decisione è dell'utente** ("Decisione di"; nel livello L anche "Revisione umana del diff", dopo che
+  l'utente ha riletto il diff); con `non conforme` ogni problema `alta`/`media` diventa una
   task `T-Rnn` in `tasks.md`, eseguita da `sdlc-implement` o dal loop; chiuse le `T-R`, la review si ripete.
 - **Non fa:** non modifica codice.
 
@@ -142,9 +146,10 @@ del processo stanno nel [playbook](playbook-ai-software-lifecycle.md), che ogni 
 
 ### sdlc-sync
 
-- **Precondizioni:** review con "Decisione di" compilata, `T-DOC` chiusa.
+- **Precondizioni:** review con "Decisione di" compilata (livello S: `diff_scope.py` e `trace_check.py` verdi),
+  `T-DOC` chiusa.
 - **Cosa fa:** confronta spec e comportamento reale: ogni scostamento è un bug (`sdlc-bugfix`) o un cambio di
-  requisito da approvare, mai nascosto; crea/aggiorna `docs/system/<area>.md`; imposta `Stato: implemented`; spunta
+  requisito da approvare, mai nascosto; crea/aggiorna `docs/system/<area>.md` (facoltativa nel livello S); imposta `Stato: implemented`; spunta
   `T-SYNC`; `sync_check.py` deve passare; propone lezioni per `AGENTS.md` e ADR.
 
 ### sdlc-loop

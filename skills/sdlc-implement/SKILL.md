@@ -9,7 +9,7 @@ Playbook §4 (fase 6) e §6. Lavora sulle sole task numerate `T-nn`: `T-DOC` e `
 
 ## Precondizioni
 
-- Spec approvata, piano approvato, `tasks.md` valido, e spec e piano **già uniti su `main`** con la PR di design
+- Spec approvata, piano approvato (non c'è nel livello S), `tasks.md` valido, e spec e piano **già uniti su `main`** con la PR di design
   (`python scripts/spec_lint.py <spec> --plan <plan> --tasks <tasks> --base main`: nessun errore). Se `--base`
   fallisce, l'approvazione non c'è ancora: fermati. Senza PR di design (progetto che non la usa), l'utente lo dice
   esplicitamente e si omette `--base`.
@@ -40,10 +40,13 @@ Playbook §4 (fase 6) e §6. Lavora sulle sole task numerate `T-nn`: `T-DOC` e `
 
 - Requisito ambiguo o mancante: **fermati e chiedi**, non assumere (scrivi la domanda in `progress.md` se esiste).
 - Serve modificare qualcosa nel non-scope: fermati e chiedi.
+- La modifica supera il livello della spec (più di 3 file di produzione in S, un'area sensibile di `AGENTS.md`
+  sotto L, una dipendenza in S): fermati e chiedi; `diff_scope.py` la segnalerebbe come errore.
 - Non dichiarare mai una task o la feature completata senza aver eseguito `verify` e senza mostrare l'esito.
 
 ## Fine
 
 Quando non restano task `T-nn` aperte: riporta l'esito finale di `verify`, l'elenco dei commit, e passa a
-`sdlc-review-diff` (poi `sdlc-docs` e `sdlc-sync`). Non dichiarare la feature conclusa: mancano review,
+`sdlc-review-diff` (poi `sdlc-docs` e `sdlc-sync`; nel livello S direttamente `sdlc-sync`, con `diff_scope.py` e
+`trace_check.py` verdi e la review nella PR). Non dichiarare la feature conclusa: mancano review,
 documentazione e riconciliazione.

@@ -8,8 +8,8 @@ description: Usa questa skill quando l'utente vuole passare da un'idea o una ric
 Playbook §3.3 e §4 (fase 2). Precondizione: progetto inizializzato (`scripts/spec_lint.py` esiste). Se manca,
 indica `sdlc-init`.
 
-Se la modifica si descrive con un diff di una frase, proponi una spec minima e di saltare piano e task
-(playbook §2); l'utente decide.
+Il processo dipende dal **livello** della modifica (playbook §2.1): S salta piano e `review.md`, L aggiunge ADR e
+revisione umana del diff. Lo proponi tu con i criteri, lo decide l'utente.
 
 ## Passi
 
@@ -25,10 +25,14 @@ Se la modifica si descrive con un diff di una frase, proponi una spec minima e d
      di errore dove ha senso;
    - il **non-scope** è obbligatorio e concreto (cosa non va fatto né toccato); nel brownfield descrivi solo il delta;
    - ogni assunzione è marcata `[ASSUNZIONE]`;
+   - `- Livello:` S, M o L con i criteri del playbook §2.1: S solo se **tutti** veri (al massimo 3 file di
+     produzione, nessuna interfaccia pubblica o formato dati cambiato, nessuna area sensibile di `AGENTS.md`,
+     nessuna dipendenza); L se tocca un'area sensibile, un'interfaccia pubblica o una migrazione di dati. Nel dubbio
+     il più alto. `diff_scope.py` segnalerà un diff che supera il livello;
    - `Stato: draft`; i campi di approvazione restano vuoti.
 4. **Controlla** con `python scripts/spec_lint.py docs/specs/<id>/spec.md` e correggi finché non ci sono
    errori (gli avvisi vanno letti e riportati).
-5. **Riassumi** all'utente: elenco dei REQ, assunzioni, non-scope, domande aperte residue.
+5. **Riassumi** all'utente: livello proposto con il motivo, elenco dei REQ, assunzioni, non-scope, domande aperte residue.
 
 ## STOP
 
@@ -47,4 +51,4 @@ vanno riviste se il piano cambia. L'approvazione vera è il merge della PR di de
 insieme in quella PR, che apre l'utente o l'identità bot dell'agente, mai unita dall'agente.
 
 Non approvare di tua iniziativa e non inferire il consenso dal silenzio. Non avviare piano né codice.
-Prossimo passo: `sdlc-plan`.
+Prossimo passo: `sdlc-plan` (livello S: `sdlc-tasks`).

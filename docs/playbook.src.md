@@ -19,7 +19,7 @@ Convenzione: **`verify`** significa `python scripts/verify.py` (§1.1).
 2. **Ogni compito ha un controllo eseguibile** (test, lint, tipi, build). Senza, l'unico segnale è "sembra fatto" e il verificatore sei tu.
 3. **Piccoli passi verificabili.** Una task = un'unità che un comando può dichiarare riuscita o fallita.
 4. **Il contesto è una risorsa scarsa.** `AGENTS.md` breve, spec focalizzate, stato su file e non nella chat.
-5. **Gate umani ai punti giusti:** approvi spec e piano, decidi sulla review, non rileggi ogni riga di codice.
+5. **Gate umani ai punti giusti, proporzionati al rischio:** approvi spec e piano, decidi sulla review; nelle modifiche di livello L (§2.1) rileggi anche il diff.
 6. **Se il risultato è sbagliato, correggi spec o test, non il prompt.**
 7. **Le spec vanno mantenute.** Una spec non riconciliata con il codice smette di essere fonte di verità: ogni PR che cambia comportamento aggiorna la spec o la pagina d'area.
 8. **Dove si può, il controllo è uno script, non una regola in prosa.** Un check che gira (ID presenti, non-scope compilato, test tracciati) vale più di un'istruzione all'agente.
@@ -164,9 +164,9 @@ del codice → **PR di implementazione**, in cui chi approva rilegge per primi i
 | `AGENTS.md` | Comandi, convenzioni, cosa non toccare | **Sì** | Markdown, breve |
 | `constitution.md` | Principi stabili (stack, sicurezza, test obbligatori) | Consigliato (se già in AGENTS.md, omettibile) | Markdown |
 | `spec.md` | Problema, scope, **non-scope**, use case, requisiti, acceptance criteria | **Sì** | Markdown con ID |
-| `plan.md` | Architettura, interfacce, file coinvolti, rischi | **Sì** (per feature non banali) | Markdown |
+| `plan.md` | Architettura, interfacce, file coinvolti, rischi | **Sì** (livelli M e L, §2.1) | Markdown |
 | `tasks.md` | Task piccole e verificabili | **Sì** | Checklist |
-| `review.md` | Esito della review del diff e decisione umana | **Sì** (per feature non banali) | Markdown |
+| `review.md` | Esito della review del diff e decisione umana | **Sì** (livelli M e L, §2.1) | Markdown |
 | Definition of Done | Comando unico + criteri | **Sì** | `scripts/verify.py` + sezione in AGENTS.md |
 | ADR | Decisioni con motivazione | Consigliato | Markdown |
 | `progress.md`, `PROMPT.md` | Memoria e istruzioni tra iterazioni | Solo per loop | Markdown |
@@ -174,7 +174,25 @@ del codice → **PR di implementazione**, in cui chi approva rilegge per primi i
 | `docs/system/mappa.md` | Mappa della codebase | **Sì** nel brownfield | Markdown |
 | `docs/system/<area>.md` | Comportamento attuale per area, riconciliato dopo ogni feature | Consigliato (obbligatorio nel brownfield) | Markdown breve |
 
-Regola per le feature piccole: se descrivi il diff in una frase, salta piano e task e vai diretto con spec minima e test. Regola per i bug banali (causa evidente, una riga di diff): test rosso, fix, `verify`, senza `bugfix.md`.
+### 2.1 Livelli S, M, L
+
+Non tutte le modifiche meritano lo stesso processo. La spec dichiara il livello (`- Livello: S | M | L`) e lo approva
+insieme al resto: il livello entra nell'hash, quindi abbassarlo dopo l'approvazione la fa decadere. `diff_scope.py`
+controlla che il diff reale non superi il livello dichiarato.
+
+| Livello | Quando | Documenti | Review |
+|---|---|---|---|
+| **S** | Tutti veri: al massimo 3 file di produzione (test, `docs/` e `*.md` esclusi), nessuna interfaccia pubblica o formato dati cambiato, nessuna area sensibile, nessuna dipendenza nuova o modificata | `spec.md` e `tasks.md` (senza piano; `T-DOC` facoltativa), test dagli AC | Controlli deterministici e review della PR; niente `review.md`, pagina d'area facoltativa |
+| **M** | Il caso normale: tutto ciò che non è S né L | Tutti quelli del §2 | `review.md` con revisore a contesto fresco e decisione umana |
+| **L** | Almeno uno: area sensibile (`- Aree sensibili:` in `AGENTS.md`: autenticazione, pagamenti, dati personali, migrazioni), interfaccia pubblica o formato dati cambiato in modo incompatibile, migrazione di dati | Come M, più un ADR per le decisioni prese | Come M, più la **revisione umana del diff** (`- Revisione umana del diff:` in `review.md`) |
+
+Criteri controllati da `diff_scope.py`: un file in un'area sensibile richiede L; una modifica a un manifest o lockfile
+delle dipendenze, o più di 3 file di produzione, richiedono almeno M. Interfacce pubbliche e formati dati non si
+riconoscono da uno script: li valuta chi approva la spec. Nel dubbio, il livello più alto.
+
+Dopo `implemented` la spec diventa archivio: la fonte viva del comportamento sono la pagina d'area e i test.
+
+Regola per i bug banali (causa evidente, una riga di diff): test rosso, fix, `verify`, senza `bugfix.md`.
 
 ---
 
@@ -192,7 +210,7 @@ Regola per le feature piccole: se descrivi il diff in una frase, salta piano e t
 
 {{FILE skills/sdlc-spec/references/spec-template.md markdown}}
 
-Qualità minima di una spec: nomina file/interfacce coinvolti, dichiara il non-scope, chiude con un controllo end-to-end che dimostra la feature. Lo stato `approved` richiede approvatore e data compilati, nessuna domanda aperta e l'**hash del corpo** (`- Hash:`, calcolato con `spec_lint.py --hash` dopo l'approvazione): `spec_lint.py` segnala se il contenuto è cambiato dopo l'ok. Il piano riporta in più `- Basato su spec:` con l'hash della spec su cui è stato approvato, e decade se la spec cambia.
+Qualità minima di una spec: dichiara il livello (§2.1), nomina file/interfacce coinvolti, dichiara il non-scope, chiude con un controllo end-to-end che dimostra la feature. Lo stato `approved` richiede approvatore e data compilati, nessuna domanda aperta e l'**hash del corpo** (`- Hash:`, calcolato con `spec_lint.py --hash` dopo l'approvazione): `spec_lint.py` segnala se il contenuto è cambiato dopo l'ok. Il piano riporta in più `- Basato su spec:` con l'hash della spec su cui è stato approvato, e decade se la spec cambia.
 
 **ID della spec.** Data di creazione più uno slug breve in minuscolo: `2026-10-24-export-csv`. È il nome della cartella e compare nel titolo (`# SPEC-2026-10-24-export-csv: Export CSV`); `spec_lint.py` controlla che coincidano. Con i numeri progressivi due persone o due branch sceglievano lo stesso `SPEC-004`; con data e slug non succede, e le cartelle restano in ordine cronologico. I vecchi `SPEC-NNN` restano validi.
 
@@ -228,7 +246,7 @@ La **pagina d'area** (`docs/system/<area>.md`) cresce area per area e si riconci
 
 {{FILE skills/sdlc-review-diff/references/review-template.md markdown}}
 
-L'esito è uno tra `conforme`, `conforme con riserve`, `non conforme`. La decisione finale è dell'umano. Con `non conforme` ogni problema `alta` o `media` diventa una task `T-Rnn` in `tasks.md`; quando sono tutte chiuse la review si ripete (`state.py` lo indica).
+L'esito è uno tra `conforme`, `conforme con riserve`, `non conforme`. La decisione finale è dell'umano. Nel livello L chi decide rilegge anche il diff e lo registra in `- Revisione umana del diff:`; nel livello S `review.md` non serve. Con `non conforme` ogni problema `alta` o `media` diventa una task `T-Rnn` in `tasks.md`; quando sono tutte chiuse la review si ripete (`state.py` lo indica).
 
 ---
 
@@ -247,7 +265,7 @@ L'esito è uno tra `conforme`, `conforme con riserve`, `non conforme`. La decisi
 | 9. Riconciliazione | T-SYNC: spec e `docs/system/` allineate al comportamento reale; stato spec = `implemented` | `sdlc-sync` | Review, poi PR |
 | 10. Replan | Tra una feature e l'altra aggiorna `constitution.md`/`AGENTS.md` con ciò che hai imparato | — | — |
 
-`sdlc-next` indica in ogni momento la fase corrente e il passo successivo.
+`sdlc-next` indica in ogni momento la fase corrente e il passo successivo. Nel livello S (§2.1) la fase 3 si salta e la 7 è la review della PR; nel livello L la fase 7 include la revisione umana del diff.
 
 ---
 
@@ -404,7 +422,7 @@ L'esecuzione di deploy e operazioni da parte di un agente è un argomento a part
 - Test generati dal codice invece che dai requisiti.
 - Loop senza tetto o senza stop oggettivo; loop che esce alla prima verifica verde con task ancora aperte.
 - Spec per l'intero sistema nel brownfield (basta il delta, più la pagina d'area).
-- Applicare il processo completo a modifiche banali.
+- Applicare il processo completo a modifiche banali, o il livello S a modifiche che toccano aree sensibili.
 - Fidarsi del "fatto" dell'agente senza evidenza (output di test, diff).
 - `verify` scritto in bash/make e basta, su un team che sviluppa anche su Windows.
 - Fix di un bug senza test rosso che lo riproduca.
@@ -443,12 +461,12 @@ a ogni punto di approvazione) e **script** (controlli deterministici copiati nel
 | Script | Cosa controlla |
 |---|---|
 | `verify.py` | Format, lint, tipi, test del progetto: il criterio di "fatto" |
-| `spec_lint.py` | Spec (sezioni, ID, REQ→AC, non-scope, approvazione, domande aperte); con `--plan` ogni AC è nella strategia di test; con `--tasks` ogni task ha verifica e copertura e nessun segnaposto, ogni AC è coperto, ci sono `T-DOC` e `T-SYNC` |
-| `state.py` | Stato del progetto e prossima fase per ogni spec attiva; con più spec usa quella del branch corrente o `--spec` |
+| `spec_lint.py` | Spec (sezioni, ID, livello, REQ→AC, non-scope, approvazione, domande aperte); con `--plan` ogni AC è nella strategia di test; con `--tasks` ogni task ha verifica e copertura e nessun segnaposto, ogni AC è coperto, ci sono `T-DOC` e `T-SYNC` |
+| `state.py` | Stato del progetto e prossima fase per ogni spec attiva, secondo il livello; con più spec usa quella del branch corrente o `--spec` |
 | `scan_repo.py` | Inventario deterministico di una codebase (stack, linguaggi, test, CI, entry point) |
 | `trace_check.py` | Ogni AC citato in almeno un test della sua spec (`SPEC-nnn/AC-nnn` o file dichiarato); requisiti senza test; citazioni ambigue |
 | `bug_lint.py` | Completezza del file di un bug in funzione del suo stato |
-| `diff_scope.py` | File modificati: zone vietate (`Non modificare:` in `AGENTS.md`), test bloccati (`Test-Lock`) modificati dopo il blocco, file fuori piano, file pianificati non toccati |
+| `diff_scope.py` | File modificati: zone vietate (`Non modificare:` in `AGENTS.md`), test bloccati (`Test-Lock`) modificati dopo il blocco, livello sottostimato rispetto al diff, file fuori piano, file pianificati non toccati |
 | `docs_check.py` | Link relativi validi; esempi Python marcati eseguiti con successo |
 | `sync_check.py` | Chiusura: spec `implemented`, task chiuse, review con decisione umana, pagina d'area, tracciabilità |
 | `loop.py` | Loop esterno con tetto, rilevamento dello stallo, timeout per iterazione, baseline, branch protetto e dry run |

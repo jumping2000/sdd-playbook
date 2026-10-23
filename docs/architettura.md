@@ -1,6 +1,6 @@
 # Architettura del plugin
 
-Documento di progetto **come costruito** (versione 0.8.0): scelte, struttura, contratti tra i file e limiti.
+Documento di progetto **come costruito** (versione 0.9.0): scelte, struttura, contratti tra i file e limiti.
 
 ## Obiettivo e criterio di successo
 
@@ -23,6 +23,7 @@ Il plugin è fatto bene se:
 | Portabilità | Solo libreria standard, nessun comando di shell, liste di argomenti | Windows nativo incluso |
 | Contesto | `SKILL.md` sotto le 150 righe; template in `references/` | Il contesto è una risorsa scarsa |
 | Gate umani | Ogni skill che produce un documento da approvare termina con **STOP**; le approvazioni portano nome, data e hash del contenuto approvato (che decade se il contenuto cambia); l'approvazione vera è il merge della PR di design su `main` protetto, che l'agente non può fare con un'identità separata | Principio 5 del playbook; i campi testuali li può scrivere l'agente, il merge no |
+| Proporzionalità | Livelli **S/M/L** dichiarati nella spec (e nel suo hash), con criteri in parte controllati sul diff (`diff_scope.py`) | Lo stesso processo per una riga e per una migrazione genera cerimonia sulle prime e poca attenzione sulle seconde (REVIEW A6) |
 | Skill con effetti | `sdlc-loop` prepara ma non lancia; i commit solo se autorizzati, mai su `main` | Limitare i danni di un agente autonomo |
 | Parti per singolo agente | Claude Code: subagent `sdlc-reviewer` e hook opt-in. Codex: nessuna (review in sessione nuova) | Le skill restano uguali; cambia solo l'orchestrazione |
 | Coerenza documentale | Il playbook è **generato** dai file del plugin (`tools/build_playbook.py`) e i test controllano riferimenti incrociati | Script, template e documentazione non possono divergere in silenzio |
@@ -69,12 +70,19 @@ più spec attive, nessuna scelta (branch o --spec) ....... scegli (lo decide l'u
 --- per la spec scelta ---
 spec in-revisione ....................................... sdlc-spec
 spec in bozza, non approvata o con hash non valido ...... sdlc-spec
+--- livello S: niente piano né review.md -----------------
+tasks.md mancante ....................................... sdlc-tasks
+task T-nn o T-Rnn aperte ................................ sdlc-implement
+review.md "non conforme" (se c'è) ....................... sdlc-review-diff
+T-DOC aperta, altrimenti ................................ sdlc-docs, sdlc-sync
+--- livelli M (default) e L ------------------------------
 piano mancante, non approvato o decaduto ................ sdlc-plan
 tasks.md mancante o basato su un altro piano ............ sdlc-tasks
 task T-nn o T-Rnn aperte ................................ sdlc-implement   (valuta sdlc-loop)
 review.md mancante o senza esito valido ................. sdlc-review-diff
 review "non conforme" senza T-R ......................... sdlc-review-diff (crea le T-R)
 review "non conforme" con T-R tutte chiuse .............. sdlc-review-diff (ripeti la review)
+livello L senza "Revisione umana del diff" .............. sdlc-review-diff
 T-DOC aperta ............................................ sdlc-docs
 altrimenti (T-SYNC aperta o stato non implemented) ...... sdlc-sync
 ```
@@ -90,17 +98,17 @@ Gli script leggono pochi campi con convenzioni fisse. Se si cambia un template v
 
 | File | Campi e strutture lette | Script |
 |---|---|---|
-| `spec.md` | titolo `# SPEC-<id>: ...` (data + slug uguale alla cartella, o numero); `- Stato:` (`draft`, `approved`, `in-revisione`, `implemented`, `superseded`); sezione `## Revisioni` (obbligatoria con voce se `in-revisione`); `- Approvata da / data:`; `- Hash: sha256:...` del corpo (dalla prima sezione `## `); sezioni `## Problema e obiettivo`, `Scope`, `Requisiti`, `Acceptance criteria`, `Domande aperte`; riga `**Non-scope (esplicito):**`; `- REQ-nnn`; `- AC-nnn [REQ-nnn]`; marcatore `[ASSUNZIONE]` | `spec_lint`, `state`, `trace_check`, `sync_check` |
+| `spec.md` | titolo `# SPEC-<id>: ...` (data + slug uguale alla cartella, o numero); `- Livello:` (`S`, `M`, `L`; M se manca; entra nell'hash); `- Stato:` (`draft`, `approved`, `in-revisione`, `implemented`, `superseded`); sezione `## Revisioni` (obbligatoria con voce se `in-revisione`); `- Approvata da / data:`; `- Hash: sha256:...` del corpo (dalla prima sezione `## `); sezioni `## Problema e obiettivo`, `Scope`, `Requisiti`, `Acceptance criteria`, `Domande aperte`; riga `**Non-scope (esplicito):**`; `- REQ-nnn`; `- AC-nnn [REQ-nnn]`; marcatore `[ASSUNZIONE]` | `spec_lint`, `state`, `trace_check`, `sync_check`, `diff_scope` |
 | `plan.md` | `- Approvato da / data:`; `- Basato su spec:` (hash della spec); `- Hash:` del corpo; sezione `## Componenti e file da creare/modificare` con righe `- percorso: ...` (percorso = prima parola o testo tra backtick); sezione `## Strategia di test ...` con gli ID AC esatti e, se c'è, la colonna `Dove` | `spec_lint`, `state`, `diff_scope` |
 | `tasks.md` | `- Basato su piano:` (hash del piano); righe `- [ ] T-nn ...` con i campi `verifica:` (comando tra backtick) e `copre:` (ID degli AC), senza segnaposto; righe `- [ ] T-Rnn ...` dai problemi della review (`verifica:`, `copre:` facoltativo); `T-DOC`, `T-SYNC`; la marcatura `atteso: rosso` sulle task di test definisce la **fase rossa** (ultima task `T-nn` chiusa con la marcatura, successiva aperta) | `spec_lint`, `state`, `loop`, `sync_check`, hook `Stop` |
 | commit git | trailer `Test-Lock: T-nn` sul commit dei test rossi: blocca i suoi file di test | `diff_scope` |
 | file di test | `# SPEC-<id>` nel file più `AC-nnn`, oppure citazioni `SPEC-<id>/AC-nnn` (nei nomi di funzione `SPEC_<id con _>_AC_nnn`); righe `TODO`/`FIXME`/`XXX` ignorate | `trace_check`, `sync_check` |
 | cartelle `docs/specs/<id>/` | `<id>` = data + slug (`2026-10-24-export-csv`), uguale all'ID del titolo; i vecchi `NNN-slug` restano validi | `spec_lint`, `state` (associazione al branch) |
-| `review.md` | `- Esito:` (`conforme`, `conforme con riserve`, `non conforme`); `- Decisione di:` | `state`, `sync_check` |
+| `review.md` | `- Esito:` (`conforme`, `conforme con riserve`, `non conforme`); `- Decisione di:`; `- Revisione umana del diff:` (livello L) | `state`, `sync_check` |
 | `docs/bugs/BUG-*.md` | `- Stato:` (`aperto`, `diagnosticato`, `corretto`, `verificato`); sezioni di `bugfix-template.md`; voci spuntabili in `## Chiusura` | `bug_lint`, `state` |
 | `docs/system/<area>.md` | `- Ultimo allineamento:`; `- Specifiche collegate:`; sezioni `## Comportamento attuale`, `Vincoli e punti delicati`, `Test di caratterizzazione` | `sync_check` |
 | `docs/system/mappa.md` | solo la presenza | `state` |
-| `AGENTS.md` | riga `- Non modificare: a, b` | `diff_scope` |
+| `AGENTS.md` | righe `- Non modificare: a, b` e `- Aree sensibili: a, b` (richiedono il livello L) | `diff_scope` |
 | `PROMPT.md`, `progress.md` | `PROMPT.md` letto per intero e passato da stdin | `loop` |
 | `scripts/verify.py` | lista `STEPS` | (modificata da `sdlc-init`) |
 
@@ -141,7 +149,7 @@ Un campo con segnaposto `<...>` o vuoto vale come **non compilato**.
 - **Fase rossa e `Test-Lock`:** si basano su convenzioni (marcatura nelle task, trailer nei commit) che l'agente potrebbe
   usare a sproposito; la review umana resta il controllo finale.
 - **`claude -p` da stdin:** la lettura del prompt da stdin con `-p` va verificata sulla versione in uso.
-- **Euristiche:** `diff_scope.py` dipende dal formato `- percorso: ...` del piano; `trace_check.py` trova gli ID per testo
+- **Euristiche:** `diff_scope.py` dipende dal formato `- percorso: ...` del piano, e per il livello conta file e riconosce i manifest per nome: non capisce se un'interfaccia pubblica è cambiata; `trace_check.py` trova gli ID per testo
   (qualificati per spec), non capisce la semantica dei test né controlla che passino; `scan_repo.py` è un inventario; nessuno sostituisce la lettura del codice.
 - **Perimetro:** il plugin non copre rilascio, sicurezza dell'infrastruttura, osservabilità e operazione (§8 del playbook), non
   configura i permessi dell'agente, non approva al posto dell'umano.
