@@ -26,7 +26,9 @@ Playbook §3.5 e §4 (fase 4).
      comando di verifica, la task è troppo vaga: spezzala o chiarisci.
    - **Test prima del codice:** per ogni gruppo di AC, una task che scrive i test (si esegue con
      `sdlc-tests-from-ac`; verifica: il test fallisce per il motivo giusto, annotato "atteso: rosso"), poi la
-     task che implementa.
+     task che implementa. Usa "atteso: rosso" **solo** sulle task che scrivono test: hook `Stop` e `loop.py` la
+     leggono per riconoscere la fase rossa.
+   - Nessun segnaposto `<...>` nelle task `T-nn`: `spec_lint.py --tasks` li segnala come errore.
    - Ogni AC è coperto da almeno una task; nessuna task tocca ciò che è nel non-scope.
    - Includi sempre `T-DOC` (documentazione, esempi eseguiti: `sdlc-docs`) e `T-SYNC` (riconciliazione spec e
      `docs/system/`, poi `Stato: implemented`: `sdlc-sync`). Non hanno `copre:`: si eseguono dopo la review.

@@ -48,6 +48,13 @@ class TestSpecLint(unittest.TestCase):
         _, avv = spec_lint.lint_plan(SPEC_OK, PLAN_OK.replace("Anna Rossi, 2026-10-19", "<nome>"))
         self.assertTrue(avv)
 
+    def test_piano_cerca_gli_id_esatti_nella_strategia_di_test(self):
+        citato_altrove = PLAN_OK.replace("| AC-002 | unit |\n", "") + "\n## Rischi\n- AC-002 da valutare\n"
+        self.assertTrue(any("AC-002" in e for e in spec_lint.lint_plan(SPEC_OK, citato_altrove)[0]))
+        self.assertTrue(any("AC-001" in e for e in spec_lint.lint_plan(SPEC_OK, PLAN_OK.replace("| AC-001 |", "| AC-0011 |"))[0]))
+        senza = PLAN_OK.replace("## Strategia di test (mappata sugli AC)", "## Note")
+        self.assertTrue(any("Strategia di test" in e for e in spec_lint.lint_plan(SPEC_OK, senza)[0]))
+
     def test_task(self):
         self.assertEqual(spec_lint.lint_tasks(SPEC_OK, TASKS_OK)[0], [])
         err, _ = spec_lint.lint_tasks(SPEC_OK, TASKS_OK.replace("- [ ] T-DOC Documentazione\n", ""))
@@ -56,6 +63,8 @@ class TestSpecLint(unittest.TestCase):
         self.assertTrue(any("T-02" in e and "verifica" in e for e in err))
         err, _ = spec_lint.lint_tasks(SPEC_OK, TASKS_OK.replace("copre: AC-001, AC-002", "copre: AC-001"))
         self.assertTrue(any("AC-002" in e and "coperto" in e for e in err))
+        err, _ = spec_lint.lint_tasks(SPEC_OK, TASKS_OK.replace("`pytest`", "`<comando test mirato>`"))
+        self.assertIn("T-02: segnaposto non compilato <comando test mirato>", err)
 
     def test_cli(self):
         with TmpDir() as d:

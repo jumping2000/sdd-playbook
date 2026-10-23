@@ -180,13 +180,13 @@ Qualità minima di una spec: nomina file/interfacce coinvolti, dichiara il non-s
 
 {{FILE skills/sdlc-plan/references/plan-template.md markdown}}
 
-I file nella sezione "Componenti e file" vanno **uno per riga nel formato `- percorso: cosa cambia`**: `diff_scope.py` li usa per rilevare le modifiche fuori piano.
+I file nella sezione "Componenti e file" vanno **uno per riga nel formato `- percorso: cosa cambia`** (il percorso è la prima parola, o il testo tra backtick); anche i percorsi della colonna "Dove" della strategia di test contano come pianificati: `diff_scope.py` li usa per rilevare le modifiche fuori piano. Gli AC si cercano per ID esatto nella sola sezione "Strategia di test".
 
 ### 3.5 `tasks.md`
 
 {{FILE skills/sdlc-tasks/references/tasks-template.md markdown}}
 
-Le task `T-nn` hanno `verifica:` e `copre:`; `T-DOC` e `T-SYNC` sono obbligatorie e si eseguono dopo la review.
+Le task `T-nn` hanno `verifica:` e `copre:` e nessun segnaposto `<...>`; `T-DOC` e `T-SYNC` sono obbligatorie e si eseguono dopo la review. La marcatura "atteso: rosso" va solo sulle task che scrivono test: quando l'ultima task chiusa la porta e la successiva è aperta, la spec è in **fase rossa** (i test rossi sono il risultato atteso) e l'hook `Stop` e `loop.py` lo tengono in conto.
 
 ### 3.6 `bugfix.md`
 
@@ -251,6 +251,7 @@ Differenze rispetto al greenfield: più tempo in lettura/caratterizzazione, spec
 
 **Test**
 - Genera i test **dagli acceptance criteria**, non dal codice: altrimenti l'agente scrive test che confermano i propri bug. *(`sdlc-tests-from-ac`)*
+- **Test bloccati:** i test rossi si committano da soli con il trailer `Test-Lock: T-nn` (lo scheletro del codice, se serve, in un commit precedente). Da lì l'implementazione deve farli passare senza toccarli: `diff_scope.py` segnala come errore ogni modifica successiva a quei file fuori da un nuovo commit `Test-Lock`, che va motivato nella review. La CI del branch resta rossa fino alla task di implementazione.
 - Tracciabilità: nel nome o commento del test cita l'ID (`test_AC_001_...`). `trace_check.py` verifica che ogni AC compaia in almeno un test e segnala i requisiti senza test.
 - Livelli: unit per la logica, integrazione per i confini, almeno un e2e per il flusso principale.
 - Verifica che i test sappiano fallire: rompi di proposito il codice (o fai una mutation test) e controlla che qualcosa diventi rosso.
@@ -287,9 +288,10 @@ Isolamento: **una sessione, un branch e un commit per bug**. Se la diagnosi coin
 ripeti (max N volte):
   1. l'agente legge spec, task corrente e progress.md
   2. implementa o corregge una task T-nn
+     (task "atteso: rosso": scrive i test, li vede fallire, commit Test-Lock, passa oltre)
   3. esegue `verify`
   4. verde  → commit, aggiorna progress.md, passa alla task successiva
-     rosso  → legge l'errore, corregge, riprova
+     rosso  → legge l'errore, corregge senza toccare i test bloccati, riprova
 fermati se: verify verde E nessuna task T-nn aperta | N raggiunto | nessun progresso per K iterazioni
 ```
 
@@ -300,7 +302,9 @@ L'idea è il cosiddetto "Ralph loop": un ciclo esterno che riesegue l'agente fin
 - **Criteri di stop oggettivi:** `verify` verde **e** nessuna task `T-nn` aperta in `tasks.md`, non "mi sembra a posto". Un `verify` verde da solo non basta: dopo la prima task il codice può essere verde con tutto il resto ancora da fare.
 - **Il loop copre solo le task `T-nn`.** `T-DOC` e `T-SYNC` si eseguono dopo la review, con il gate umano in mezzo.
 - **Tetto di iterazioni** sempre impostato (es. 10-20): senza, il loop consuma token a vuoto.
-- **Rilevamento dello stallo:** se per K iterazioni consecutive non cambia nulla (task, commit, albero di lavoro), il loop si ferma.
+- **Rilevamento dello stallo:** se per K iterazioni consecutive non cambia nulla (task, commit, contenuto dell'albero di lavoro), il loop si ferma.
+- **Tempo massimo per iterazione** (`--timeout`): un agente bloccato viene terminato e il loop prosegue; un codice di uscita diverso da zero viene riportato.
+- **Baseline:** il loop parte solo con `verify` verde, oppure in fase rossa.
 - **Stato su file** (`progress.md`), non nella chat: le sessioni lunghe derivano e la compattazione perde dettagli.
 - **Una task per iterazione**, con contesto fresco quando possibile.
 - **Branch di feature:** il loop rifiuta di partire su `main`/`master`.
@@ -417,21 +421,21 @@ a ogni punto di approvazione) e **script** (controlli deterministici copiati nel
 | Script | Cosa controlla |
 |---|---|
 | `verify.py` | Format, lint, tipi, test del progetto: il criterio di "fatto" |
-| `spec_lint.py` | Spec (sezioni, ID, REQ→AC, non-scope, approvazione, domande aperte); con `--plan` ogni AC è nel piano; con `--tasks` ogni task ha verifica e copertura, ogni AC è coperto, ci sono `T-DOC` e `T-SYNC` |
+| `spec_lint.py` | Spec (sezioni, ID, REQ→AC, non-scope, approvazione, domande aperte); con `--plan` ogni AC è nella strategia di test; con `--tasks` ogni task ha verifica e copertura e nessun segnaposto, ogni AC è coperto, ci sono `T-DOC` e `T-SYNC` |
 | `state.py` | Stato del progetto e prossima fase suggerita |
 | `scan_repo.py` | Inventario deterministico di una codebase (stack, linguaggi, test, CI, entry point) |
 | `trace_check.py` | Ogni AC citato in almeno un test; requisiti senza test |
 | `bug_lint.py` | Completezza del file di un bug in funzione del suo stato |
-| `diff_scope.py` | File modificati: zone vietate (`Non modificare:` in `AGENTS.md`), file fuori piano, file pianificati non toccati |
+| `diff_scope.py` | File modificati: zone vietate (`Non modificare:` in `AGENTS.md`), test bloccati (`Test-Lock`) modificati dopo il blocco, file fuori piano, file pianificati non toccati |
 | `docs_check.py` | Link relativi validi; esempi Python marcati eseguiti con successo |
 | `sync_check.py` | Chiusura: spec `implemented`, task chiuse, review con decisione umana, pagina d'area, tracciabilità |
-| `loop.py` | Loop esterno con tetto, rilevamento dello stallo, branch protetto e dry run |
+| `loop.py` | Loop esterno con tetto, rilevamento dello stallo, timeout per iterazione, baseline, branch protetto e dry run |
 
-**Hook opzionali (solo Claude Code)**, inattivi se non abilitati con una variabile d'ambiente:
+**Hook opzionali (solo Claude Code)**, inattivi se non abilitati con una variabile d'ambiente. Partono da `hooks/run.sh`, che esce subito se l'hook non è abilitato e altrimenti usa il primo tra `python3`, `python` e `py -3` che sia Python 3; senza Python l'errore è visibile ma non bloccante:
 
 | Hook | Abilitazione | Effetto |
 |---|---|---|
-| `Stop` | `SDLC_ENFORCE_VERIFY=1` (e `SDLC_VERIFY_ARGS`, per es. `--fast`) | Se `verify` è rosso, l'agente non può dichiarare il lavoro finito; evita i cicli con `stop_hook_active` |
+| `Stop` | `SDLC_ENFORCE_VERIFY=1` (e `SDLC_VERIFY_ARGS`, per es. `--fast`) | Se `verify` è rosso, l'agente non può dichiarare il lavoro finito, salvo fase rossa; evita i cicli con `stop_hook_active` |
 | `PreToolUse` | `SDLC_GUARD=1` | Blocca force push, `reset --hard`, cancellazioni ricorsive, download-ed-esegui, lettura di `.env` |
 
 **Subagent (solo Claude Code):** `sdlc-reviewer`, revisore indipendente in sola lettura usato da `sdlc-review-diff`. Con altri agenti la review si fa in una sessione nuova con le stesse istruzioni.

@@ -15,7 +15,8 @@ Playbook §4 (fase 7), §5 (passo 8) e §3.8. Serve un **contesto indipendente**
 ## Passi
 
 1. **Controlli deterministici:**
-   - `python scripts/diff_scope.py <spec-dir>`: zone vietate (errore) e file fuori piano (avviso);
+   - `python scripts/diff_scope.py <spec-dir>`: zone vietate e test bloccati (`Test-Lock`) modificati dopo il
+     blocco (errori), file fuori piano (avviso);
    - `python scripts/trace_check.py <spec>`: ogni AC ha un test.
 2. **Revisione indipendente.**
    - Claude Code: delega al subagent `sdlc-reviewer`, passando cartella della spec, ref di base e output del punto 1.

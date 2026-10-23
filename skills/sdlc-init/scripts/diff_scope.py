@@ -1,12 +1,16 @@
 #!/usr/bin/env python3
-"""Confronta i file modificati con il piano e con le zone vietate.
+"""Confronta i file modificati con il piano, con le zone vietate e con i test bloccati.
 
 Uso:
   python scripts/diff_scope.py docs/specs/001-x [--base main] [--strict]
 
-- Vietato: percorsi elencati in AGENTS.md alla riga "- Non modificare: a, b" -> errore (exit 1).
-- Fuori piano: file modificati non elencati in plan.md ("Componenti e file da creare/modificare"),
-  esclusi docs/specs/<questa spec>/, docs/system/, docs/bugs/, docs/adr/ -> avviso (errore con --strict).
+- Vietato: percorsi elencati in AGENTS.md alle righe "- Non modificare: a, b" -> errore (exit 1).
+- Fuori piano: file modificati non elencati in plan.md ("Componenti e file da creare/modificare" e colonna
+  "Dove" della "Strategia di test"), esclusi docs/specs/<questa spec>/, docs/system/, docs/bugs/, docs/adr/
+  -> avviso (errore con --strict).
+- Test bloccati: i file di test di un commit con trailer "Test-Lock: T-nn" (i test rossi scritti dagli AC)
+  non possono cambiare in un commit successivo senza lo stesso trailer, né nelle modifiche non committate
+  -> errore (exit 1). Una correzione voluta dei test va in un nuovo commit Test-Lock, motivata nella review.
 - Pianificati ma non toccati: solo informativo.
 Il diff è calcolato dal merge-base con --base (default: il primo tra main, master, origin/main,
 origin/master) e include modifiche non committate e file non tracciati.
@@ -22,6 +26,10 @@ from pathlib import Path
 
 SEMPRE_AMMESSI = ("docs/system/", "docs/bugs/", "docs/adr/")
 PLACEHOLDER = re.compile(r"<[^<>\n]{1,100}>")
+RIGA_PIANO = re.compile(r"^\s*[-*]\s+(?:`([^`]+)`|([^\s`:]+))")
+TEST_LOCK = re.compile(r"^Test-Lock:\s*\S+", re.M)
+CARTELLE_TEST = {"tests", "test", "__tests__", "spec"}
+NOME_TEST = re.compile(r"(^test_.*|.*_test|.*[._](test|spec)|.*Tests?)\.\w+$")
 
 
 def git(*args: str) -> tuple[int, str]:
@@ -29,8 +37,13 @@ def git(*args: str) -> tuple[int, str]:
     return r.returncode, r.stdout.strip()
 
 
+def normalizza(percorso: str) -> str:
+    """Barre in avanti e senza il prefisso "./" (i punti iniziali di ".github/" restano)."""
+    return re.sub(r"^(\./)+", "", percorso.replace("\\", "/").strip())
+
+
 def corrisponde(percorso: str, pattern: str) -> bool:
-    p, pat = percorso.replace("\\", "/"), pattern.replace("\\", "/").strip().lstrip("./")
+    p, pat = normalizza(percorso), normalizza(pattern)
     if not pat:
         return False
     if any(c in pat for c in "*?["):
@@ -38,25 +51,61 @@ def corrisponde(percorso: str, pattern: str) -> bool:
     return p == pat or p.startswith(pat.rstrip("/") + "/")
 
 
-def percorsi_piano(plan: str) -> list[str]:
-    in_sez, out = False, []
-    for r in plan.splitlines():
+def sezioni(testo: str) -> dict[str, list[str]]:
+    out: dict[str, list[str]] = {}
+    corrente = None
+    for r in testo.splitlines():
         if r.startswith("## "):
-            in_sez = r.startswith("## Componenti e file")
-            continue
-        if in_sez:
-            m = re.match(r"^\s*[-*]\s+`?([^`:\s][^`:]*?)`?\s*(?::|—|$)", r)
-            if m and not PLACEHOLDER.fullmatch(m.group(1).strip()):
-                out.append(m.group(1).strip())
+            corrente = r[3:].strip()
+            out[corrente] = []
+        elif corrente is not None:
+            out[corrente].append(r)
     return out
 
 
+def percorsi_dove(righe: list[str]) -> list[str]:
+    """Percorsi della colonna "Dove" nella tabella della strategia di test."""
+    out, colonna = [], None
+    for r in righe:
+        if not r.strip().startswith("|"):
+            continue
+        celle = [c.strip().strip("`").strip() for c in r.strip().strip("|").split("|")]
+        if colonna is None:
+            colonna = next((i for i, c in enumerate(celle) if c.lower() == "dove"), -1)
+            continue
+        if colonna < 0 or colonna >= len(celle) or set(celle[colonna]) <= set("-: "):
+            continue
+        v = celle[colonna].split("::")[0].strip()
+        if v and not PLACEHOLDER.search(v) and " " not in v and ("/" in v or "." in v):
+            out.append(v)
+    return out
+
+
+def percorsi_piano(plan: str) -> list[str]:
+    out = []
+    for titolo, righe in sezioni(plan).items():
+        if titolo.startswith("Componenti e file"):
+            for r in righe:
+                m = RIGA_PIANO.match(r)
+                if m:
+                    v = (m.group(1) or m.group(2)).strip()
+                    if v and not PLACEHOLDER.search(v):
+                        out.append(v)
+        elif titolo.startswith("Strategia di test"):
+            out += percorsi_dove(righe)
+    return list(dict.fromkeys(out))
+
+
 def percorsi_vietati(agents: str) -> list[str]:
-    m = re.search(r"^\s*[-*]\s+Non modificare\s*:\s*(.*)$", agents, re.M | re.I)
-    if not m:
-        return []
-    voci = [v.strip().strip("`").strip() for v in re.split(r"[,;]", m.group(1))]
+    voci = []
+    for m in re.finditer(r"^\s*[-*]\s+Non modificare\s*:\s*(.*)$", agents, re.M | re.I):
+        voci += [v.strip().strip("`").strip() for v in re.split(r"[,;]", m.group(1))]
     return [v for v in voci if v and not PLACEHOLDER.search(v)]
+
+
+def e_un_test(percorso: str) -> bool:
+    parti = normalizza(percorso).split("/")
+    return bool(CARTELLE_TEST & set(parti[:-1])) or bool(NOME_TEST.match(parti[-1]))
 
 
 def base_ref(esplicita: str | None) -> str | None:
@@ -66,13 +115,51 @@ def base_ref(esplicita: str | None) -> str | None:
     return None
 
 
-def file_modificati(base: str) -> list[str]:
+def merge_base(base: str) -> str:
     code, mb = git("merge-base", "HEAD", base)
     if code != 0:
         raise RuntimeError("impossibile calcolare il merge-base")
+    return mb
+
+
+def non_committati() -> list[str]:
+    _, diff = git("diff", "--name-only", "HEAD")
+    _, nuovi = git("ls-files", "--others", "--exclude-standard")
+    return [f for f in (diff + "\n" + nuovi).splitlines() if f.strip()]
+
+
+def file_modificati(mb: str) -> list[str]:
     _, diff = git("diff", "--name-only", mb)
     _, nuovi = git("ls-files", "--others", "--exclude-standard")
     return sorted({f for f in (diff + "\n" + nuovi).splitlines() if f.strip()})
+
+
+def commit_del_branch(mb: str) -> list[tuple[str, bool, list[str]]]:
+    """(sha, è un commit Test-Lock, file toccati) dal più vecchio al più recente."""
+    _, lista = git("rev-list", "--reverse", f"{mb}..HEAD")
+    out = []
+    for sha in lista.split():
+        _, corpo = git("show", "-s", "--format=%B", sha)
+        _, files = git("diff-tree", "--no-commit-id", "--name-only", "-r", "--root", sha)
+        out.append((sha, bool(TEST_LOCK.search(corpo)), [f for f in files.splitlines() if f.strip()]))
+    return out
+
+
+def test_bloccati(commits: list[tuple[str, bool, list[str]]], sporchi: list[str]):
+    """Restituisce (file bloccati, violazioni, file non di test nei commit Test-Lock)."""
+    bloccati: set[str] = set()
+    violazioni, non_test = [], []
+    for sha, lock, files in commits:
+        if lock:
+            for f in files:
+                if e_un_test(f):
+                    bloccati.add(f)
+                else:
+                    non_test.append(f"{f} ({sha[:7]})")
+            continue
+        violazioni += [f"{f} (commit {sha[:7]})" for f in files if f in bloccati]
+    violazioni += [f"{f} (non committato)" for f in sporchi if f in bloccati]
+    return sorted(bloccati), violazioni, non_test
 
 
 def analizza(feature: Path, modificati: list[str], agents: str):
@@ -107,25 +194,34 @@ def main(argv: list[str]) -> int:
         print("[ERRORE] nessun ref di base trovato: usa --base <ref>")
         return 2
     try:
-        modificati = file_modificati(base)
+        mb = merge_base(base)
     except RuntimeError as e:
         print(f"[ERRORE] {e}")
         return 2
+    modificati = file_modificati(mb)
     agents = Path("AGENTS.md").read_text(encoding="utf-8") if Path("AGENTS.md").is_file() else ""
     piano, violazioni, fuori, non_toccati = analizza(feature, modificati, agents)
-    print(f"Base: {base}; file modificati: {len(modificati)}; percorsi nel piano: {len(piano)}")
+    bloccati, test_toccati, non_test = test_bloccati(commit_del_branch(mb), non_committati())
+    print(f"Base: {base}; file modificati: {len(modificati)}; percorsi nel piano: {len(piano)}; "
+          f"test bloccati: {len(bloccati)}")
     if not piano:
         print("[WARN] nessun percorso estratto da plan.md: il confronto con il piano non è affidabile")
     for f in violazioni:
         print(f"[ERRORE] file in zona vietata (AGENTS.md): {f}")
+    for f in test_toccati:
+        print(f"[ERRORE] test bloccato (Test-Lock) modificato dopo il blocco: {f}")
+    for f in non_test:
+        print(f"[WARN] file non di test in un commit Test-Lock, non bloccato: {f}")
     for f in fuori:
         print(f"[{'ERRORE' if strict else 'WARN'}] file fuori piano: {f}")
     for p in non_toccati:
         print(f"[INFO] nel piano ma non toccato: {p}")
-    ko = bool(violazioni) or (strict and bool(fuori))
+    ko = bool(violazioni) or bool(test_toccati) or (strict and bool(fuori))
     print("SCOPE: " + ("OK" if not ko else "VIOLAZIONI"))
     return 1 if ko else 0
 
 
 if __name__ == "__main__":
+    for flusso in (sys.stdout, sys.stderr):  # UTF-8 anche con console cp1252 (Windows)
+        flusso.reconfigure(encoding="utf-8", errors="replace")
     sys.exit(main(sys.argv[1:]))

@@ -1,6 +1,6 @@
 # Architettura del plugin
 
-Documento di progetto **come costruito** (versione 0.4.0): scelte, struttura, contratti tra i file e limiti.
+Documento di progetto **come costruito** (versione 0.5.0): scelte, struttura, contratti tra i file e limiti.
 
 ## Obiettivo e criterio di successo
 
@@ -49,7 +49,7 @@ sdlc-playbook/
 │   ├── sdlc-loop/         SKILL.md, references/PROMPT.md.tmpl, progress.md.tmpl
 │   └── sdlc-next/         SKILL.md
 ├── agents/sdlc-reviewer.md       subagent (Claude Code)
-├── hooks/                        hooks.json, stop_verify.py, pretool_guard.py (Claude Code, opt-in)
+├── hooks/                        hooks.json, run.sh (launcher), stop_verify.py, pretool_guard.py (Claude Code, opt-in)
 ├── docs/                         playbook (sorgente e generato), skills.md, scripts.md, architettura.md
 ├── tools/build_playbook.py       genera il playbook dai file del plugin
 ├── tests/                        test degli script, degli hook, del loop e di coerenza
@@ -86,8 +86,9 @@ Gli script leggono pochi campi con convenzioni fisse. Se si cambia un template v
 | File | Campi e strutture lette | Script |
 |---|---|---|
 | `spec.md` | titolo `# SPEC-nnn: ...`; `- Stato:` (`draft`, `approved`, `implemented`, `superseded`); `- Approvata da / data:`; sezioni `## Problema e obiettivo`, `Scope`, `Requisiti`, `Acceptance criteria`, `Domande aperte`; riga `**Non-scope (esplicito):**`; `- REQ-nnn`; `- AC-nnn [REQ-nnn]`; marcatore `[ASSUNZIONE]` | `spec_lint`, `state`, `trace_check`, `sync_check` |
-| `plan.md` | `- Approvato da / data:`; sezione `## Componenti e file da creare/modificare` con righe `- percorso: ...`; gli ID AC nel testo | `spec_lint`, `state`, `diff_scope` |
-| `tasks.md` | righe `- [ ] T-nn ...` con i campi `verifica:` (comando tra backtick) e `copre:` (ID degli AC); `T-DOC`, `T-SYNC` | `spec_lint`, `state`, `loop`, `sync_check` |
+| `plan.md` | `- Approvato da / data:`; sezione `## Componenti e file da creare/modificare` con righe `- percorso: ...` (percorso = prima parola o testo tra backtick); sezione `## Strategia di test ...` con gli ID AC esatti e, se c'è, la colonna `Dove` | `spec_lint`, `state`, `diff_scope` |
+| `tasks.md` | righe `- [ ] T-nn ...` con i campi `verifica:` (comando tra backtick) e `copre:` (ID degli AC), senza segnaposto; `T-DOC`, `T-SYNC`; la marcatura `atteso: rosso` sulle task di test definisce la **fase rossa** (ultima task `T-nn` chiusa con la marcatura, successiva aperta) | `spec_lint`, `state`, `loop`, `sync_check`, hook `Stop` |
+| commit git | trailer `Test-Lock: T-nn` sul commit dei test rossi: blocca i suoi file di test | `diff_scope` |
 | `review.md` | `- Esito:` (`conforme`, `conforme con riserve`, `non conforme`); `- Decisione di:` | `state`, `sync_check` |
 | `docs/bugs/BUG-*.md` | `- Stato:` (`aperto`, `diagnosticato`, `corretto`, `verificato`); sezioni di `bugfix-template.md`; voci spuntabili in `## Chiusura` | `bug_lint`, `state` |
 | `docs/system/<area>.md` | `- Ultimo allineamento:`; `- Specifiche collegate:`; sezioni `## Comportamento attuale`, `Vincoli e punti delicati`, `Test di caratterizzazione` | `sync_check` |
@@ -119,11 +120,16 @@ Un campo con segnaposto `<...>` o vuoto vale come **non compilato**.
 
 ## Limiti e punti non verificati
 
-- **Windows:** non eseguito in questo ambiente di sviluppo; coperto dalla matrice CI.
+- **Windows:** suite eseguita su Windows 11 (Python 3.13, console cp1252) e nella matrice CI; i test di `run.sh` con PATH
+  minimo e interpreti finti girano solo su POSIX.
 - **Agenti reali:** le skill non sono state eseguite da un agente reale su un progetto; i controlli deterministici sì (test su repository
   temporanei, loop con agente finto, hook con l'input JSON atteso).
 - **Codex:** manifest e invocazione delle skill non validati con strumenti Codex; supporto dei subagent non verificato.
 - **Hook di Claude Code:** codice di uscita 2 come blocco e formato del JSON sono quelli attesi, non osservati in una sessione.
+  Il comando passa da `sh hooks/run.sh`: su Windows richiede che Claude Code esegua gli hook con una shell che trovi `sh`
+  (Git for Windows); non verificato in una sessione reale.
+- **Fase rossa e `Test-Lock`:** si basano su convenzioni (marcatura nelle task, trailer nei commit) che l'agente potrebbe
+  usare a sproposito; la review umana resta il controllo finale.
 - **`claude -p` da stdin:** la lettura del prompt da stdin con `-p` va verificata sulla versione in uso.
 - **Euristiche:** `diff_scope.py` dipende dal formato `- percorso: ...` del piano; `trace_check.py` trova gli ID per testo, non
   capisce la semantica dei test; `scan_repo.py` è un inventario; nessuno sostituisce la lettura del codice.

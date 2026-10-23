@@ -2,7 +2,8 @@
 
 Tutti gli script stanno in `skills/sdlc-init/scripts/` e `sdlc-init` li copia in `scripts/` del progetto. Sono Python con sola
 libreria standard, senza comandi di shell, e girano uguali su Windows, Linux e macOS. Si lanciano dalla **radice del
-progetto**. Exit code: `0` ok, `1` controllo fallito, `2` uso errato o precondizione mancante.
+progetto**. Exit code: `0` ok, `1` controllo fallito, `2` uso errato o precondizione mancante. L'output è sempre UTF-8,
+anche con una console Windows in cp1252.
 
 I formati dei file che gli script leggono sono descritti in [architettura.md](architettura.md#contratti-sui-file).
 
@@ -56,8 +57,8 @@ python scripts/spec_lint.py <spec.md> [--plan <plan.md>] [--tasks <tasks.md>]
 | Modalità | Errori rilevati |
 |---|---|
 | spec | stato non valido; sezioni mancanti; ID REQ/AC duplicati; REQ senza AC; AC che cita REQ inesistenti; non-scope assente o con segnaposto; se `approved`/`implemented`: approvatore mancante o domande aperte (avviso se restano `[ASSUNZIONE]`) |
-| `--plan` | AC della spec assenti dal piano (avviso se il piano non è approvato) |
-| `--tasks` | nessuna task; task `T-nn` senza `verifica:` o `copre:`; ID duplicati; `T-DOC` o `T-SYNC` mancanti; AC non coperto da nessuna task |
+| `--plan` | sezione `## Strategia di test` mancante; AC della spec assenti da quella sezione (ID esatto: `AC-001` non vale per `AC-0011`); avviso se il piano non è approvato |
+| `--tasks` | nessuna task; task `T-nn` senza `verifica:` o `copre:` o con segnaposto `<...>`; ID duplicati; `T-DOC` o `T-SYNC` mancanti; AC non coperto da nessuna task |
 
 ### trace_check.py
 
@@ -88,12 +89,18 @@ python scripts/diff_scope.py docs/specs/001-x [--base main] [--strict]
 
 Calcola i file modificati dal merge-base con il ref di base (default: il primo esistente tra `main`, `master`,
 `origin/main`, `origin/master`), inclusi file non committati e non tracciati. Segnala:
-- **errore** (exit 1): file nelle zone della riga `- Non modificare:` di `AGENTS.md`;
+- **errore** (exit 1): file nelle zone delle righe `- Non modificare:` di `AGENTS.md` (tutte, non solo la prima);
+- **errore** (exit 1): file di test bloccati modificati dopo il blocco. Un commit con il trailer `Test-Lock: T-nn` blocca i
+  suoi file di test (cartelle `tests`, `test`, `__tests__`, `spec` o nomi come `test_*.py`, `*_test.go`, `*.test.ts`,
+  `*Test.java`); una modifica successiva in un commit senza lo stesso trailer, o non committata, è una violazione. I file
+  non di test di un commit `Test-Lock` (per esempio uno scheletro) non vengono bloccati e sono segnalati come avviso;
 - **avviso** (errore con `--strict`): file fuori dal piano (esclusi `docs/specs/<questa spec>/`, `docs/system/`,
-  `docs/bugs/`, `docs/adr/`);
+  `docs/bugs/`, `docs/adr/`). Il piano comprende le righe di "Componenti e file" (percorso = prima parola o testo tra
+  backtick, quindi `- src/a.py (nuovo): ...` vale `src/a.py`) e la colonna "Dove" della strategia di test;
 - **info**: percorsi del piano non toccati.
 
-Percorsi: esatti, cartelle (prefisso) o glob. Exit `2` se non è un repository git o manca il ref di base.
+Percorsi: esatti, cartelle (prefisso) o glob; il prefisso `./` si ignora, i punti iniziali (`.github/`) restano. Exit
+`2` se non è un repository git o manca il ref di base.
 
 ### scan_repo.py
 
@@ -127,14 +134,19 @@ richieste, "Ultimo allineamento" compilato e la spec tra le "Specifiche collegat
 ### loop.py
 
 ```
-python scripts/loop.py docs/specs/001-x [--max 15] [--stall 3] [--agent "claude -p"] [--allow-main] [--dry-run]
+python scripts/loop.py docs/specs/001-x [--max 15] [--stall 3] [--timeout 1800] [--agent "claude -p"]
+                                        [--allow-main] [--allow-red-baseline] [--dry-run]
 ```
 
 Legge `PROMPT.md` dalla cartella della spec e lo passa all'agente da stdin. Dopo ogni iterazione esegue `verify`.
 Si ferma con exit `0` se `verify` è verde e non restano task `T-nn` aperte (`T-DOC` e `T-SYNC` restano fuori); con
-exit `1` al tetto `--max` o dopo `--stall` iterazioni senza cambiamenti (tasks.md, HEAD di git, albero di lavoro).
-Rifiuta di partire su `main`/`master` (exit `2`, salvo `--allow-main` in ambienti isolati). `--dry-run` controlla le
-precondizioni senza lanciare l'agente. Non fa push. Permessi e modalità non interattiva dell'agente vanno configurati a parte.
+exit `1` al tetto `--max` o dopo `--stall` iterazioni senza cambiamenti (tasks.md, HEAD di git, **contenuto** delle
+modifiche tracciate e non tracciate: un agente che lavora sempre sullo stesso file non è in stallo). Ogni iterazione dura al
+massimo `--timeout` secondi: oltre, l'agente viene terminato e il loop prosegue; un codice di uscita diverso da zero viene
+riportato come avviso. Rifiuta di partire (exit `2`) su `main`/`master` (salvo `--allow-main` in ambienti isolati) e con
+`verify` già rosso, salvo fase rossa (l'ultima task `T-nn` chiusa è "atteso: rosso") o `--allow-red-baseline`.
+`--dry-run` controlla le precondizioni senza lanciare l'agente e mostra se c'è una fase rossa. Non fa push. Permessi e
+modalità non interattiva dell'agente vanno configurati a parte.
 
 ---
 
@@ -143,11 +155,18 @@ precondizioni senza lanciare l'agente. Non fa push. Permessi e modalità non int
 Si caricano con il plugin (`hooks/hooks.json`) ma restano **inattivi** finché non imposti la variabile d'ambiente.
 Sono una rete di sicurezza minima, non un sandbox: non sostituiscono permessi, allowlist e isolamento.
 
+Entrambi partono da `hooks/run.sh` (`sh run.sh <script.py> <variabile>`). Il launcher esce `0` subito se la variabile non
+vale `1`, quindi un hook inattivo non richiede Python. Se è attivo usa il primo tra `python3`, `python` e `py -3` che sia
+davvero Python 3.8+ (scarta gli alias di Microsoft Store e Python 2): su Ubuntu pulito esiste solo `python3`. Senza
+Python 3 esce `1` con un messaggio, cioè un errore visibile ma non bloccante.
+
 ### Hook `Stop` — `hooks/stop_verify.py`
 
 Abilitazione: `SDLC_ENFORCE_VERIFY=1`. Se `scripts/verify.py` esiste ed è rosso, esce con codice 2 e riporta le ultime
-30 righe all'agente, che non può dichiarare il lavoro finito. Non agisce se `stop_hook_active` è vero (evita cicli) o se il
-progetto non ha `verify.py`. `SDLC_VERIFY_ARGS` restringe la verifica (es. `--fast`).
+30 righe all'agente, che non può dichiarare il lavoro finito. Non agisce se `stop_hook_active` è vero (evita cicli), se il
+progetto non ha `verify.py`, o se una spec è in **fase rossa** (in `docs/specs/*/tasks.md` l'ultima task `T-nn` chiusa è
+marcata "atteso: rosso" e la successiva è aperta): lì i test rossi sono il risultato atteso. `SDLC_VERIFY_ARGS` restringe la
+verifica (es. `--fast`).
 
 ### Hook `PreToolUse` — `hooks/pretool_guard.py`
 
@@ -156,5 +175,5 @@ Abilitazione: `SDLC_GUARD=1`. Per Bash e PowerShell blocca: `git push --force`/`
 `.env`; per lo strumento Read blocca i file `.env` (non `.env.example`). Esce con codice 2 e un messaggio.
 
 **Non verificato:** il comportamento in una sessione reale di Claude Code (codice di uscita 2 come blocco, formato del JSON in
-ingresso). Il file `hooks/hooks.json` è accettato da `claude plugin validate`; gli script sono provati con l'input atteso.
-Su Windows il comando degli hook usa `python`: se non è nel PATH, adatta `hooks/hooks.json` (per esempio `py -3`).
+ingresso, shell usata per il comando su Windows). Gli script e `run.sh` sono provati con l'input atteso su Linux e Windows
+(con `sh` di Git for Windows); se su Windows Claude Code non trova `sh`, gli hook non partono.

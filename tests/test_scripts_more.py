@@ -121,6 +121,85 @@ class TestDiffScope(unittest.TestCase):
         self.assertEqual(diff_scope.percorsi_piano(PLAN_OK), ["src/export.py", "tests/"])
         self.assertEqual(diff_scope.percorsi_vietati("- Non modificare: `a/`, b.py; <x>\n"), ["a/", "b.py"])
 
+    def test_percorsi_con_punto_iniziale(self):
+        self.assertTrue(diff_scope.corrisponde(".github/workflows/ci.yml", ".github/"))
+        self.assertTrue(diff_scope.corrisponde(".github/workflows/ci.yml", "./.github"))
+        self.assertTrue(diff_scope.corrisponde(".env", ".env"))
+        self.assertFalse(diff_scope.corrisponde("github/x.yml", ".github/"))
+
+    def test_piano_annotazioni_e_colonna_dove(self):
+        plan = ("## Componenti e file da creare/modificare\n- src/a.py (nuovo): x\n- `src/b c.py`: y\n"
+                "- <percorso>: <cosa cambia>\n\n## Strategia di test (mappata sugli AC)\n"
+                "| AC | Livello | Dove | Note |\n|---|---|---|---|\n| AC-001 | unit | `tests/test_a.py::test_x` | n |\n"
+                "| AC-002 | e2e | manuale | n |\n| AC-003 | unit | tests/<file> | n |\n")
+        self.assertEqual(diff_scope.percorsi_piano(plan), ["src/a.py", "src/b c.py", "tests/test_a.py"])
+        agents = "- Non modificare: legacy/\n- Testo\n- Non modificare: .github/; migrations/\n"
+        self.assertEqual(diff_scope.percorsi_vietati(agents), ["legacy/", ".github/", "migrations/"])
+
+    def test_zone_vietate_con_punto_su_repo_reale(self):
+        with TmpDir() as d:
+            copia_script(d)
+            scrivi(d, ".github/workflows/ci.yml", "on: push\n")
+            self.prepara(d, agents="- Non modificare: legacy/\n- Non modificare: .github/\n")
+            scrivi(d, ".github/workflows/ci.yml", "on: [push, pull_request]\n")
+            r = cli(d, "diff_scope", "docs/specs/001-x", "--base", "main")
+            self.assertEqual(r.returncode, 1, r.stdout)
+            self.assertIn("zona vietata (AGENTS.md): .github/workflows/ci.yml", r.stdout)
+
+    def test_riconosce_i_file_di_test(self):
+        for p in ("tests/x.py", "src/a.test.ts", "pkg/foo_test.go", "src/FooTest.java", "web/b.spec.js", "test_a.py"):
+            self.assertTrue(diff_scope.e_un_test(p), p)
+        for p in ("src/export.py", "src/latest.py", "docs/specs/001-x/spec.md", "src/contest.py"):
+            self.assertFalse(diff_scope.e_un_test(p), p)
+
+
+class TestTestLock(unittest.TestCase):
+    """Test rossi bloccati con il trailer Test-Lock: l'implementazione non li può modificare."""
+
+    def prepara(self, d):
+        copia_script(d)
+        repo_git(d, "main")
+        scrivi(d, "AGENTS.md", "# A\n")
+        scrivi(d, "src/old.py", "v1\n")
+        git(d, "add", "-A")
+        git(d, "commit", "-qm", "base")
+        git(d, "checkout", "-qb", "feature/x")
+        scrivi(d, "docs/specs/001-x/plan.md", PLAN_OK)
+        scrivi(d, "src/export.py", "def esporta(): raise NotImplementedError\n")
+        scrivi(d, "tests/test_export.py", "def test_AC_001(): assert False\n")
+        git(d, "add", "src/export.py", "tests/test_export.py")
+        git(d, "commit", "-qm", "test rossi per AC-001", "-m", "Test-Lock: T-01")
+        scrivi(d, "src/export.py", "def esporta(): return 'csv'\n")
+        git(d, "add", "src/export.py")
+        git(d, "commit", "-qm", "implementa T-02")
+
+    def test_implementazione_senza_toccare_i_test(self):
+        with TmpDir() as d:
+            self.prepara(d)
+            r = cli(d, "diff_scope", "docs/specs/001-x")
+            self.assertEqual(r.returncode, 0, r.stdout)
+            self.assertIn("test bloccati: 1", r.stdout)
+            self.assertIn("file non di test in un commit Test-Lock, non bloccato: src/export.py", r.stdout)
+
+    def test_modifica_ai_test_bloccati(self):
+        with TmpDir() as d:
+            self.prepara(d)
+            scrivi(d, "tests/test_export.py", "def test_AC_001(): assert True\n")
+            r = cli(d, "diff_scope", "docs/specs/001-x")
+            self.assertEqual(r.returncode, 1, r.stdout)
+            self.assertIn("tests/test_export.py (non committato)", r.stdout)
+            git(d, "commit", "-qam", "indebolisce il test")
+            r = cli(d, "diff_scope", "docs/specs/001-x")
+            self.assertEqual(r.returncode, 1, r.stdout)
+            self.assertIn("test bloccato (Test-Lock) modificato dopo il blocco: tests/test_export.py (commit", r.stdout)
+
+    def test_correzione_esplicita_con_nuovo_blocco(self):
+        with TmpDir() as d:
+            self.prepara(d)
+            scrivi(d, "tests/test_export.py", "def test_AC_001(): assert esporta() == 'csv'\n")
+            git(d, "commit", "-qam", "corregge il test, approvato", "-m", "Test-Lock: T-01")
+            self.assertEqual(cli(d, "diff_scope", "docs/specs/001-x").returncode, 0)
+
 
 class TestScanRepo(unittest.TestCase):
     def test_inventario(self):
@@ -213,6 +292,15 @@ class TestSyncCheck(unittest.TestCase):
                     r = cli(d, "sync_check", "docs/specs/001-x")
                     self.assertEqual(r.returncode, 1, r.stdout)
                     self.assertIn(atteso, r.stdout)
+
+    def test_output_utf8_anche_con_console_cp1252(self):
+        with TmpDir() as d:
+            self.prepara(d)
+            scrivi(d, "docs/specs/001-x/spec.md", SPEC_OK)
+            r = esegui([sys.executable, "scripts/sync_check.py", "docs/specs/001-x"], d,
+                       env={"PYTHONIOENCODING": "cp1252", "PYTHONUTF8": "0"})
+            self.assertIsNotNone(r.stdout)
+            self.assertIn("Stato è 'approved'", r.stdout)
 
 
 if __name__ == "__main__":

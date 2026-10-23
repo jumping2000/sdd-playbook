@@ -11,14 +11,17 @@ Lo prepari e lo lanci l'utente, in un terminale e in un ambiente isolato.
 ## Precondizioni
 
 - Spec, piano e task validi: `python scripts/spec_lint.py <spec> --plan <plan> --tasks <tasks>` senza errori.
-- Sei su un **branch di feature** (il loop rifiuta main/master) e `verify` è verde sulla baseline.
+- Sei su un **branch di feature** (il loop rifiuta main/master) e `verify` è verde sulla baseline, oppure sei in
+  fase rossa (l'ultima task chiusa è "atteso: rosso"). Con una baseline rossa per altri motivi il loop rifiuta di
+  partire, salvo `--allow-red-baseline` deciso dall'utente.
 - Task piccole e indipendenti. Se sono poche o molto accoppiate, consiglia `sdlc-implement` interattivo.
 
 ## Passi
 
 1. **Crea** `progress.md` da `references/progress.md.tmpl` e `PROMPT.md` da `references/PROMPT.md.tmpl`
    (sostituisci `<id>`) nella cartella della spec.
-2. **Concorda con l'utente** il tetto `--max` (default 15) e `--stall` (default 3, iterazioni senza progresso).
+2. **Concorda con l'utente** il tetto `--max` (default 15), `--stall` (default 3, iterazioni senza progresso) e
+   `--timeout` (default 1800 secondi per iterazione).
 3. **Dry run:** `python scripts/loop.py <spec-dir> --dry-run` (aggiungi `--agent "<comando>"` se non usa
    `claude -p`). Deve riportare `DRY-RUN OK`.
 4. **Checklist di sicurezza da mostrare all'utente** (non puoi configurarla tu):
@@ -32,7 +35,7 @@ Lo prepari e lo lanci l'utente, in un terminale e in un ambiente isolato.
 Mostra il comando, `--max`, `--stall` e la checklist, e chiedi l'**approvazione esplicita**. Il comando è:
 
 ```
-python scripts/loop.py docs/specs/<id> --max <N> --stall <K>
+python scripts/loop.py docs/specs/<id> --max <N> --stall <K> --timeout <secondi>
 ```
 
 Il loop termina con exit 0 quando `verify` è verde e non restano task `T-nn`. Restano poi review, `T-DOC` e

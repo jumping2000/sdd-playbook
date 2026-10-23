@@ -110,7 +110,12 @@ def lint_spec(testo: str) -> tuple[list[str], list[str]]:
 
 def lint_plan(spec: str, plan: str) -> tuple[list[str], list[str]]:
     _, acs = parse_spec(spec)
-    err = [f"{ac} non compare nel piano (strategia di test)" for ac in acs if ac not in plan]
+    strategia = next((r for t, r in sezioni(plan).items() if t.startswith("Strategia di test")), None)
+    if strategia is None:
+        err = ["Sezione '## Strategia di test' mancante nel piano"]
+    else:
+        nel_piano = set(re.findall(r"\bAC-\d+\b", "\n".join(strategia)))
+        err = [f"{ac} non compare nel piano (strategia di test)" for ac in acs if ac not in nel_piano]
     avv = []
     appr = pulisci(campo(plan, "Approvato da / data"))
     if not appr or PLACEHOLDER.search(appr):
@@ -131,6 +136,8 @@ def lint_tasks(spec: str, tasks: str) -> tuple[list[str], list[str]]:
         ids.append(tid)
         coperti.update(re.findall(r"AC-\d+", r.split("copre:")[-1] if "copre:" in r else ""))
         if re.fullmatch(r"T-\d+", tid):
+            if (m := PLACEHOLDER.search(r)):
+                err.append(f"{tid}: segnaposto non compilato {m.group(0)}")
             if not re.search(r"verifica:\s*`[^`]+`", r):
                 err.append(f"{tid}: manca 'verifica: `<comando>`'")
             if "copre:" not in r or not re.search(r"AC-\d+", r.split("copre:")[-1]):
@@ -171,4 +178,6 @@ def main(argv: list[str]) -> int:
 
 
 if __name__ == "__main__":
+    for flusso in (sys.stdout, sys.stderr):  # UTF-8 anche con console cp1252 (Windows)
+        flusso.reconfigure(encoding="utf-8", errors="replace")
     sys.exit(main(sys.argv[1:]))

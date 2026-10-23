@@ -55,4 +55,6 @@ def main() -> int:
 
 
 if __name__ == "__main__":
+    for flusso in (sys.stdin, sys.stdout, sys.stderr):  # UTF-8 anche con console cp1252 (Windows)
+        flusso.reconfigure(encoding="utf-8", errors="replace")
     sys.exit(main())

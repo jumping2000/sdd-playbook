@@ -99,14 +99,16 @@ del processo stanno nel [playbook](playbook-ai-software-lifecycle.md), che ogni 
 - **Cosa fa:** test dagli AC e non dal codice, con l'ID nel nome (`references/convenzioni-test.md`), più i casi di
   errore; scheletro minimo se serve; i test devono essere **rossi per il motivo giusto** (non per import o
   sintassi), con il messaggio di fallimento riportato; `trace_check.py --warn-only`.
-- **Regola:** i test rossi non si committano da soli (la CI non deve diventare rossa): vanno nel commit della task di
-  implementazione.
+- **Regola:** i test rossi si committano da soli, con il trailer `Test-Lock: T-nn` (lo scheletro, se c'è, in un commit
+  precedente). `diff_scope.py` segnala ogni modifica successiva a quei test. La CI del branch resta rossa fino alla task
+  di implementazione: è la "fase rossa", che l'hook `Stop` e `loop.py` riconoscono.
 
 ### sdlc-implement
 
 - **Precondizioni:** spec, piano e task validi; branch di feature; `verify` eseguito prima di iniziare (baseline).
 - **Ciclo:** prima task `T-nn` aperta → implementa solo quella → comando di `verifica:` e `verify` completo →
-  verde: spunta, commit con trailer `Spec:` e `Agent:`; rosso: massimo 3 tentativi poi si ferma e chiede.
+  verde: spunta, commit con trailer `Spec:` e `Agent:`; rosso: massimo 3 tentativi poi si ferma e chiede. Non modifica
+  i test bloccati da un commit `Test-Lock`.
 - **Fine:** quando restano solo `T-DOC` e `T-SYNC`, passa a `sdlc-review-diff`; non dichiara la feature conclusa.
 
 ### sdlc-bugfix
@@ -144,6 +146,6 @@ del processo stanno nel [playbook](playbook-ai-software-lifecycle.md), che ogni 
 ### sdlc-loop
 
 - **Quando:** molte task piccole e indipendenti. Per poche task o molto accoppiate è meglio `sdlc-implement`.
-- **Cosa fa:** prepara `PROMPT.md` e `progress.md`, concorda `--max` e `--stall`, esegue `loop.py --dry-run`, mostra la
+- **Cosa fa:** prepara `PROMPT.md` e `progress.md`, concorda `--max`, `--stall` e `--timeout`, esegue `loop.py --dry-run`, mostra la
   checklist di sicurezza e il comando.
 - **Non fa:** **non lancia il loop**: lo lancia l'utente in un terminale isolato, dopo l'approvazione esplicita.

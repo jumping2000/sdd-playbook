@@ -134,6 +134,8 @@ def main(argv: list[str]) -> int:
 
 
 if __name__ == "__main__":
+    for flusso in (sys.stdout, sys.stderr):  # UTF-8 anche con console cp1252 (Windows)
+        flusso.reconfigure(encoding="utf-8", errors="replace")
     sys.exit(main(sys.argv[1:]))
 ```
 
@@ -389,7 +391,7 @@ Qualità minima di una spec: nomina file/interfacce coinvolti, dichiara il non-s
 <README, API doc, ADR, docs/system/<area>.md>
 ```
 
-I file nella sezione "Componenti e file" vanno **uno per riga nel formato `- percorso: cosa cambia`**: `diff_scope.py` li usa per rilevare le modifiche fuori piano.
+I file nella sezione "Componenti e file" vanno **uno per riga nel formato `- percorso: cosa cambia`** (il percorso è la prima parola, o il testo tra backtick); anche i percorsi della colonna "Dove" della strategia di test contano come pianificati: `diff_scope.py` li usa per rilevare le modifiche fuori piano. Gli AC si cercano per ID esatto nella sola sezione "Strategia di test".
 
 ### 3.5 `tasks.md`
 
@@ -400,7 +402,7 @@ I file nella sezione "Componenti e file" vanno **uno per riga nel formato `- per
 - [ ] T-SYNC Riconciliare spec e docs/system/<area>.md con il comportamento reale; poi impostare Stato = implemented nella spec
 ```
 
-Le task `T-nn` hanno `verifica:` e `copre:`; `T-DOC` e `T-SYNC` sono obbligatorie e si eseguono dopo la review.
+Le task `T-nn` hanno `verifica:` e `copre:` e nessun segnaposto `<...>`; `T-DOC` e `T-SYNC` sono obbligatorie e si eseguono dopo la review. La marcatura "atteso: rosso" va solo sulle task che scrivono test: quando l'ultima task chiusa la porta e la successiva è aperta, la spec è in **fase rossa** (i test rossi sono il risultato atteso) e l'hook `Stop` e `loop.py` lo tengono in conto.
 
 ### 3.6 `bugfix.md`
 
@@ -564,6 +566,7 @@ Differenze rispetto al greenfield: più tempo in lettura/caratterizzazione, spec
 
 **Test**
 - Genera i test **dagli acceptance criteria**, non dal codice: altrimenti l'agente scrive test che confermano i propri bug. *(`sdlc-tests-from-ac`)*
+- **Test bloccati:** i test rossi si committano da soli con il trailer `Test-Lock: T-nn` (lo scheletro del codice, se serve, in un commit precedente). Da lì l'implementazione deve farli passare senza toccarli: `diff_scope.py` segnala come errore ogni modifica successiva a quei file fuori da un nuovo commit `Test-Lock`, che va motivato nella review. La CI del branch resta rossa fino alla task di implementazione.
 - Tracciabilità: nel nome o commento del test cita l'ID (`test_AC_001_...`). `trace_check.py` verifica che ogni AC compaia in almeno un test e segnala i requisiti senza test.
 - Livelli: unit per la logica, integrazione per i confini, almeno un e2e per il flusso principale.
 - Verifica che i test sappiano fallire: rompi di proposito il codice (o fai una mutation test) e controlla che qualcosa diventi rosso.
@@ -600,9 +603,10 @@ Isolamento: **una sessione, un branch e un commit per bug**. Se la diagnosi coin
 ripeti (max N volte):
   1. l'agente legge spec, task corrente e progress.md
   2. implementa o corregge una task T-nn
+     (task "atteso: rosso": scrive i test, li vede fallire, commit Test-Lock, passa oltre)
   3. esegue `verify`
   4. verde  → commit, aggiorna progress.md, passa alla task successiva
-     rosso  → legge l'errore, corregge, riprova
+     rosso  → legge l'errore, corregge senza toccare i test bloccati, riprova
 fermati se: verify verde E nessuna task T-nn aperta | N raggiunto | nessun progresso per K iterazioni
 ```
 
@@ -613,7 +617,9 @@ L'idea è il cosiddetto "Ralph loop": un ciclo esterno che riesegue l'agente fin
 - **Criteri di stop oggettivi:** `verify` verde **e** nessuna task `T-nn` aperta in `tasks.md`, non "mi sembra a posto". Un `verify` verde da solo non basta: dopo la prima task il codice può essere verde con tutto il resto ancora da fare.
 - **Il loop copre solo le task `T-nn`.** `T-DOC` e `T-SYNC` si eseguono dopo la review, con il gate umano in mezzo.
 - **Tetto di iterazioni** sempre impostato (es. 10-20): senza, il loop consuma token a vuoto.
-- **Rilevamento dello stallo:** se per K iterazioni consecutive non cambia nulla (task, commit, albero di lavoro), il loop si ferma.
+- **Rilevamento dello stallo:** se per K iterazioni consecutive non cambia nulla (task, commit, contenuto dell'albero di lavoro), il loop si ferma.
+- **Tempo massimo per iterazione** (`--timeout`): un agente bloccato viene terminato e il loop prosegue; un codice di uscita diverso da zero viene riportato.
+- **Baseline:** il loop parte solo con `verify` verde, oppure in fase rossa.
 - **Stato su file** (`progress.md`), non nella chat: le sessioni lunghe derivano e la compattazione perde dettagli.
 - **Una task per iterazione**, con contesto fresco quando possibile.
 - **Branch di feature:** il loop rifiuta di partire su `main`/`master`.
@@ -630,16 +636,18 @@ L'idea è il cosiddetto "Ralph loop": un ciclo esterno che riesegue l'agente fin
 """Loop esterno: rilancia l'agente finché verify è verde e non restano task numerate (T-nn) aperte.
 
 Uso:
-  python scripts/loop.py docs/specs/001-x [--max 15] [--stall 3] [--agent "claude -p"]
-                                          [--allow-main] [--dry-run]
+  python scripts/loop.py docs/specs/001-x [--max 15] [--stall 3] [--timeout 1800] [--agent "claude -p"]
+                                          [--allow-main] [--allow-red-baseline] [--dry-run]
 
 Legge PROMPT.md dalla cartella della spec e lo passa all'agente da stdin (evita i limiti di
 lunghezza della riga di comando su Windows). Si ferma quando:
   - verify è verde e non ci sono task T-nn aperte          -> exit 0
   - raggiunto il tetto --max di iterazioni                  -> exit 1
   - nessun progresso per --stall iterazioni consecutive     -> exit 1
-    (progresso = cambia tasks.md, l'HEAD di git o lo stato dell'albero di lavoro)
-Rifiuta di partire su main/master (--allow-main solo in ambienti isolati).
+    (progresso = cambia tasks.md, l'HEAD di git o il contenuto dell'albero di lavoro)
+Ogni iterazione ha un tempo massimo (--timeout secondi): oltre, l'agente viene terminato e il loop prosegue.
+Rifiuta di partire su main/master (--allow-main solo in ambienti isolati) e con verify già rosso, salvo
+fase rossa (l'ultima task T-nn chiusa è "atteso: rosso": i test rossi sono attesi) o --allow-red-baseline.
 --dry-run controlla le precondizioni e non lancia l'agente.
 Le task T-DOC e T-SYNC non fanno parte del loop: si eseguono dopo la review (sdlc-docs, sdlc-sync).
 Exit code: 0 completato; 1 tetto o stallo; 2 uso errato o precondizioni non rispettate.
@@ -657,8 +665,9 @@ import sys
 from pathlib import Path
 
 PROTETTI = {"main", "master"}
-OPZIONI_CON_VALORE = {"--max", "--stall", "--agent"}
+OPZIONI_CON_VALORE = {"--max", "--stall", "--timeout", "--agent"}
 TASK_APERTA = re.compile(r"^\s*-\s+\[ \]\s+T-\d+\b", re.M)
+TASK = re.compile(r"^\s*-\s+\[([ xX])\]\s+(T-\d+)\b(.*)$", re.M)
 
 
 def git(*args: str) -> str:
@@ -673,11 +682,27 @@ def task_aperte(feature: Path) -> bool:
     return bool(TASK_APERTA.search((feature / "tasks.md").read_text(encoding="utf-8")))
 
 
+def fase_rossa(feature: Path) -> str | None:
+    """ID della task di test "atteso: rosso" appena chiusa, se la task successiva è ancora aperta."""
+    precedente = None
+    for stato, tid, resto in TASK.findall((feature / "tasks.md").read_text(encoding="utf-8")):
+        if stato == " ":
+            return precedente[0] if precedente and "atteso: rosso" in precedente[1] else None
+        precedente = (tid, resto)
+    return None
+
+
 def impronta(feature: Path) -> str:
+    """Hash di tasks.md, HEAD e contenuto delle modifiche (tracciate e non tracciate)."""
     h = hashlib.sha256()
     for parte in ((feature / "tasks.md").read_text(encoding="utf-8"), git("rev-parse", "HEAD"),
-                  git("status", "--porcelain")):
+                  git("status", "--porcelain"), git("diff", "HEAD")):
         h.update(parte.encode("utf-8"))
+    for nome in git("ls-files", "--others", "--exclude-standard").splitlines():
+        p = Path(nome)
+        if p.is_file():
+            h.update(nome.encode("utf-8"))
+            h.update(p.read_bytes())
     return h.hexdigest()
 
 
@@ -689,6 +714,16 @@ def opzione(argv: list[str], nome: str, default: str) -> str:
     return argv[argv.index(nome) + 1] if nome in argv and argv.index(nome) + 1 < len(argv) else default
 
 
+def esegui_agente(comando: list[str], prompt: str, timeout: int) -> None:
+    try:
+        r = subprocess.run(comando, input=prompt, text=True, encoding="utf-8", timeout=timeout)
+    except subprocess.TimeoutExpired:
+        print(f"[WARN] l'agente ha superato il timeout di {timeout} s ed è stato terminato", flush=True)
+        return
+    if r.returncode != 0:
+        print(f"[WARN] l'agente è uscito con codice {r.returncode}", flush=True)
+
+
 def main(argv: list[str]) -> int:
     pos = [a for i, a in enumerate(argv) if not a.startswith("--") and not (i > 0 and argv[i - 1] in OPZIONI_CON_VALORE)]
     if not pos:
@@ -697,6 +732,7 @@ def main(argv: list[str]) -> int:
     feature = Path(pos[0])
     massimo = int(opzione(argv, "--max", "15"))
     stallo = int(opzione(argv, "--stall", "3"))
+    timeout = int(opzione(argv, "--timeout", "1800"))
     agente = shlex.split(opzione(argv, "--agent", "claude -p"), posix=(os.name != "nt"))
     dry = "--dry-run" in argv
 
@@ -714,19 +750,28 @@ def main(argv: list[str]) -> int:
     if eseguibile is None:
         print(f"[ERRORE] agente non trovato nel PATH: {agente[0]}")
         return 2
+    rossa = fase_rossa(feature)
     if dry:
-        print(f"DRY-RUN OK: spec={feature.as_posix()} max={massimo} stall={stallo} agente={' '.join(agente)} "
-              f"branch={branch or '?'}; task T-nn aperte: {'si' if task_aperte(feature) else 'no'}")
+        print(f"DRY-RUN OK: spec={feature.as_posix()} max={massimo} stall={stallo} timeout={timeout}s "
+              f"agente={' '.join(agente)} branch={branch or '?'}; task T-nn aperte: "
+              f"{'si' if task_aperte(feature) else 'no'}; fase rossa: {rossa or 'no'}")
         return 0
 
     prompt = (feature / "PROMPT.md").read_text(encoding="utf-8")
     if not task_aperte(feature):
         print("Nessuna task T-nn aperta: controllo solo verify")
         return 0 if verify_verde() else 1
+    if not verify_verde():
+        if rossa:
+            print(f"Baseline rossa attesa: fase rossa dopo {rossa}")
+        elif "--allow-red-baseline" not in argv:
+            print("[ERRORE] verify è rosso prima di iniziare e non c'è una fase rossa: sistema la baseline "
+                  "(o usa --allow-red-baseline se il rosso è noto e documentato)")
+            return 2
     precedente, fermi = impronta(feature), 0
     for i in range(1, massimo + 1):
         print(f"== iterazione {i}/{massimo} ==", flush=True)
-        subprocess.run([eseguibile, *agente[1:]], input=prompt, text=True, encoding="utf-8")
+        esegui_agente([eseguibile, *agente[1:]], prompt, timeout)
         if verify_verde() and not task_aperte(feature):
             print("OK: verify verde e nessuna task T-nn aperta. Prossimi passi: review, T-DOC, T-SYNC")
             return 0
@@ -741,6 +786,8 @@ def main(argv: list[str]) -> int:
 
 
 if __name__ == "__main__":
+    for flusso in (sys.stdout, sys.stderr):  # UTF-8 anche con console cp1252 (Windows)
+        flusso.reconfigure(encoding="utf-8", errors="replace")
     sys.exit(main(sys.argv[1:]))
 ```
 
@@ -751,8 +798,9 @@ Il prompt passa da stdin, così si evitano i limiti di lunghezza della riga di c
 ```markdown
 Leggi docs/specs/<id>/{spec,plan,tasks,progress}.md e AGENTS.md.
 Prendi la prima task T-nn non completata (ignora T-DOC e T-SYNC). Implementa solo quella.
-Esegui `python scripts/verify.py`. Se fallisce, correggi e riesegui.
-A verde: commit su questo branch, spunta la task, aggiorna progress.md (cosa fatto, cosa imparato, blocchi).
+Task "atteso: rosso" (test dagli AC): scrivi solo i test e verifica con il comando di `verifica:` che falliscano per il motivo giusto; non farli passare. Se serve uno scheletro per farli girare, committalo prima, a parte. Committa i soli file di test con il trailer `Test-Lock: T-nn`, spunta la task, aggiorna progress.md e fermati.
+Altre task: esegui `python scripts/verify.py`. Se fallisce, correggi e riesegui. A verde: commit su questo branch, spunta la task, aggiorna progress.md (cosa fatto, cosa imparato, blocchi).
+Non modificare i file di test di un commit Test-Lock: se un test ti sembra sbagliato, scrivilo in progress.md e fermati.
 Non toccare ciò che è nel non-scope. Se un requisito è ambiguo, scrivilo in progress.md e fermati.
 Se tutte le task T-nn sono completate, non fare altro.
 ```
@@ -865,21 +913,21 @@ a ogni punto di approvazione) e **script** (controlli deterministici copiati nel
 | Script | Cosa controlla |
 |---|---|
 | `verify.py` | Format, lint, tipi, test del progetto: il criterio di "fatto" |
-| `spec_lint.py` | Spec (sezioni, ID, REQ→AC, non-scope, approvazione, domande aperte); con `--plan` ogni AC è nel piano; con `--tasks` ogni task ha verifica e copertura, ogni AC è coperto, ci sono `T-DOC` e `T-SYNC` |
+| `spec_lint.py` | Spec (sezioni, ID, REQ→AC, non-scope, approvazione, domande aperte); con `--plan` ogni AC è nella strategia di test; con `--tasks` ogni task ha verifica e copertura e nessun segnaposto, ogni AC è coperto, ci sono `T-DOC` e `T-SYNC` |
 | `state.py` | Stato del progetto e prossima fase suggerita |
 | `scan_repo.py` | Inventario deterministico di una codebase (stack, linguaggi, test, CI, entry point) |
 | `trace_check.py` | Ogni AC citato in almeno un test; requisiti senza test |
 | `bug_lint.py` | Completezza del file di un bug in funzione del suo stato |
-| `diff_scope.py` | File modificati: zone vietate (`Non modificare:` in `AGENTS.md`), file fuori piano, file pianificati non toccati |
+| `diff_scope.py` | File modificati: zone vietate (`Non modificare:` in `AGENTS.md`), test bloccati (`Test-Lock`) modificati dopo il blocco, file fuori piano, file pianificati non toccati |
 | `docs_check.py` | Link relativi validi; esempi Python marcati eseguiti con successo |
 | `sync_check.py` | Chiusura: spec `implemented`, task chiuse, review con decisione umana, pagina d'area, tracciabilità |
-| `loop.py` | Loop esterno con tetto, rilevamento dello stallo, branch protetto e dry run |
+| `loop.py` | Loop esterno con tetto, rilevamento dello stallo, timeout per iterazione, baseline, branch protetto e dry run |
 
-**Hook opzionali (solo Claude Code)**, inattivi se non abilitati con una variabile d'ambiente:
+**Hook opzionali (solo Claude Code)**, inattivi se non abilitati con una variabile d'ambiente. Partono da `hooks/run.sh`, che esce subito se l'hook non è abilitato e altrimenti usa il primo tra `python3`, `python` e `py -3` che sia Python 3; senza Python l'errore è visibile ma non bloccante:
 
 | Hook | Abilitazione | Effetto |
 |---|---|---|
-| `Stop` | `SDLC_ENFORCE_VERIFY=1` (e `SDLC_VERIFY_ARGS`, per es. `--fast`) | Se `verify` è rosso, l'agente non può dichiarare il lavoro finito; evita i cicli con `stop_hook_active` |
+| `Stop` | `SDLC_ENFORCE_VERIFY=1` (e `SDLC_VERIFY_ARGS`, per es. `--fast`) | Se `verify` è rosso, l'agente non può dichiarare il lavoro finito, salvo fase rossa; evita i cicli con `stop_hook_active` |
 | `PreToolUse` | `SDLC_GUARD=1` | Blocca force push, `reset --hard`, cancellazioni ricorsive, download-ed-esegui, lettura di `.env` |
 
 **Subagent (solo Claude Code):** `sdlc-reviewer`, revisore indipendente in sola lettura usato da `sdlc-review-diff`. Con altri agenti la review si fa in una sessione nuova con le stesse istruzioni.

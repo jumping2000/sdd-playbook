@@ -1,6 +1,7 @@
 Leggi docs/specs/<id>/{spec,plan,tasks,progress}.md e AGENTS.md.
 Prendi la prima task T-nn non completata (ignora T-DOC e T-SYNC). Implementa solo quella.
-Esegui `python scripts/verify.py`. Se fallisce, correggi e riesegui.
-A verde: commit su questo branch, spunta la task, aggiorna progress.md (cosa fatto, cosa imparato, blocchi).
+Task "atteso: rosso" (test dagli AC): scrivi solo i test e verifica con il comando di `verifica:` che falliscano per il motivo giusto; non farli passare. Se serve uno scheletro per farli girare, committalo prima, a parte. Committa i soli file di test con il trailer `Test-Lock: T-nn`, spunta la task, aggiorna progress.md e fermati.
+Altre task: esegui `python scripts/verify.py`. Se fallisce, correggi e riesegui. A verde: commit su questo branch, spunta la task, aggiorna progress.md (cosa fatto, cosa imparato, blocchi).
+Non modificare i file di test di un commit Test-Lock: se un test ti sembra sbagliato, scrivilo in progress.md e fermati.
 Non toccare ciò che è nel non-scope. Se un requisito è ambiguo, scrivilo in progress.md e fermati.
 Se tutte le task T-nn sono completate, non fare altro.

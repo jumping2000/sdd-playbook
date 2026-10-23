@@ -1,4 +1,4 @@
-# sdlc-playbook (versione 0.4.0)
+# sdlc-playbook (versione 0.5.0)
 
 Plugin per Claude Code e Codex che accompagna lo sviluppatore lungo tutto il ciclo di vita descritto nel
 [playbook](docs/playbook-ai-software-lifecycle.md): spec, piano, task, test, implementazione, review,
@@ -62,6 +62,9 @@ Gli script restano **nel progetto**: la verifica in CI e da VS Code funziona anc
 | `SDLC_VERIFY_ARGS` | Argomenti di `verify.py` per l'hook `Stop` (es. `--fast`) | vuoto (verifica completa) |
 | `SDLC_GUARD=1` | Abilita l'hook `PreToolUse`: blocca comandi e letture a rischio | spento |
 
+Gli hook partono da `hooks/run.sh`, che usa il primo tra `python3`, `python` e `py -3` e richiede `sh` (su Windows quello
+di Git for Windows). In fase rossa (ultima task chiusa "atteso: rosso") l'hook `Stop` non blocca.
+
 ## Modificare il plugin
 
 - Il playbook si modifica in `docs/playbook.src.md`; poi `python tools/build_playbook.py` rigenera il file. I blocchi
@@ -74,9 +77,9 @@ Gli script restano **nel progetto**: la verifica in CI e da VS Code funziona anc
 
 | Cosa | Esito |
 |---|---|
-| Suite di test | Passa su Linux (comprende loop con agente finto, hook, script su repository git temporanei) |
-| `claude plugin validate .` (Claude Code 2.1.303) | Passa; restano gli avvisi su `author` |
-| Esecuzione su Windows | **Non fatta**: affidata alla CI inclusa |
+| Suite di test | Passa su Linux (Ubuntu 24.04 su WSL2) e su Windows 11 (comprende loop con agente finto, hook e launcher `run.sh`, script su repository git temporanei) |
+| `claude plugin validate .` | Passava sulla 0.4.0 (Claude Code 2.1.303, avvisi su `author`); **non rieseguito** sulla 0.5.0 con il nuovo `hooks.json` |
+| Esecuzione su Windows | Suite locale e CI `windows-latest` |
 | Manifest Codex | **Non validato** con uno strumento Codex |
 | Skill eseguite da un agente reale su un progetto | **Non fatto**: va provato su un greenfield e su un brownfield di esempio |
 | Hook in una sessione reale di Claude Code | **Non fatto**: provati solo come script con l'input JSON atteso; lo schema è accettato dal validatore |

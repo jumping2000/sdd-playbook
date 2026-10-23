@@ -21,13 +21,19 @@ errori); la task di test è indicata in `tasks.md`. Convenzioni di nome: `refere
    fallimento di ciascuno. Un errore di sintassi, di import o di nome non è il motivo giusto: correggi il test.
 5. **Controlla la tracciabilità:** `python scripts/trace_check.py <spec> --warn-only` (gli AC delle task
    successive risulteranno ancora senza test).
-6. Spunta la task secondo la sua nota "atteso: rosso". **Non committare da solo** i test rossi: vanno nel
-   commit della task di implementazione successiva (la CI non deve diventare rossa).
+6. **Blocca i test con un commit.** Se hai scritto uno scheletro, committalo prima, a parte. Poi committa **solo i
+   file di test** con i trailer `Test-Lock: T-<nn>`, `Spec: SPEC-<nnn>` e `Agent: <nome e versione>`, e spunta la
+   task. Da qui `diff_scope.py` segnala come errore ogni modifica successiva a quei test: l'implementazione deve
+   farli passare senza toccarli. La CI del branch resta rossa fino alla task di implementazione: è atteso, e la
+   "fase rossa" (ultima task chiusa marcata "atteso: rosso") è riconosciuta dall'hook `Stop` e da `loop.py`.
+   Se l'utente non ha autorizzato i commit, proponi i messaggi e non committare.
 
 ## Regole
 
 - Non toccare il codice di produzione oltre lo scheletro del punto 3.
 - Non indebolire o rimuovere test esistenti.
+- Un test bloccato che si rivela sbagliato si corregge solo con l'accordo dell'utente, in un nuovo commit
+  `Test-Lock`, e la correzione va motivata in `review.md`.
 - A fine di tutte le task di test, `python scripts/trace_check.py <spec>` (senza `--warn-only`) deve passare
   una volta implementato il codice.
 

@@ -78,7 +78,8 @@ class TestMetadati(unittest.TestCase):
         for evento in hooks.values():
             for blocco in evento:
                 for h in blocco["hooks"]:
-                    nome = re.search(r"hooks/(\w+\.py)", h["command"]).group(1)
+                    self.assertIn("hooks/run.sh", h["command"])
+                    nome = re.search(r"(\w+\.py)", h["command"]).group(1)
                     self.assertTrue((ROOT / "hooks" / nome).is_file(), nome)
 
 
@@ -154,7 +155,8 @@ class TestPlaybook(unittest.TestCase):
     def test_template_coerenti_con_gli_script(self):
         spec = leggi("skills/sdlc-spec/references/spec-template.md")
         err, _ = spec_lint.lint_tasks(spec, leggi("skills/sdlc-tasks/references/tasks-template.md"))
-        self.assertEqual(err, [])
+        self.assertTrue(err)  # il template va compilato: restano solo i segnaposto
+        self.assertTrue(all("segnaposto non compilato" in e for e in err), err)
         err, avv = spec_lint.lint_plan(spec, leggi("skills/sdlc-plan/references/plan-template.md"))
         self.assertEqual(err, [])
         self.assertTrue(avv)

@@ -3,12 +3,15 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
+import stat
 import sys
 import unittest
 
-from common import HOOKS, TmpDir, copia_script, esegui, repo_git, scrivi
+from common import HOOKS, TmpDir, copia_script, esegui, git, repo_git, scrivi
 
 PY = os.path.basename(sys.executable)
+SH = shutil.which("sh")
 AGENTE_CHE_SPUNTA = (
     "import re, sys\n"
     "sys.stdin.read()\n"
@@ -17,6 +20,17 @@ AGENTE_CHE_SPUNTA = (
     "open(p, 'w', encoding='utf-8').write(re.sub(r'\\[ \\] (T-\\d+)', r'[x] \\1', t, count=1))\n"
 )
 AGENTE_INERTE = "import sys\nsys.stdin.read()\n"
+# Aggiunge una riga allo stesso file tracciato a ogni iterazione, senza committare; alla quarta spunta T-01.
+AGENTE_PROGRESSIVO = (
+    "import sys\n"
+    "sys.stdin.read()\n"
+    "open('src.txt', 'a').write('+\\n')\n"
+    "if open('src.txt').read().count('+') >= 4:\n"
+    "    p = 'docs/specs/001-x/tasks.md'\n"
+    "    t = open(p, encoding='utf-8').read()\n"
+    "    open(p, 'w', encoding='utf-8').write(t.replace('[ ] T-01', '[x] T-01'))\n"
+)
+FASE_ROSSA = "- [x] T-01 Test — verifica: `t` (atteso: rosso) — copre: AC-001\n- [ ] T-02 Implementa\n"
 
 
 def progetto(d, tasks: str, branch="feature/x", agente=AGENTE_CHE_SPUNTA, verify_ok=True):
@@ -66,8 +80,42 @@ class TestLoop(unittest.TestCase):
     def test_verify_rosso_non_basta_spuntare(self):
         with TmpDir() as d:
             progetto(d, "- [ ] T-01 a\n", verify_ok=False)
-            r = loop(d, "--max", "2")
+            r = loop(d, "--max", "2", "--allow-red-baseline")
             self.assertEqual(r.returncode, 1)
+
+    def test_baseline_rossa_rifiutata_salvo_fase_rossa(self):
+        with TmpDir() as d:
+            progetto(d, DUE, verify_ok=False)
+            r = loop(d)
+            self.assertEqual(r.returncode, 2)
+            self.assertIn("rosso prima di iniziare", r.stdout)
+        with TmpDir() as d:
+            progetto(d, FASE_ROSSA, verify_ok=False)
+            self.assertIn("fase rossa: T-01", loop(d, "--dry-run").stdout)
+            r = loop(d, "--max", "1")
+            self.assertEqual(r.returncode, 1, r.stdout)
+            self.assertIn("Baseline rossa attesa", r.stdout)
+
+    def test_progresso_nel_contenuto_non_e_stallo(self):
+        with TmpDir() as d:
+            progetto(d, "- [ ] T-01 a\n", agente=AGENTE_PROGRESSIVO)
+            scrivi(d, "src.txt", "")
+            git(d, "add", "-A")
+            git(d, "commit", "-qm", "base")
+            r = loop(d, "--max", "6", "--stall", "2")
+            self.assertEqual(r.returncode, 0, r.stdout)
+            self.assertEqual((d / "src.txt").read_text().count("+"), 4)
+
+    def test_timeout_e_codice_di_uscita_dell_agente(self):
+        with TmpDir() as d:
+            progetto(d, DUE, agente="import sys, time\nsys.stdin.read()\ntime.sleep(30)\n")
+            r = loop(d, "--max", "1", "--timeout", "1")
+            self.assertEqual(r.returncode, 1)
+            self.assertIn("timeout di 1 s", r.stdout)
+        with TmpDir() as d:
+            progetto(d, DUE, agente="import sys\nsys.stdin.read()\nsys.exit(3)\n")
+            r = loop(d, "--max", "1")
+            self.assertIn("uscito con codice 3", r.stdout)
 
     def test_rifiuta_main(self):
         with TmpDir() as d:
@@ -151,6 +199,54 @@ class TestHook(unittest.TestCase):
             r = esegui([sys.executable, str(HOOKS / "stop_verify.py")], d, stdin=json.dumps({"cwd": str(d)}),
                        env={"SDLC_ENFORCE_VERIFY": "1"})
             self.assertEqual(r.returncode, 0)
+
+    def test_stop_hook_in_fase_rossa(self):
+        with TmpDir() as d:
+            scrivi(d, "docs/specs/001-x/tasks.md", FASE_ROSSA)
+            r = self.stop(d, False)
+            self.assertEqual(r.returncode, 0, r.stderr)
+            self.assertIn("fase rossa in 001-x (T-01)", r.stdout)
+            scrivi(d, "docs/specs/001-x/tasks.md", FASE_ROSSA.replace("[ ] T-02", "[x] T-02"))
+            self.assertEqual(self.stop(d, False).returncode, 2)
+
+
+@unittest.skipIf(SH is None, "sh non disponibile")
+class TestAvvioHook(unittest.TestCase):
+    """hooks/run.sh: trova Python 3, non serve se l'hook è inattivo, fallisce in modo visibile ma non bloccante."""
+
+    def avvia(self, d, script: str, var: str, attivo=True, stdin="{}", path: str | None = None):
+        env = {var: "1" if attivo else "0"}
+        if path is not None:
+            env["PATH"] = path
+        return esegui([SH, str(HOOKS / "run.sh"), script, var], d, stdin=stdin, env=env)
+
+    def test_hook_attivo_con_python_reale(self):
+        with TmpDir() as d:
+            scrivi(d, "scripts/verify.py", "import sys\nsys.exit(1)\n")
+            r = self.avvia(d, "stop_verify.py", "SDLC_ENFORCE_VERIFY", stdin=json.dumps({"cwd": str(d)}))
+            self.assertEqual(r.returncode, 2, r.stderr)
+            self.assertIn("verify è ROSSO", r.stderr)
+            ev = {"tool_name": "Bash", "tool_input": {"command": "git reset --hard"}}
+            self.assertEqual(self.avvia(d, "pretool_guard.py", "SDLC_GUARD", stdin=json.dumps(ev)).returncode, 2)
+
+    @unittest.skipIf(os.name == "nt", "PATH minimo provato solo su POSIX")
+    def test_inattivo_senza_python_e_senza_python3(self):
+        with TmpDir() as d:
+            self.assertEqual(self.avvia(d, "stop_verify.py", "SDLC_ENFORCE_VERIFY", attivo=False, path=str(d)).returncode, 0)
+            r = self.avvia(d, "stop_verify.py", "SDLC_ENFORCE_VERIFY", path=str(d))
+            self.assertEqual(r.returncode, 1)
+            self.assertIn("Python 3 non trovato", r.stderr)
+
+    @unittest.skipIf(os.name == "nt", "interpreti finti provati solo su POSIX")
+    def test_scarta_un_python3_non_valido(self):
+        with TmpDir() as d:
+            finti = d / "bin"
+            for nome, corpo in (("python3", "exit 9\n"), ("python", f'exec "{sys.executable}" "$@"\n')):
+                p = scrivi(finti, nome, "#!/bin/sh\n" + corpo)
+                p.chmod(p.stat().st_mode | stat.S_IEXEC)
+            scrivi(d, "scripts/verify.py", "import sys\nsys.exit(1)\n")
+            r = self.avvia(d, "stop_verify.py", "SDLC_ENFORCE_VERIFY", stdin=json.dumps({"cwd": str(d)}), path=str(finti))
+            self.assertEqual(r.returncode, 2, r.stderr)
 
 
 if __name__ == "__main__":

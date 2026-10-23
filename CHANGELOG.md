@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.5.0
+Correzioni dalla review del 2026-10-23 (`REVIEW.md`, punti B1-B3, B5-B8, B11 e conflitto TDD/hook/loop di A2).
+- Output UTF-8 in tutti gli script e negli hook: la suite ora passa anche su Windows con console cp1252 (B1).
+- Hook avviati da `hooks/run.sh`: esce subito se l'hook non è abilitato, cerca `python3`, `python`, `py -3`; senza
+  Python 3 l'errore è visibile e non bloccante. Prima, su Ubuntu pulito, gli hook non partivano senza avvisare (B2).
+- `diff_scope.py`: le zone vietate con il punto iniziale (`.github/`) ora scattano (B3); lette tutte le righe
+  `Non modificare:`; percorso del piano = prima parola o testo tra backtick; colonna "Dove" della strategia di test
+  inclusa nel piano (B5).
+- `spec_lint.py`: segnaposto `<...>` nelle task `T-nn` sono errori (B6); AC cercati per ID esatto nella sola sezione
+  "Strategia di test" (B7).
+- `loop.py`: stallo calcolato anche sul contenuto delle modifiche; `--timeout` per iterazione; codice di uscita
+  dell'agente riportato; rifiuto di una baseline rossa salvo fase rossa o `--allow-red-baseline` (B8).
+- TDD: i test rossi si committano con il trailer `Test-Lock: T-nn` e `diff_scope.py` segnala ogni modifica successiva;
+  "fase rossa" riconosciuta da hook `Stop` e `loop.py`; `PROMPT.md` del loop e skill aggiornati (A2).
+- `.gitattributes` del repository con LF (B11).
+
 ## 0.4.0
 - Skill `sdlc-docs` (T-DOC) e `sdlc-sync` (T-SYNC); script `docs_check.py` e `sync_check.py`.
 - `sync_check.py` richiede anche la decisione umana nella review.

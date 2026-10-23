@@ -14,7 +14,8 @@ Playbook §4 (fase 6) e §6. Lavora sulle sole task numerate `T-nn`: `T-DOC` e `
 - Sei su un **branch di feature**, non su `main`/`master`/un branch protetto. Altrimenti proponi di crearlo e
   attendi conferma.
 - Esegui `python scripts/verify.py` **prima di iniziare**: serve una baseline. Se è già rossa, segnalalo
-  all'utente: non è colpa delle tue modifiche e non va nascosto.
+  all'utente: non è colpa delle tue modifiche e non va nascosto. Fa eccezione la **fase rossa** (l'ultima task
+  chiusa è "atteso: rosso"): lì i test rossi sono il punto di partenza della task di implementazione.
 
 ## Ciclo (una task per volta)
 
@@ -27,7 +28,8 @@ Playbook §4 (fase 6) e §6. Lavora sulle sole task numerate `T-nn`: `T-DOC` e `
    hai provato e chiedi indicazioni (task troppo grande o spec ambigua).
 5. **Verde:** spunta la task in `tasks.md`. Fai commit con messaggio chiaro e i trailer `Spec: SPEC-<NNN>` e
    `Agent: <nome e versione>`. Se l'utente non ha autorizzato i commit, proponi il messaggio e non committare.
-   Una task di test "atteso: rosso" non si committa da sola: va nel commit della task di implementazione successiva.
+   Una task di test "atteso: rosso" si chiude con il commit `Test-Lock` dei soli test (vedi `sdlc-tests-from-ac`).
+   Nelle task successive **non modificare i file di test bloccati**: se un test sembra sbagliato, fermati e chiedi.
 6. Se esiste `progress.md` nella cartella della spec, aggiornalo: fatto, imparato, blocchi.
 7. Passa alla task successiva solo se l'utente ha chiesto di procedere in sequenza; altrimenti fermati e riporta.
 
