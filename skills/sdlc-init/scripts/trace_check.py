@@ -5,6 +5,7 @@ Uso:
   python scripts/trace_check.py docs/specs/2026-10-24-export-csv/spec.md
   python scripts/trace_check.py docs/specs/2026-10-24-export-csv/spec.md --tests tests integration
   python scripts/trace_check.py docs/specs/2026-10-24-export-csv/spec.md --warn-only
+  python scripts/trace_check.py docs/specs/2026-10-24-export-csv/spec.md --junit reports/junit.xml
 
 Gli AC ripartono da AC-001 in ogni spec, quindi una citazione vale per una spec precisa:
   1. qualificata: SPEC-2026-10-24-export-csv/AC-001 (nei nomi di funzione SPEC_2026_10_24_export_csv_AC_001;
@@ -14,14 +15,21 @@ Gli AC ripartono da AC-001 in ogni spec, quindi una citazione vale per una spec 
   3. breve in un file che non nomina spec -> vale solo se il progetto ha una sola spec in docs/specs/; altrimenti è
      ambigua, non conta ed è segnalata.
 Le citazioni su righe con TODO, FIXME o XXX non contano: un promemoria non è un test.
+--junit FILE|DIR ...: report JUnit XML dei test eseguiti (una cartella vale per tutti i suoi *.xml). Ogni AC deve
+avere almeno un caso di test eseguito e passato, e nessuno fallito: citare l'AC non basta più. Un caso vale per un AC
+se lo cita in forma qualificata (nome o classname), oppure in forma breve quando appartiene a un file di test
+attribuito alla spec (attributo file, o un componente del classname uguale al nome del file) o il progetto ha una
+sola spec. I casi saltati non contano.
 L'ID della spec si legge dal titolo "# SPEC-<id>: ..." (data + slug in minuscolo, o numero).
 Cartelle di test cercate di default: tests, test, __tests__, spec, src/test.
-Exit code: 0 tutti gli AC citati; 1 AC senza test; 2 uso errato. Solo stdlib, cross-platform.
+Exit code: 0 tutti gli AC citati (e, con --junit, verificati); 1 AC senza test; 2 uso errato o report illeggibile.
+Solo stdlib, cross-platform.
 """
 from __future__ import annotations
 
 import re
 import sys
+import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import NamedTuple
 
@@ -68,6 +76,18 @@ def file_di_test(cartelle: list[Path]):
                 yield f
 
 
+def brevi_nel_file(testo: str, spec: str | None, spec_unica: bool) -> str:
+    """Come contano le citazioni brevi in un file: "valide", "ambigue" o "altrui"."""
+    dichiarate = {spec_lint.chiave_id(n) for n in SPEC_REF.findall(testo)}
+    if spec is not None and dichiarate == {spec}:
+        return "valide"
+    if not dichiarate:
+        return "valide" if spec_unica else "ambigue"
+    if spec in dichiarate:
+        return "ambigue"  # il file nomina più spec: una citazione breve non dice di quale
+    return "altrui"  # il file appartiene ad altre spec
+
+
 def raccogli(cartelle: list[Path], spec: str | None, spec_unica: bool):
     """(numero AC -> posizioni per la spec indicata, citazioni ambigue, citazioni ignorate perché promemoria)."""
     trovati: dict[int, list[str]] = {}
@@ -75,15 +95,7 @@ def raccogli(cartelle: list[Path], spec: str | None, spec_unica: bool):
     ignorati: list[str] = []
     for f in file_di_test(cartelle):
         testo = f.read_text(encoding="utf-8", errors="ignore")
-        dichiarate = {spec_lint.chiave_id(n) for n in SPEC_REF.findall(testo)}
-        if spec is not None and dichiarate == {spec}:
-            brevi = "valide"
-        elif not dichiarate:
-            brevi = "valide" if spec_unica else "ambigue"
-        elif spec in dichiarate:
-            brevi = "ambigue"  # il file nomina più spec: una citazione breve non dice di quale
-        else:
-            brevi = "altrui"  # il file appartiene ad altre spec
+        brevi = brevi_nel_file(testo, spec, spec_unica)
         for n, riga in enumerate(testo.splitlines(), 1):
             pos = f"{f.as_posix()}:{n}"
             if not (QUALIFICATO.search(riga) or AC_REF.search(riga)):
@@ -117,18 +129,61 @@ def analizza(spec_text: str, cartelle: list[Path], spec_unica: bool | None = Non
     return Esito(acs, coperti, senza, orfani, req_coperti, ambigui, ignorati)
 
 
+def file_report(percorsi: list[str]) -> list[Path]:
+    out: list[Path] = []
+    for p in map(Path, percorsi):
+        out += sorted(p.rglob("*.xml")) if p.is_dir() else [p]
+    return out
+
+
+def casi_junit(report: list[Path]) -> list[tuple[str, str, str, str]]:
+    """(nome, classname, file, esito) di ogni testcase; esito: passato, fallito o saltato. ValueError se illeggibile."""
+    casi = []
+    for f in report:
+        try:
+            radice = ET.parse(f).getroot()
+        except (ET.ParseError, OSError) as e:
+            raise ValueError(f"report JUnit illeggibile: {f.as_posix()} ({e})") from e
+        for c in radice.iter("testcase"):
+            figli = {x.tag for x in c}
+            esito = "fallito" if figli & {"failure", "error"} else "saltato" if "skipped" in figli else "passato"
+            casi.append((c.get("name", ""), c.get("classname", ""), c.get("file", ""), esito))
+    return casi
+
+
+def esecuzioni(spec_text: str, cartelle: list[Path], report: list[Path],
+               spec_unica: bool | None = None) -> dict[str, dict[str, list[str]]]:
+    """AC -> {"passato": [...], "fallito": [...], "saltato": [...]} dai casi del report attribuiti a questa spec."""
+    _, acs = spec_lint.parse_spec(spec_text)
+    spec = chiave_spec(spec_text)
+    unica = spec_nel_progetto() <= 1 if spec_unica is None else spec_unica
+    valide = [f for f in file_di_test(cartelle)
+              if brevi_nel_file(f.read_text(encoding="utf-8", errors="ignore"), spec, unica) == "valide"]
+    stem = {f.stem for f in valide}
+    percorsi = {f.as_posix() for f in valide}
+    out: dict[str, dict[str, list[str]]] = {ac: {"passato": [], "fallito": [], "saltato": []} for ac in acs}
+    for nome, classe, file, esito in casi_junit(report):
+        testo = f"{classe} {nome}"
+        numeri = {int(m.group(2)) for m in QUALIFICATO.finditer(testo) if spec_lint.chiave_id(m.group(1)) == spec}
+        file = file.replace("\\", "/")
+        del_file = (unica or bool(set(re.split(r"[./:\\]+", classe)) & stem)
+                    or bool(file) and any(file.endswith(p) for p in percorsi))
+        if del_file:
+            numeri |= {int(m.group(1)) for m in AC_REF.finditer(QUALIFICATO.sub(" ", testo))}
+        for ac in acs:
+            if int(ac[3:]) in numeri:
+                out[ac][esito].append(f"{classe}::{nome}" if classe else nome)
+    return out
+
+
 def main(argv: list[str]) -> int:
     if not argv or argv[0].startswith("--"):
         print(__doc__)
         return 2
     spec_path, opts = argv[0], argv[1:]
     warn_only = "--warn-only" in opts
-    dirs: list[str] = []
-    if "--tests" in opts:
-        for o in opts[opts.index("--tests") + 1:]:
-            if o.startswith("--"):
-                break
-            dirs.append(o)
+    dirs = valori(opts, "--tests")
+    junit = valori(opts, "--junit")
     cartelle = [Path(d) for d in dirs] if dirs else [Path(c) for c in CARTELLE if Path(c).is_dir()]
     cartelle = [c for c in cartelle if c.is_dir()]
     if not cartelle:
@@ -152,8 +207,40 @@ def main(argv: list[str]) -> int:
               f"{', '.join(e.ambigui[:3])}): non contano. Usa SPEC-<id>/AC-nnn o dichiara la spec nel file")
     if e.ignorati:
         print(f"[WARN] {len(e.ignorati)} citazioni su righe TODO/FIXME/XXX ignorate (es. {', '.join(e.ignorati[:3])})")
-    print("TRACE: " + ("OK" if not e.senza else f"{len(e.senza)} AC senza test: {', '.join(e.senza)}"))
-    return 0 if (not e.senza or warn_only) else 1
+    non_verificati: list[str] = []
+    if junit:
+        try:
+            eseguiti = esecuzioni(testo, cartelle, file_report(junit))
+        except ValueError as err:
+            print(f"[ERRORE] {err}")
+            return 2
+        for ac, esiti in eseguiti.items():
+            if esiti["fallito"]:
+                print(f"[ERRORE] {ac}: test falliti nel report: {', '.join(esiti['fallito'][:3])}")
+            elif not esiti["passato"]:
+                print(f"[ERRORE] {ac}: nessun test eseguito e passato nel report"
+                      + (f" ({len(esiti['saltato'])} saltati)" if esiti["saltato"] else ""))
+            else:
+                continue
+            non_verificati.append(ac)
+    ko = sorted(set(e.senza) | set(non_verificati))
+    if not ko:
+        print("TRACE: OK" + (" (verificato sul report dei test eseguiti)" if junit else ""))
+    else:
+        print(f"TRACE: {len(e.senza)} AC senza test" + (f": {', '.join(e.senza)}" if e.senza else "")
+              + (f"; {len(non_verificati)} AC non verificati dal report: {', '.join(non_verificati)}" if junit else ""))
+    return 0 if (not ko or warn_only) else 1
+
+
+def valori(opts: list[str], nome: str) -> list[str]:
+    """Argomenti che seguono l'opzione fino alla successiva."""
+    out: list[str] = []
+    if nome in opts:
+        for o in opts[opts.index(nome) + 1:]:
+            if o.startswith("--"):
+                break
+            out.append(o)
+    return out
 
 
 if __name__ == "__main__":

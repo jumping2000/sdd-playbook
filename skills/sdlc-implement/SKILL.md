@@ -18,6 +18,8 @@ Playbook §4 (fase 6) e §6. Lavora sulle sole task numerate `T-nn`: `T-DOC` e `
 - Esegui `python scripts/verify.py` **prima di iniziare**: serve una baseline. Se è già rossa, segnalalo
   all'utente: non è colpa delle tue modifiche e non va nascosto. Fa eccezione la **fase rossa** (l'ultima task
   chiusa è "atteso: rosso"): lì i test rossi sono il punto di partenza della task di implementazione.
+- Nei livelli M e L la task di test chiusa riporta `test approvati:` (l'umano ha riletto i test bloccati). Se manca,
+  fermati e indica `sdlc-tests-from-ac`.
 
 ## Ciclo (una task per volta)
 

@@ -137,7 +137,7 @@ Conclusione per piattaforma: **Linux** è la piattaforma su cui il plugin funzio
 che su un'installazione pulita non partono (B2). **Windows nativo**, indicato come supportato, non passa la propria
 suite.
 
-## Stato delle correzioni (0.5.0-0.9.0)
+## Stato delle correzioni (0.5.0-0.10.0)
 
 | Punto | Stato | Come |
 |---|---|---|
@@ -157,4 +157,6 @@ suite.
 | A8 | corretto in gran parte (0.8.0) | ID data + slug (niente collisioni tra branch), stato `in-revisione` con catena di hash spec → piano → task, problemi della review come task `T-R`, `state.py` con più spec e associazione al branch. Resta da gestire il conflitto di merge di due modifiche alla stessa spec |
 | A6 | corretto (0.9.0) | livelli S/M/L nella spec (inclusi nell'hash); `diff_scope.py` segnala il livello sottostimato (aree sensibili → L; dipendenze o più di 3 file di produzione → almeno M); S senza piano né `review.md`, L con ADR e revisione umana del diff. Interfacce pubbliche e formati dati restano a giudizio di chi approva |
 | A5 | corretto in parte (0.9.0) | revisione umana del diff obbligatoria nel livello L (aree sensibili). Restano gli strumenti del subagent |
-| B10, A3 (report eseguiti), A5 (subagent), A7, C | aperti | pianificati nei rilasci 0.10.0-0.11.0 (verifica con JUnit, sicurezza e manutenzione) |
+| A3 | corretto (0.10.0) | con `--junit` `trace_check.py` e `sync_check.py` contano solo i test eseguiti e passati nel report JUnit (obbligatorio nel livello L) |
+| C (`sdlc-tests-from-ac` + `sdlc-implement`) | corretto (0.10.0) | nei livelli M e L i test bloccati si approvano prima dell'implementazione (`test approvati:`), controllato da `state.py`, `loop.py` e `sync_check.py` |
+| B10, A5 (subagent), A7, C (permessi del loop, versioni degli script, action CI) | aperti | pianificati nel rilascio 0.11.0 (sicurezza e manutenzione) |

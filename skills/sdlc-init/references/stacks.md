@@ -6,6 +6,17 @@ non configurato). Se il progetto non ha ancora test, dillo: non inventarne uno f
 
 Formato di `STEPS`: `("nome", ["comando", "arg", ...], fast?)`. Lista di argomenti, mai stringa.
 
+Lo step dei test scrive anche un **report JUnit XML** (`reports/junit.xml`, da ignorare in git): `trace_check.py --junit`
+lo usa per controllare che ogni AC abbia un test eseguito e passato, non solo citato (obbligatorio nel livello L).
+
+| Stack | Report JUnit |
+|---|---|
+| Python (pytest) | `--junitxml=reports/junit.xml` |
+| Node (Jest / Vitest) | `jest-junit` come reporter / `--reporter=junit --outputFile=reports/junit.xml` |
+| .NET | `dotnet test --logger "junit;LogFilePath=reports/junit.xml"` (pacchetto `JunitXml.TestLogger`) |
+| Go | `gotestsum --junitfile reports/junit.xml` |
+| Java (Maven / Gradle) | già prodotto in `target/surefire-reports/` / `build/test-results/test/`: passa la cartella |
+
 | Stack | Rilevamento | Step proposti (verifica che esistano) |
 |---|---|---|
 | Python + uv | `pyproject.toml`, `uv.lock` | `uv run ruff format --check .` (fast), `uv run ruff check .` (fast), `uv run mypy <src>`, `uv run pytest -q` |

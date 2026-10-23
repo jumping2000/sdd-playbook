@@ -12,7 +12,10 @@ Lo prepari e lo lanci l'utente, in un terminale e in un ambiente isolato.
 
 - Spec, piano (non nel livello S) e task validi e approvati con la PR di design:
   `python scripts/spec_lint.py <spec> --plan <plan> --tasks <tasks> --base main` senza errori.
-- Il loop chiude con successo solo se, oltre a `verify` verde e task chiuse, passano `trace_check.py` e `diff_scope.py`.
+- Il loop chiude con successo solo se, oltre a `verify` verde e task chiuse, passano `trace_check.py` e `diff_scope.py`;
+  con `--junit <report>` (scritto da `verify`) `trace_check.py` controlla anche che ogni AC abbia un test passato.
+- Nei livelli M e L il loop si ferma (exit 1) dopo ogni task di test "atteso: rosso": l'utente rilegge i test
+  bloccati, scrive `test approvati:` sulla riga della task e rilancia. Non parte se un'approvazione è già in attesa.
 - Sei su un **branch di feature** (il loop rifiuta main/master) e `verify` è verde sulla baseline, oppure sei in
   fase rossa (l'ultima task chiusa è "atteso: rosso"). Con una baseline rossa per altri motivi il loop rifiuta di
   partire, salvo `--allow-red-baseline` deciso dall'utente.
@@ -37,7 +40,7 @@ Lo prepari e lo lanci l'utente, in un terminale e in un ambiente isolato.
 Mostra il comando, `--max`, `--stall` e la checklist, e chiedi l'**approvazione esplicita**. Il comando è:
 
 ```
-python scripts/loop.py docs/specs/<id> --max <N> --stall <K> --timeout <secondi>
+python scripts/loop.py docs/specs/<id> --max <N> --stall <K> --timeout <secondi> [--junit reports/junit.xml]
 ```
 
 Il loop termina con exit 0 quando `verify` è verde e non restano task `T-nn`. Restano poi review, `T-DOC` e

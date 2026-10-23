@@ -48,7 +48,8 @@ chiuse) → `sdlc-docs` (`T-DOC` aperta) → `sdlc-sync`. Prima di tutto `sdlc-i
 `sdlc-map-codebase`. `scripts/`, `docs/`, `.github/` e `.vscode/` non contano come codice esistente.
 
 **Livelli** (playbook §2.1). Livello S: dopo la spec approvata `sdlc-tasks` (senza piano), poi `sdlc-implement`,
-`sdlc-docs` se `T-DOC` è aperta e `sdlc-sync`; `review.md` conta solo se c'è ed è `non conforme`. Livello L: dopo una
+`sdlc-docs` se `T-DOC` è aperta e `sdlc-sync`. Livelli M e L: una task di test "atteso: rosso" chiusa senza
+`test approvati:` porta a `sdlc-tests-from-ac` prima dell'implementazione. Livello S: `review.md` conta solo se c'è ed è `non conforme`. Livello L: dopo una
 review accettata serve anche `- Revisione umana del diff:` in `review.md`, altrimenti `sdlc-review-diff`. Senza il campo
 `- Livello:` la spec vale M.
 
@@ -85,7 +86,7 @@ protetto è l'approvazione che l'agente non può darsi da solo (playbook §1.2).
 ### trace_check.py
 
 ```
-python scripts/trace_check.py <spec.md> [--tests DIR ...] [--warn-only]
+python scripts/trace_check.py <spec.md> [--tests DIR ...] [--junit FILE|DIR ...] [--warn-only]
 ```
 
 Cerca le citazioni degli AC nei file di test (cartelle di default: `tests`, `test`, `__tests__`, `spec`, `src/test`;
@@ -103,6 +104,13 @@ normalizzata (`_` come `-`, numeri senza zeri iniziali): `SPEC-2026-10-24-export
 Stampa per ogni AC il numero di riferimenti o `NESSUN TEST`, segnala i REQ senza alcun AC testato e, come avvisi, gli AC
 attribuiti alla spec ma assenti dalla spec, le citazioni ambigue e quelle ignorate. Exit `1` se un AC non ha test (salvo
 `--warn-only`), `2` se non trova cartelle di test.
+
+**`--junit`: test eseguiti, non solo citati.** Con uno o più report JUnit XML (file, o cartelle di cui si leggono tutti
+gli `*.xml`) ogni AC deve avere almeno un caso di test **eseguito e passato** e nessuno fallito; i casi saltati non
+contano. Un caso vale per un AC se lo cita in forma qualificata nel nome o nel `classname`, oppure in forma breve quando
+appartiene a un file di test attribuito alla spec (attributo `file`, o un componente del `classname` uguale al nome del
+file, come `tests.test_export` per `tests/test_export.py` o `com.acme.ExportTest` per `ExportTest.java`) o il progetto
+ha una sola spec. Report illeggibile: exit `2`. Il report lo scrive `verify` (vedi `references/stacks.md` di `sdlc-init`).
 
 ### bug_lint.py
 
@@ -162,7 +170,7 @@ terminare con exit 0). Gli altri blocchi non vengono eseguiti.
 ### sync_check.py
 
 ```
-python scripts/sync_check.py docs/specs/001-x [--area docs/system/<area>.md] [--tests DIR ...]
+python scripts/sync_check.py docs/specs/001-x [--area docs/system/<area>.md] [--tests DIR ...] [--junit FILE|DIR ...]
 ```
 
 Verifica che: la spec sia valida con `Stato: implemented`; nessuna task sia aperta; `review.md` abbia un esito valido,
@@ -170,13 +178,15 @@ diverso da `non conforme`, e la "Decisione di" compilata; esista una pagina d'ar
 richieste, "Ultimo allineamento" compilato e la spec tra le "Specifiche collegate"; ogni AC sia citato in un test **di
 questa spec**, con le regole di `trace_check.py` (se mancano test e ci sono citazioni ambigue, l'errore lo dice).
 Livello S: `review.md` e pagina d'area facoltative (se `review.md` c'è, si controlla). Livello L: `review.md` deve avere
-anche `- Revisione umana del diff:` compilato.
+anche `- Revisione umana del diff:` compilato. Nei livelli M e L le task di test chiuse ("atteso: rosso") riportano
+`test approvati:`. Con `--junit` gli AC devono essere verificati dal report dei test eseguiti, come in `trace_check.py`;
+nel livello L il report è obbligatorio.
 
 ### loop.py
 
 ```
 python scripts/loop.py docs/specs/001-x [--max 15] [--stall 3] [--timeout 1800] [--agent "claude -p"]
-                                        [--allow-main] [--allow-red-baseline] [--dry-run]
+                                        [--junit reports/junit.xml] [--allow-main] [--allow-red-baseline] [--dry-run]
 ```
 
 Legge `PROMPT.md` dalla cartella della spec e lo passa all'agente da stdin. Dopo ogni iterazione esegue `verify`.
@@ -189,6 +199,9 @@ modifiche tracciate e non tracciate: un agente che lavora sempre sullo stesso fi
 massimo `--timeout` secondi: oltre, l'agente viene terminato e il loop prosegue; un codice di uscita diverso da zero viene
 riportato come avviso. Rifiuta di partire (exit `2`) su `main`/`master` (salvo `--allow-main` in ambienti isolati) e con
 `verify` già rosso, salvo fase rossa (l'ultima task `T-nn` chiusa è "atteso: rosso") o `--allow-red-baseline`.
+**Test da approvare** (livelli M e L): se dopo un'iterazione una task di test "atteso: rosso" è chiusa senza
+`test approvati:`, il loop si ferma con exit `1` perché l'umano rilegga i test bloccati; con un'approvazione già in
+attesa non parte (exit `2`). Con `--junit` il controllo finale `trace_check.py` usa il report dei test eseguiti.
 `--dry-run` controlla le precondizioni senza lanciare l'agente e mostra se c'è una fase rossa. Non fa push. Permessi e
 modalità non interattiva dell'agente vanno configurati a parte.
 

@@ -20,7 +20,7 @@ STEPS = [
     ("format", ["uv", "run", "ruff", "format", "--check", "."], True),
     ("lint", ["uv", "run", "ruff", "check", "."], True),
     ("types", ["uv", "run", "mypy", "src"], False),
-    ("test", ["uv", "run", "pytest", "-q"], False),
+    ("test", ["uv", "run", "pytest", "-q", "--junitxml=reports/junit.xml"], False),  # report per trace_check --junit
 ]
 
 

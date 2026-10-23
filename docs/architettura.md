@@ -1,6 +1,6 @@
 # Architettura del plugin
 
-Documento di progetto **come costruito** (versione 0.9.0): scelte, struttura, contratti tra i file e limiti.
+Documento di progetto **come costruito** (versione 0.10.0): scelte, struttura, contratti tra i file e limiti.
 
 ## Obiettivo e criterio di successo
 
@@ -78,6 +78,7 @@ T-DOC aperta, altrimenti ................................ sdlc-docs, sdlc-sync
 --- livelli M (default) e L ------------------------------
 piano mancante, non approvato o decaduto ................ sdlc-plan
 tasks.md mancante o basato su un altro piano ............ sdlc-tasks
+task di test chiusa senza "test approvati:" ............. sdlc-tests-from-ac
 task T-nn o T-Rnn aperte ................................ sdlc-implement   (valuta sdlc-loop)
 review.md mancante o senza esito valido ................. sdlc-review-diff
 review "non conforme" senza T-R ......................... sdlc-review-diff (crea le T-R)
@@ -100,10 +101,11 @@ Gli script leggono pochi campi con convenzioni fisse. Se si cambia un template v
 |---|---|---|
 | `spec.md` | titolo `# SPEC-<id>: ...` (data + slug uguale alla cartella, o numero); `- Livello:` (`S`, `M`, `L`; M se manca; entra nell'hash); `- Stato:` (`draft`, `approved`, `in-revisione`, `implemented`, `superseded`); sezione `## Revisioni` (obbligatoria con voce se `in-revisione`); `- Approvata da / data:`; `- Hash: sha256:...` del corpo (dalla prima sezione `## `); sezioni `## Problema e obiettivo`, `Scope`, `Requisiti`, `Acceptance criteria`, `Domande aperte`; riga `**Non-scope (esplicito):**`; `- REQ-nnn`; `- AC-nnn [REQ-nnn]`; marcatore `[ASSUNZIONE]` | `spec_lint`, `state`, `trace_check`, `sync_check`, `diff_scope` |
 | `plan.md` | `- Approvato da / data:`; `- Basato su spec:` (hash della spec); `- Hash:` del corpo; sezione `## Componenti e file da creare/modificare` con righe `- percorso: ...` (percorso = prima parola o testo tra backtick); sezione `## Strategia di test ...` con gli ID AC esatti e, se c'è, la colonna `Dove` | `spec_lint`, `state`, `diff_scope` |
-| `tasks.md` | `- Basato su piano:` (hash del piano); righe `- [ ] T-nn ...` con i campi `verifica:` (comando tra backtick) e `copre:` (ID degli AC), senza segnaposto; righe `- [ ] T-Rnn ...` dai problemi della review (`verifica:`, `copre:` facoltativo); `T-DOC`, `T-SYNC`; la marcatura `atteso: rosso` sulle task di test definisce la **fase rossa** (ultima task `T-nn` chiusa con la marcatura, successiva aperta) | `spec_lint`, `state`, `loop`, `sync_check`, hook `Stop` |
+| `tasks.md` | `- Basato su piano:` (hash del piano); righe `- [ ] T-nn ...` con i campi `verifica:` (comando tra backtick) e `copre:` (ID degli AC), senza segnaposto; righe `- [ ] T-Rnn ...` dai problemi della review (`verifica:`, `copre:` facoltativo); `T-DOC`, `T-SYNC`; `— test approvati: <nome, data>` sulle task di test chiuse (livelli M e L); la marcatura `atteso: rosso` sulle task di test definisce la **fase rossa** (ultima task `T-nn` chiusa con la marcatura, successiva aperta) | `spec_lint`, `state`, `loop`, `sync_check`, hook `Stop` |
 | commit git | trailer `Test-Lock: T-nn` sul commit dei test rossi: blocca i suoi file di test | `diff_scope` |
 | file di test | `# SPEC-<id>` nel file più `AC-nnn`, oppure citazioni `SPEC-<id>/AC-nnn` (nei nomi di funzione `SPEC_<id con _>_AC_nnn`); righe `TODO`/`FIXME`/`XXX` ignorate | `trace_check`, `sync_check` |
 | cartelle `docs/specs/<id>/` | `<id>` = data + slug (`2026-10-24-export-csv`), uguale all'ID del titolo; i vecchi `NNN-slug` restano validi | `spec_lint`, `state` (associazione al branch) |
+| report JUnit XML (`reports/junit.xml`) | `testcase` con `name`, `classname`, `file` e figli `failure`, `error`, `skipped` | `trace_check --junit`, `sync_check --junit`, `loop --junit` |
 | `review.md` | `- Esito:` (`conforme`, `conforme con riserve`, `non conforme`); `- Decisione di:`; `- Revisione umana del diff:` (livello L) | `state`, `sync_check` |
 | `docs/bugs/BUG-*.md` | `- Stato:` (`aperto`, `diagnosticato`, `corretto`, `verificato`); sezioni di `bugfix-template.md`; voci spuntabili in `## Chiusura` | `bug_lint`, `state` |
 | `docs/system/<area>.md` | `- Ultimo allineamento:`; `- Specifiche collegate:`; sezioni `## Comportamento attuale`, `Vincoli e punti delicati`, `Test di caratterizzazione` | `sync_check` |
@@ -147,10 +149,14 @@ Un campo con segnaposto `<...>` o vuoto vale come **non compilato**.
   questo serve il merge su `main` protetto con un'identità separata (`spec_lint.py --base`): la protezione del branch e
   CODEOWNERS vanno configurati sulla piattaforma, il plugin fornisce solo i template.
 - **Fase rossa e `Test-Lock`:** si basano su convenzioni (marcatura nelle task, trailer nei commit) che l'agente potrebbe
-  usare a sproposito; la review umana resta il controllo finale.
+  usare a sproposito; la review umana resta il controllo finale. Anche `test approvati:` è testo che l'agente può
+  scrivere: il controllo che non può aggirare è la review dei code owner su `tests/` nella PR di implementazione.
+- **Report JUnit:** dice quali test sono stati eseguiti e con che esito, non che il report sia di quel commit: va
+  generato da `verify` nello stesso passaggio (in CI, da un job che l'agente non controlla). L'attribuzione dei casi
+  ai file usa `file` e `classname`: con reporter che non li valorizzano servono le citazioni qualificate.
 - **`claude -p` da stdin:** la lettura del prompt da stdin con `-p` va verificata sulla versione in uso.
 - **Euristiche:** `diff_scope.py` dipende dal formato `- percorso: ...` del piano, e per il livello conta file e riconosce i manifest per nome: non capisce se un'interfaccia pubblica è cambiata; `trace_check.py` trova gli ID per testo
-  (qualificati per spec), non capisce la semantica dei test né controlla che passino; `scan_repo.py` è un inventario; nessuno sostituisce la lettura del codice.
+  (qualificati per spec) e non capisce la semantica dei test; senza `--junit` non controlla che siano eseguiti e passino; `scan_repo.py` è un inventario; nessuno sostituisce la lettura del codice.
 - **Perimetro:** il plugin non copre rilascio, sicurezza dell'infrastruttura, osservabilità e operazione (§8 del playbook), non
   configura i permessi dell'agente, non approva al posto dell'umano.
 

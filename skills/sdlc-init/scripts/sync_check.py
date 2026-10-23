@@ -2,7 +2,7 @@
 """Controllo di chiusura di una feature: spec, task, review, pagina d'area e tracciabilità allineate.
 
 Uso:
-  python scripts/sync_check.py docs/specs/001-x [--area docs/system/<area>.md] [--tests DIR ...]
+  python scripts/sync_check.py docs/specs/001-x [--area docs/system/<area>.md] [--tests DIR ...] [--junit FILE ...]
 
 Verifica:
   1. spec valida e con Stato = implemented
@@ -12,7 +12,9 @@ Verifica:
      "Ultimo allineamento" compilato e la spec tra le "Specifiche collegate"
   5. ogni AC citato in almeno un test di questa spec (trace_check: ID qualificati SPEC-nnn/AC-nnn)
 Livelli (playbook §2): S non richiede review.md (la review è quella della PR) né la pagina d'area; L richiede in
-review.md anche "- Revisione umana del diff:" compilato.
+review.md anche "- Revisione umana del diff:" compilato. Nei livelli M e L le task di test chiuse riportano
+"test approvati:". Con --junit FILE|DIR gli AC devono essere verificati dal report dei test eseguiti (vedi
+trace_check); nel livello L il report è obbligatorio.
 Exit code: 0 allineato; 1 errori; 2 uso errato. Solo stdlib, cross-platform.
 """
 from __future__ import annotations
@@ -55,7 +57,7 @@ def trova_area(feature: Path, spec_id: str, esplicita: str | None) -> Path | Non
     return None
 
 
-def controlla(feature: Path, area_arg: str | None, tests: list[Path]) -> list[str]:
+def controlla(feature: Path, area_arg: str | None, tests: list[Path], junit: list[str] | None = None) -> list[str]:
     err: list[str] = []
     spec_p = feature / "spec.md"
     if not spec_p.is_file():
@@ -75,6 +77,9 @@ def controlla(feature: Path, area_arg: str | None, tests: list[Path]) -> list[st
         aperte = re.findall(r"^\s*-\s+\[ \]\s+(T-[A-Z0-9]+)", tasks_p.read_text(encoding="utf-8"), re.M)
         if aperte:
             err.append("task ancora aperte: " + ", ".join(aperte))
+        senza = spec_lint.test_da_approvare(tasks_p.read_text(encoding="utf-8")) if livello != "S" else []
+        if senza:
+            err.append(f"test bloccati senza approvazione umana ('test approvati:'): {', '.join(senza)}")
     else:
         err.append("tasks.md non trovato")
 
@@ -120,6 +125,16 @@ def controlla(feature: Path, area_arg: str | None, tests: list[Path]) -> list[st
             nota = (f" ({len(esito.ambigui)} citazioni ambigue: usa {spec_id}/AC-nnn o dichiara la spec nel file)"
                     if esito.ambigui else "")
             err.append("AC senza test: " + ", ".join(esito.senza) + nota)
+        if junit:
+            try:
+                eseguiti = trace_check.esecuzioni(spec, cartelle, trace_check.file_report(junit))
+            except ValueError as e:
+                return err + [str(e)]
+            ko = [ac for ac, x in eseguiti.items() if x["fallito"] or not x["passato"]]
+            if ko:
+                err.append("AC non verificati dal report dei test eseguiti (falliti o non eseguiti): " + ", ".join(ko))
+    if livello == "L" and not junit:
+        err.append("livello L: serve il report dei test eseguiti (--junit)")
     return err
 
 
@@ -129,17 +144,11 @@ def main(argv: list[str]) -> int:
         print(__doc__)
         return 2
     area = argv[argv.index("--area") + 1] if "--area" in argv else None
-    tests: list[Path] = []
-    if "--tests" in argv:
-        for o in argv[argv.index("--tests") + 1:]:
-            if o.startswith("--"):
-                break
-            tests.append(Path(o))
+    tests = [Path(t) for t in trace_check.valori(argv, "--tests")]
+    junit = trace_check.valori(argv, "--junit")
+    args = [a for a in args if a != area and a not in junit and Path(a) not in tests]
     feature = Path(args[0])
-    if area and area in args:
-        args.remove(area)
-        feature = Path(args[0])
-    err = controlla(feature, area, [t for t in tests if str(t) != args[0]])
+    err = controlla(feature, area, tests, junit)
     for e in err:
         print(f"[ERRORE] {e}")
     print("SYNC: " + ("OK" if not err else f"{len(err)} errori"))

@@ -19,7 +19,7 @@ Convenzione: **`verify`** significa `python scripts/verify.py` (§1.1).
 2. **Ogni compito ha un controllo eseguibile** (test, lint, tipi, build). Senza, l'unico segnale è "sembra fatto" e il verificatore sei tu.
 3. **Piccoli passi verificabili.** Una task = un'unità che un comando può dichiarare riuscita o fallita.
 4. **Il contesto è una risorsa scarsa.** `AGENTS.md` breve, spec focalizzate, stato su file e non nella chat.
-5. **Gate umani ai punti giusti, proporzionati al rischio:** approvi spec e piano, decidi sulla review; nelle modifiche di livello L (§2.1) rileggi anche il diff.
+5. **Gate umani ai punti giusti, proporzionati al rischio:** approvi spec e piano, approvi i test bloccati prima dell'implementazione, decidi sulla review; nelle modifiche di livello L (§2.1) rileggi anche il diff.
 6. **Se il risultato è sbagliato, correggi spec o test, non il prompt.**
 7. **Le spec vanno mantenute.** Una spec non riconciliata con il codice smette di essere fonte di verità: ogni PR che cambia comportamento aggiorna la spec o la pagina d'area.
 8. **Dove si può, il controllo è uno script, non una regola in prosa.** Un check che gira (ID presenti, non-scope compilato, test tracciati) vale più di un'istruzione all'agente.
@@ -99,7 +99,7 @@ STEPS = [
     ("format", ["uv", "run", "ruff", "format", "--check", "."], True),
     ("lint", ["uv", "run", "ruff", "check", "."], True),
     ("types", ["uv", "run", "mypy", "src"], False),
-    ("test", ["uv", "run", "pytest", "-q"], False),
+    ("test", ["uv", "run", "pytest", "-q", "--junitxml=reports/junit.xml"], False),  # report per trace_check --junit
 ]
 
 
@@ -451,12 +451,15 @@ I file nella sezione "Componenti e file" vanno **uno per riga nel formato `- per
 - [ ] T-DOC Aggiornare README/API doc ed eseguire gli esempi scritti — verifica: `<comando, se esiste>`
 - [ ] T-SYNC Riconciliare spec e docs/system/<area>.md con il comportamento reale; poi impostare Stato = implemented nella spec
 
+<!-- Livelli M e L: dopo il commit Test-Lock di una task "atteso: rosso", e solo dopo che l'umano ha riletto i test,
+si aggiunge in fondo alla sua riga: — test approvati: <nome, aaaa-mm-gg> -->
+
 ## Correzioni dalla review
 <!-- Solo dopo una review "non conforme": una task per problema alta/media, per esempio
 - [ ] T-R01 <problema da review.md> — verifica: `<comando>` — copre: AC-nnn (facoltativo) -->
 ```
 
-Le task `T-nn` hanno `verifica:` e `copre:` e nessun segnaposto `<...>`; `T-DOC` e `T-SYNC` sono obbligatorie e si eseguono dopo la review. `- Basato su piano:` registra l'hash del piano da cui derivano. Le task `T-Rnn` le aggiunge la review quando l'esito è `non conforme` (§3.8): hanno `verifica:`, `copre:` facoltativo, e si eseguono come le `T-nn`. La marcatura "atteso: rosso" va solo sulle task che scrivono test: quando l'ultima task chiusa la porta e la successiva è aperta, la spec è in **fase rossa** (i test rossi sono il risultato atteso) e l'hook `Stop` e `loop.py` lo tengono in conto.
+Le task `T-nn` hanno `verifica:` e `copre:` e nessun segnaposto `<...>`; `T-DOC` e `T-SYNC` sono obbligatorie e si eseguono dopo la review. `- Basato su piano:` registra l'hash del piano da cui derivano. Le task `T-Rnn` le aggiunge la review quando l'esito è `non conforme` (§3.8): hanno `verifica:`, `copre:` facoltativo, e si eseguono come le `T-nn`. Nei livelli M e L, quando l'umano ha riletto i test bloccati di una task "atteso: rosso", in fondo alla sua riga si aggiunge `— test approvati: <nome, data>`: fino ad allora `state.py` non indica l'implementazione e `loop.py` si ferma. La marcatura "atteso: rosso" va solo sulle task che scrivono test: quando l'ultima task chiusa la porta e la successiva è aperta, la spec è in **fase rossa** (i test rossi sono il risultato atteso) e l'hook `Stop` e `loop.py` lo tengono in conto.
 
 ### 3.6 `bugfix.md`
 
@@ -590,7 +593,7 @@ L'esito è uno tra `conforme`, `conforme con riserve`, `non conforme`. La decisi
 | 2. Spec | Dall'idea al `spec.md`. Fai elencare all'agente domande aperte e assunzioni, rispondi, poi congela | `sdlc-spec` | **Approvi la spec** (nome e data nel documento) |
 | 3. Piano | `plan.md` in sola lettura | `sdlc-plan` | **Approvi il piano** |
 | 4. Task | `tasks.md` in passi piccoli, ognuno con comando di verifica | `sdlc-tasks` | Controllo rapido |
-| 5. Test prima | Dagli AC, l'agente scrive i test; devono fallire per il motivo giusto | `sdlc-tests-from-ac` (via `sdlc-implement`) | Spot check |
+| 5. Test prima | Dagli AC, l'agente scrive i test; devono fallire per il motivo giusto; commit `Test-Lock` | `sdlc-tests-from-ac` (via `sdlc-implement`) | **Approvi i test bloccati** (`test approvati:`; nel livello S basta uno spot check) |
 | 6. Implementazione | Task per task, `verify` a ogni passo; commit a ogni task verde | `sdlc-implement`, oppure `sdlc-loop` (§7) | — |
 | 7. Review del diff | Contesto fresco, che prova a confutare; `review.md` | `sdlc-review-diff` | **Decidi sulla review** |
 | 8. Documentazione | T-DOC: esempi eseguiti, link validi | `sdlc-docs` | Review |
@@ -624,7 +627,9 @@ Differenze rispetto al greenfield: più tempo in lettura/caratterizzazione, spec
 **Test**
 - Genera i test **dagli acceptance criteria**, non dal codice: altrimenti l'agente scrive test che confermano i propri bug. *(`sdlc-tests-from-ac`)*
 - **Test bloccati:** i test rossi si committano da soli con il trailer `Test-Lock: T-nn` (lo scheletro del codice, se serve, in un commit precedente). Da lì l'implementazione deve farli passare senza toccarli: `diff_scope.py` segnala come errore ogni modifica successiva a quei file fuori da un nuovo commit `Test-Lock`, che va motivato nella review. La CI del branch resta rossa fino alla task di implementazione.
+- **Test approvati:** i test bloccati definiscono "fatto" per l'implementazione, e li ha scritti lo stesso agente che implementerà. Nei livelli M e L l'umano li rilegge (il diff del commit `Test-Lock`) prima dell'implementazione e lo registra sulla riga della task (`test approvati: <nome, data>`); `state.py`, `loop.py` e `sync_check.py` lo controllano.
 - Tracciabilità: gli AC ripartono da AC-001 in ogni spec, quindi ogni citazione va attribuita a una spec. Dichiara la spec in testa al file di test (`# SPEC-2026-10-24-export-csv`) e cita `AC-001` nel nome o in un commento, oppure usa la forma qualificata `SPEC-2026-10-24-export-csv/AC-001` (nei nomi di funzione `SPEC_2026_10_24_export_csv_AC_001`). `trace_check.py` verifica che ogni AC compaia in almeno un test della sua spec, segnala i requisiti senza test e le citazioni ambigue, e ignora quelle nei `TODO`.
+- **Test eseguiti, non solo citati:** `verify` scrive un report JUnit XML (`reports/junit.xml`); con `--junit` `trace_check.py` richiede per ogni AC almeno un caso di test eseguito e passato, e nessuno fallito. Una citazione in un test saltato o mai eseguito non basta più. Obbligatorio nel livello L (`sync_check.py --junit`), consigliato sempre.
 - Livelli: unit per la logica, integrazione per i confini, almeno un e2e per il flusso principale.
 - Verifica che i test sappiano fallire: rompi di proposito il codice (o fai una mutation test) e controlla che qualcosa diventi rosso.
 - Se il team sviluppa su Windows, almeno la suite di integrazione gira anche su Windows in CI.
@@ -665,6 +670,7 @@ ripeti (max N volte):
   4. verde  → commit, aggiorna progress.md, passa alla task successiva
      rosso  → legge l'errore, corregge senza toccare i test bloccati, riprova
 fermati se: verify verde E nessuna task T-nn aperta | N raggiunto | nessun progresso per K iterazioni
+           | test bloccati da approvare (livelli M e L)
 ```
 
 L'idea è il cosiddetto "Ralph loop": un ciclo esterno che riesegue l'agente finché un controllo oggettivo non passa. Esiste un plugin ufficiale per Claude Code; il plugin `sdlc-playbook` fornisce uno script equivalente, indipendente dall'agente (`loop.py`, §7.3).
@@ -672,6 +678,7 @@ L'idea è il cosiddetto "Ralph loop": un ciclo esterno che riesegue l'agente fin
 ### 7.2 Regole
 
 - **Criteri di stop oggettivi:** `verify` verde, nessuna task `T-nn` aperta in `tasks.md` **e** `trace_check.py` e `diff_scope.py` superati, non "mi sembra a posto". Un `verify` verde da solo non basta: dopo la prima task il codice può essere verde con tutto il resto ancora da fare. E le caselle le spunta l'agente: per questo contano i due controlli finali, che non dipendono da lui.
+- **Pausa per i test:** nei livelli M e L il loop si ferma dopo ogni task di test "atteso: rosso"; l'umano rilegge i test, scrive `test approvati:` e rilancia. Con `--junit` i controlli finali usano il report dei test eseguiti.
 - **Il loop copre solo le task `T-nn`.** `T-DOC` e `T-SYNC` si eseguono dopo la review, con il gate umano in mezzo.
 - **Tetto di iterazioni** sempre impostato (es. 10-20): senza, il loop consuma token a vuoto.
 - **Rilevamento dello stallo:** se per K iterazioni consecutive non cambia nulla (task, commit, contenuto dell'albero di lavoro), il loop si ferma.
@@ -694,22 +701,26 @@ L'idea è il cosiddetto "Ralph loop": un ciclo esterno che riesegue l'agente fin
 
 Uso:
   python scripts/loop.py docs/specs/001-x [--max 15] [--stall 3] [--timeout 1800] [--agent "claude -p"]
-                                          [--allow-main] [--allow-red-baseline] [--dry-run]
+                                          [--junit reports/junit.xml] [--allow-main] [--allow-red-baseline] [--dry-run]
 
 Legge PROMPT.md dalla cartella della spec e lo passa all'agente da stdin (evita i limiti di
 lunghezza della riga di comando su Windows). Si ferma quando:
   - verify è verde, non ci sono task T-nn o T-Rnn aperte e i controlli finali passano -> exit 0
     (controlli finali: trace_check.py sulla spec e diff_scope.py sulla cartella, se presenti in scripts/;
-    le caselle le spunta l'agente, questi controlli no. Se diff_scope non può calcolare il diff è un avviso)
+    le caselle le spunta l'agente, questi controlli no. Se diff_scope non può calcolare il diff è un avviso;
+    con --junit, trace_check controlla anche che ogni AC abbia un test eseguito e passato nel report scritto da verify)
   - raggiunto il tetto --max di iterazioni                  -> exit 1
   - nessun progresso per --stall iterazioni consecutive     -> exit 1
     (progresso = cambia tasks.md, l'HEAD di git o il contenuto dell'albero di lavoro)
+  - una task di test "atteso: rosso" è chiusa senza "test approvati:" (livelli M e L) -> exit 1: l'umano rilegge i
+    test bloccati, scrive l'approvazione sulla riga della task e rilancia il loop
 Ogni iterazione ha un tempo massimo (--timeout secondi): oltre, l'agente viene terminato e il loop prosegue.
 Rifiuta di partire su main/master (--allow-main solo in ambienti isolati) e con verify già rosso, salvo
 fase rossa (l'ultima task T-nn chiusa è "atteso: rosso": i test rossi sono attesi) o --allow-red-baseline.
 --dry-run controlla le precondizioni e non lancia l'agente.
 Le task T-DOC e T-SYNC non fanno parte del loop: si eseguono dopo la review (sdlc-docs, sdlc-sync).
-Exit code: 0 completato; 1 tetto o stallo; 2 uso errato o precondizioni non rispettate.
+Exit code: 0 completato; 1 serve l'umano (tetto, stallo, test da approvare); 2 uso errato o precondizioni non rispettate
+(anche test bloccati già in attesa di approvazione).
 Permessi e allowlist dell'agente vanno configurati a parte. Solo stdlib, cross-platform.
 """
 from __future__ import annotations
@@ -724,9 +735,11 @@ import sys
 from pathlib import Path
 
 PROTETTI = {"main", "master"}
-OPZIONI_CON_VALORE = {"--max", "--stall", "--timeout", "--agent"}
+OPZIONI_CON_VALORE = {"--max", "--stall", "--timeout", "--agent", "--junit"}
 TASK_APERTA = re.compile(r"^\s*-\s+\[ \]\s+T-R?\d+\b", re.M)  # T-nn dal piano e T-Rnn dalla review
 TASK = re.compile(r"^\s*-\s+\[([ xX])\]\s+(T-\d+)\b(.*)$", re.M)
+LIVELLO_S = re.compile(r"^\s*[-*]\s+Livello\s*:\s*S\b", re.M | re.I)
+APPROVATI = re.compile(r"test approvati:\s*[^\s<—]")  # come spec_lint.test_da_approvare, senza importarlo
 
 
 def git(*args: str) -> str:
@@ -751,6 +764,15 @@ def fase_rossa(feature: Path) -> str | None:
     return None
 
 
+def test_da_approvare(feature: Path) -> list[str]:
+    """Task di test "atteso: rosso" chiuse senza "test approvati:" (non nel livello S)."""
+    spec = feature / "spec.md"
+    if spec.is_file() and LIVELLO_S.search(spec.read_text(encoding="utf-8")):
+        return []
+    return [tid for stato, tid, resto in TASK.findall((feature / "tasks.md").read_text(encoding="utf-8"))
+            if stato != " " and "atteso: rosso" in resto and not APPROVATI.search(resto)]
+
+
 def impronta(feature: Path) -> str:
     """Hash di tasks.md, HEAD e contenuto delle modifiche (tracciate e non tracciate)."""
     h = hashlib.sha256()
@@ -769,10 +791,11 @@ def verify_verde() -> bool:
     return subprocess.run([sys.executable, "scripts/verify.py"]).returncode == 0
 
 
-def controlli_finali(feature: Path) -> list[str]:
+def controlli_finali(feature: Path, junit: str | None = None) -> list[str]:
     """Controlli che non dipendono da ciò che dichiara l'agente. Restituisce i controlli falliti."""
     falliti = []
-    controlli = [("trace_check", [str(feature / "spec.md")]), ("diff_scope", [str(feature)])]
+    trace = [str(feature / "spec.md")] + (["--junit", junit] if junit else [])
+    controlli = [("trace_check", trace), ("diff_scope", [str(feature)])]
     for nome, args in controlli:
         script = Path("scripts") / f"{nome}.py"
         if not script.is_file() or (nome == "trace_check" and not (feature / "spec.md").is_file()):
@@ -811,6 +834,7 @@ def main(argv: list[str]) -> int:
     timeout = int(opzione(argv, "--timeout", "1800"))
     agente = shlex.split(opzione(argv, "--agent", "claude -p"), posix=(os.name != "nt"))
     dry = "--dry-run" in argv
+    junit = opzione(argv, "--junit", "") or None
 
     for f in (feature / "PROMPT.md", feature / "tasks.md", Path("scripts/verify.py")):
         if not f.is_file():
@@ -827,6 +851,10 @@ def main(argv: list[str]) -> int:
         print(f"[ERRORE] agente non trovato nel PATH: {agente[0]}")
         return 2
     rossa = fase_rossa(feature)
+    if (attesa := test_da_approvare(feature)):
+        print(f"[ERRORE] i test bloccati di {', '.join(attesa)} aspettano l'approvazione umana: rileggili e scrivi "
+              "'test approvati: <nome, data>' sulla riga della task, poi rilancia")
+        return 2
     if dry:
         print(f"DRY-RUN OK: spec={feature.as_posix()} max={massimo} stall={stallo} timeout={timeout}s "
               f"agente={' '.join(agente)} branch={branch or '?'}; task T-nn aperte: "
@@ -836,7 +864,7 @@ def main(argv: list[str]) -> int:
     prompt = (feature / "PROMPT.md").read_text(encoding="utf-8")
     if not task_aperte(feature):
         print("Nessuna task T-nn aperta: controllo verify e controlli finali")
-        return 0 if verify_verde() and not controlli_finali(feature) else 1
+        return 0 if verify_verde() and not controlli_finali(feature, junit) else 1
     if not verify_verde():
         if rossa:
             print(f"Baseline rossa attesa: fase rossa dopo {rossa}")
@@ -848,8 +876,12 @@ def main(argv: list[str]) -> int:
     for i in range(1, massimo + 1):
         print(f"== iterazione {i}/{massimo} ==", flush=True)
         esegui_agente([eseguibile, *agente[1:]], prompt, timeout)
+        if (attesa := test_da_approvare(feature)):
+            print(f"Pausa: i test bloccati di {', '.join(attesa)} vanno approvati dall'umano ('test approvati: "
+                  "<nome, data>' sulla riga della task); poi rilancia il loop")
+            return 1
         if verify_verde() and not task_aperte(feature):
-            falliti = controlli_finali(feature)
+            falliti = controlli_finali(feature, junit)
             if not falliti:
                 print("OK: verify verde, nessuna task T-nn aperta, controlli finali superati. "
                       "Prossimi passi: review, T-DOC, T-SYNC")
@@ -878,7 +910,7 @@ Il prompt passa da stdin, così si evitano i limiti di lunghezza della riga di c
 ```markdown
 Leggi docs/specs/<id>/{spec,plan,tasks,progress}.md e AGENTS.md.
 Prendi la prima task T-nn o T-Rnn non completata (ignora T-DOC e T-SYNC). Implementa solo quella.
-Task "atteso: rosso" (test dagli AC): scrivi solo i test e verifica con il comando di `verifica:` che falliscano per il motivo giusto; non farli passare. Se serve uno scheletro per farli girare, committalo prima, a parte. Committa i soli file di test con il trailer `Test-Lock: T-nn`, spunta la task, aggiorna progress.md e fermati.
+Task "atteso: rosso" (test dagli AC): scrivi solo i test e verifica con il comando di `verifica:` che falliscano per il motivo giusto; non farli passare. Se serve uno scheletro per farli girare, committalo prima, a parte. Committa i soli file di test con il trailer `Test-Lock: T-nn`, spunta la task, aggiorna progress.md e fermati: i test li approva l'umano, non scrivere tu "test approvati:".
 Altre task: esegui `python scripts/verify.py`. Se fallisce, correggi e riesegui. A verde: commit su questo branch, spunta la task, aggiorna progress.md (cosa fatto, cosa imparato, blocchi).
 Non modificare i file di test di un commit Test-Lock: se un test ti sembra sbagliato, scrivilo in progress.md e fermati.
 Non toccare ciò che è nel non-scope. Se un requisito è ambiguo, scrivilo in progress.md e fermati.
@@ -936,7 +968,7 @@ L'esecuzione di deploy e operazioni da parte di un agente è un argomento a part
 ## 9. Checklist finale per feature
 
 - [ ] Spec approvata (nome e data), non-scope esplicito, domande aperte chiuse
-- [ ] Ogni REQ ha almeno un AC e almeno un test tracciato (`trace_check.py`)
+- [ ] Ogni REQ ha almeno un AC e almeno un test tracciato, eseguito e passato (`trace_check.py --junit`); test bloccati approvati
 - [ ] `verify` verde in locale (anche su Windows, se è un ambiente del team) e in CI
 - [ ] Diff riletto contro la spec e il piano (`diff_scope.py`, `review.md` con decisione umana)
 - [ ] Documentazione aggiornata, esempi eseguiti, link validi (`docs_check.py`)
@@ -996,12 +1028,12 @@ a ogni punto di approvazione) e **script** (controlli deterministici copiati nel
 | `spec_lint.py` | Spec (sezioni, ID, livello, REQ→AC, non-scope, approvazione, domande aperte); con `--plan` ogni AC è nella strategia di test; con `--tasks` ogni task ha verifica e copertura e nessun segnaposto, ogni AC è coperto, ci sono `T-DOC` e `T-SYNC` |
 | `state.py` | Stato del progetto e prossima fase per ogni spec attiva, secondo il livello; con più spec usa quella del branch corrente o `--spec` |
 | `scan_repo.py` | Inventario deterministico di una codebase (stack, linguaggi, test, CI, entry point) |
-| `trace_check.py` | Ogni AC citato in almeno un test della sua spec (`SPEC-nnn/AC-nnn` o file dichiarato); requisiti senza test; citazioni ambigue |
+| `trace_check.py` | Ogni AC citato in almeno un test della sua spec (`SPEC-nnn/AC-nnn` o file dichiarato); con `--junit` anche eseguito e passato nel report; requisiti senza test; citazioni ambigue |
 | `bug_lint.py` | Completezza del file di un bug in funzione del suo stato |
 | `diff_scope.py` | File modificati: zone vietate (`Non modificare:` in `AGENTS.md`), test bloccati (`Test-Lock`) modificati dopo il blocco, livello sottostimato rispetto al diff, file fuori piano, file pianificati non toccati |
 | `docs_check.py` | Link relativi validi; esempi Python marcati eseguiti con successo |
-| `sync_check.py` | Chiusura: spec `implemented`, task chiuse, review con decisione umana, pagina d'area, tracciabilità |
-| `loop.py` | Loop esterno con tetto, rilevamento dello stallo, timeout per iterazione, baseline, branch protetto e dry run |
+| `sync_check.py` | Chiusura: spec `implemented`, task chiuse, test approvati, review con decisione umana, pagina d'area, tracciabilità (con il report JUnit nel livello L) |
+| `loop.py` | Loop esterno con tetto, rilevamento dello stallo, timeout per iterazione, baseline, branch protetto, pausa per l'approvazione dei test e dry run |
 
 **Hook opzionali (solo Claude Code)**, inattivi se non abilitati con una variabile d'ambiente. Partono da `hooks/run.sh`, che esce subito se l'hook non è abilitato e altrimenti usa il primo tra `python3`, `python` e `py -3` che sia Python 3; senza Python l'errore è visibile ma non bloccante:
 

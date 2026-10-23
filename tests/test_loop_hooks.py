@@ -31,7 +31,8 @@ AGENTE_PROGRESSIVO = (
     "    t = open(p, encoding='utf-8').read()\n"
     "    open(p, 'w', encoding='utf-8').write(t.replace('[ ] T-01', '[x] T-01'))\n"
 )
-FASE_ROSSA = "- [x] T-01 Test — verifica: `t` (atteso: rosso) — copre: AC-001\n- [ ] T-02 Implementa\n"
+FASE_ROSSA = ("- [x] T-01 Test — verifica: `t` (atteso: rosso) — copre: AC-001 — test approvati: Anna, 2026-10-20\n"
+              "- [ ] T-02 Implementa\n")
 
 
 def progetto(d, tasks: str, branch="feature/x", agente=AGENTE_CHE_SPUNTA, verify_ok=True):

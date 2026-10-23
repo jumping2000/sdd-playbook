@@ -25,7 +25,8 @@ Playbook §3.7 e §4 (fase 9). Una spec non riconciliata smette di essere fonte 
    attuale (solo ciò che è vero nel codice), vincoli, test di caratterizzazione, riferimenti. Aggiungi la spec
    in "Specifiche collegate" e imposta "Ultimo allineamento" alla data di oggi.
 4. **Chiudi:** imposta `Stato: implemented` nella spec e spunta `T-SYNC` in `tasks.md`.
-5. **Controllo:** `python scripts/sync_check.py <spec-dir>`. Correggi finché passa; se un errore dipende da una
+5. **Controllo:** `python scripts/sync_check.py <spec-dir> --junit <report>` (report JUnit di `verify`, obbligatorio
+   nel livello L). Correggi finché passa; se un errore dipende da una
    decisione dell'utente, riportalo senza forzare.
 6. **Lezioni:** proponi, senza applicarle, le modifiche per `AGENTS.md` e per gli ADR emerse dal lavoro.
 7. Commit con trailer `Spec:` e `Agent:`.

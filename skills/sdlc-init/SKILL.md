@@ -30,7 +30,8 @@ per `.vscode/tasks.json` fai il merge dei task, senza sostituire il file.
    - `AGENTS.md` da `references/AGENTS.md.tmpl`, compilato con ciò che hai verificato (sotto le 100 righe); le
      `Aree sensibili` (livello L, playbook §2.1) le indica l'utente;
    - `CLAUDE.md` con la sola riga `@AGENTS.md` (niente symlink: su Windows richiedono privilegi);
-   - `.gitattributes` da `references/gitattributes.tmpl`;
+   - `.gitattributes` da `references/gitattributes.tmpl`; `reports/` in `.gitignore` (report JUnit dei test, vedi
+     `references/stacks.md`);
    - `.vscode/tasks.json` da `references/vscode-tasks.json`;
    - `docs/constitution.md` da `references/constitution.md.tmpl`, e le cartelle `docs/specs/`, `docs/system/`,
      `docs/bugs/`, `docs/adr/` (con `.gitkeep`);

@@ -172,7 +172,13 @@ class TestSyncCheckLivelli(unittest.TestCase):
             self.assertEqual(r.returncode, 1, r.stdout)
             self.assertIn("livello L senza 'Revisione umana del diff'", r.stdout)
             scrivi(d, "docs/specs/001-x/review.md", REVIEW_OK + "- Revisione umana del diff: Anna Rossi, 2026-10-20\n")
-            self.assertEqual(cli(d, "sync_check", "docs/specs/001-x").returncode, 0)
+            r = cli(d, "sync_check", "docs/specs/001-x")
+            self.assertEqual(r.returncode, 1, r.stdout)
+            self.assertIn("livello L: serve il report dei test eseguiti (--junit)", r.stdout)
+            scrivi(d, "reports/junit.xml", '<testsuite><testcase classname="tests.test_export" name="test_AC_001"/>'
+                                           '<testcase classname="tests.test_export" name="test_AC_002"/></testsuite>')
+            r = cli(d, "sync_check", "docs/specs/001-x", "--junit", "reports/junit.xml")
+            self.assertEqual(r.returncode, 0, r.stdout)
 
 
 if __name__ == "__main__":

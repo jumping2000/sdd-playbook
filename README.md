@@ -1,4 +1,4 @@
-# sdlc-playbook (versione 0.9.0)
+# sdlc-playbook (versione 0.10.0)
 
 Plugin per Claude Code e Codex che accompagna lo sviluppatore lungo tutto il ciclo di vita descritto nel
 [playbook](docs/playbook-ai-software-lifecycle.md): spec, piano, task, test, implementazione, review,
@@ -27,6 +27,8 @@ sdlc-bugfix: per i difetti, in parallelo al flusso.   sdlc-next: in ogni momento
 
 Il processo è proporzionato al rischio: la spec dichiara un **livello** S, M o L (playbook §2.1). S salta piano e
 `review.md`; L aggiunge ADR e revisione umana del diff; `diff_scope.py` segnala un diff che supera il livello dichiarato.
+I test scritti dagli AC si bloccano con un commit `Test-Lock` e, nei livelli M e L, li approva l'umano prima
+dell'implementazione; con il report JUnit di `verify`, `trace_check.py --junit` conta solo i test eseguiti e passati.
 
 Ogni skill che produce un documento da approvare termina con uno **STOP**: l'agente non avanza e non approva
 da solo. Le approvazioni (spec, piano, decisione sulla review) portano nome e data e sono controllate dagli script.

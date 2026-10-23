@@ -41,4 +41,8 @@ errori); la task di test è indicata in `tasks.md`. Convenzioni di nome: `refere
 
 ## STOP
 
-Mostra l'elenco AC → test e i messaggi di fallimento. Chiedi uno spot check prima di implementare.
+Mostra l'elenco AC → test, i messaggi di fallimento e lo SHA del commit `Test-Lock`. Nei livelli M e L chiedi
+all'utente di **rileggere i test bloccati** (il diff di quel commit): sono loro a definire "fatto" per
+l'implementazione. Solo dopo la sua conferma esplicita, con il nome, aggiungi in fondo alla riga della task
+`— test approvati: <nome, aaaa-mm-gg>`; fino ad allora `state.py` non indica l'implementazione e `loop.py` si ferma.
+Non scriverlo mai di tua iniziativa. Nel livello S basta uno spot check.

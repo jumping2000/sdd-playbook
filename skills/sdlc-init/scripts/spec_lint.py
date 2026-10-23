@@ -21,6 +21,8 @@ ID e stati (playbook §3.3): titolo "# SPEC-aaaa-mm-gg-slug: ..." con l'ID ugual
 Task: T-nn dal piano (verifica: e copre: obbligatori), T-Rnn dai problemi della review (copre: facoltativo).
 Livello (playbook §2): "- Livello: S | M | L" nella spec; senza il campo vale M (avviso). Il livello entra nell'hash:
 abbassarlo dopo l'approvazione fa decadere l'approvazione. Livello S: niente piano, T-DOC facoltativa.
+Test approvati (playbook §6): nei livelli M e L una task di test "atteso: rosso" chiusa porta "test approvati: <nome,
+data>", scritto dopo che l'umano ha riletto i test bloccati (Test-Lock); test_da_approvare() elenca quelle senza.
 Exit code 0 = nessun errore (gli avvisi non bloccano). Solo stdlib + git (per --base), cross-platform.
 """
 from __future__ import annotations
@@ -41,6 +43,8 @@ TITOLO = re.compile(rf"^#\s+SPEC-({ID_DATA}|\d+)\s*:", re.M)
 REQ_DEF = re.compile(r"^\s*[-*]\s+(REQ-\d+)\b")
 AC_DEF = re.compile(r"^\s*[-*]\s+(AC-\d+)\s*\[([^\]]*)\]")
 PLACEHOLDER = re.compile(r"<[^<>\n]{1,80}>")
+TASK_TEST = re.compile(r"^\s*-\s+\[[xX]\]\s+(T-\d+)\b(.*atteso: rosso.*)$", re.M)
+APPROVATI = re.compile(r"test approvati:\s*([^—\n]*)")
 
 
 def leggi(path: str) -> str:
@@ -287,6 +291,16 @@ def lint_tasks(spec: str, tasks: str) -> tuple[list[str], list[str]]:
         if ac not in coperti:
             err.append(f"{ac} non è coperto da nessuna task")
     return err, []
+
+
+def test_da_approvare(tasks: str) -> list[str]:
+    """Task di test "atteso: rosso" chiuse senza "test approvati: <nome, data>" compilato."""
+    out = []
+    for tid, resto in TASK_TEST.findall(tasks):
+        m = APPROVATI.search(resto)
+        if not m or not m.group(1).strip() or PLACEHOLDER.search(m.group(1)):
+            out.append(tid)
+    return out
 
 
 def tasks_su_piano(plan: str, tasks: str) -> tuple[list[str], list[str]]:

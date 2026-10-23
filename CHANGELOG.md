@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.10.0
+Quarto rilascio del piano sulle criticità di processo: verifica dei test (A3 residuo, test scritti e implementati dallo
+stesso agente).
+- `trace_check.py --junit FILE|DIR`: con il report JUnit XML dei test eseguiti ogni AC deve avere almeno un caso
+  eseguito e passato, e nessuno fallito; i saltati non contano. Attribuzione dei casi alla spec con le stesse regole
+  delle citazioni (qualificate, o file dichiarato riconosciuto da `file` e `classname`). Report illeggibile: exit 2.
+- `sync_check.py --junit`, obbligatorio nel livello L; `loop.py --junit` lo passa al controllo finale.
+- Test approvati: nei livelli M e L la task di test "atteso: rosso" chiusa riporta `— test approvati: <nome, data>`,
+  scritto dopo che l'umano ha riletto i test bloccati. `state.py` indica `sdlc-tests-from-ac` finché manca,
+  `loop.py` si ferma (exit 1) e non riparte con un'approvazione in attesa (exit 2), `sync_check.py` lo richiede.
+- Template di `verify.py` con `--junitxml=reports/junit.xml`; tabella dei reporter JUnit per stack; template di task,
+  `PROMPT.md` e PR aggiornati; skill `sdlc-tests-from-ac`, `sdlc-implement`, `sdlc-loop`, `sdlc-review-diff`,
+  `sdlc-sync`, `sdlc-init` aggiornate. Playbook: principio 5, §3.5, §4, §6, §7, §9.
+
 ## 0.9.0
 Terzo rilascio del piano sulle criticità di processo: processo proporzionato al rischio (A6, e la parte di A5 sulle
 aree sensibili).

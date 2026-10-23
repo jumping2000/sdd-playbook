@@ -7,7 +7,8 @@ tasks -> implement -> review-diff -> docs -> sync. Bug aperti e sdlc-loop sono s
 Con più spec attive ognuna ha il suo passo successivo; la riga PROSSIMO riguarda la spec indicata con --spec, quella
 il cui nome di cartella compare nel branch corrente, o l'unica attiva. Altrimenti chiede di scegliere.
 Livelli (playbook §2): una spec S salta piano e review.md; una spec L richiede anche la revisione umana del diff
-("- Revisione umana del diff:" in review.md).
+("- Revisione umana del diff:" in review.md). Nei livelli M e L i test bloccati di una task "atteso: rosso" chiusa
+vanno approvati dall'umano ("test approvati:" sulla riga della task) prima di proseguire.
 Solo stdlib (+ git per il nome del branch, se c'è), cross-platform.
 """
 from __future__ import annotations
@@ -93,6 +94,7 @@ def analizza_spec(d: Path) -> dict:
         "task_totali": len(chiuse) + len(aperte),
         "task_numerate_aperte": len(numerate),
         "prossima_task": numerate[0] if numerate else None,
+        "test_da_approvare": spec_lint.test_da_approvare(tasks),
         "task_review": len([t for t in aperte + chiuse if t.startswith("T-R")]),
         "doc_aperta": "T-DOC" in aperte,
         "sync_aperta": "T-SYNC" in aperte,
@@ -122,6 +124,10 @@ def prossimo_della_spec(s: dict) -> dict:
         return {"skill": "sdlc-tasks", "spec": i, "motivo": "task mancanti"}
     if s["tasks_su_altro_piano"]:
         return {"skill": "sdlc-tasks", "spec": i, "motivo": "task basate su un'altra versione del piano: rivedile"}
+    if s["test_da_approvare"]:
+        return {"skill": "sdlc-tests-from-ac", "spec": i,
+                "motivo": f"test bloccati di {', '.join(s['test_da_approvare'])} da far approvare all'umano "
+                          "('test approvati:' sulla riga della task) prima dell'implementazione"}
     if s["task_numerate_aperte"]:
         return {"skill": "sdlc-implement", "spec": i,
                 "motivo": f"task aperte: {s['task_numerate_aperte']}, prossima {s['prossima_task']} "
