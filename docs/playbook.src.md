@@ -252,7 +252,7 @@ Differenze rispetto al greenfield: più tempo in lettura/caratterizzazione, spec
 **Test**
 - Genera i test **dagli acceptance criteria**, non dal codice: altrimenti l'agente scrive test che confermano i propri bug. *(`sdlc-tests-from-ac`)*
 - **Test bloccati:** i test rossi si committano da soli con il trailer `Test-Lock: T-nn` (lo scheletro del codice, se serve, in un commit precedente). Da lì l'implementazione deve farli passare senza toccarli: `diff_scope.py` segnala come errore ogni modifica successiva a quei file fuori da un nuovo commit `Test-Lock`, che va motivato nella review. La CI del branch resta rossa fino alla task di implementazione.
-- Tracciabilità: nel nome o commento del test cita l'ID (`test_AC_001_...`). `trace_check.py` verifica che ogni AC compaia in almeno un test e segnala i requisiti senza test.
+- Tracciabilità: nel nome o commento del test cita l'ID dell'AC **qualificato con la spec** (`SPEC-001/AC-001`, o `test_SPEC001_AC001_...` nei nomi di funzione), perché gli AC ripartono da AC-001 in ogni spec; in alternativa dichiara la spec in testa al file (`# SPEC-001`) e cita `AC-001`. `trace_check.py` verifica che ogni AC compaia in almeno un test della sua spec, segnala i requisiti senza test e le citazioni ambigue, e ignora quelle nei `TODO`.
 - Livelli: unit per la logica, integrazione per i confini, almeno un e2e per il flusso principale.
 - Verifica che i test sappiano fallire: rompi di proposito il codice (o fai una mutation test) e controlla che qualcosa diventi rosso.
 - Se il team sviluppa su Windows, almeno la suite di integrazione gira anche su Windows in CI.
@@ -424,7 +424,7 @@ a ogni punto di approvazione) e **script** (controlli deterministici copiati nel
 | `spec_lint.py` | Spec (sezioni, ID, REQ→AC, non-scope, approvazione, domande aperte); con `--plan` ogni AC è nella strategia di test; con `--tasks` ogni task ha verifica e copertura e nessun segnaposto, ogni AC è coperto, ci sono `T-DOC` e `T-SYNC` |
 | `state.py` | Stato del progetto e prossima fase suggerita |
 | `scan_repo.py` | Inventario deterministico di una codebase (stack, linguaggi, test, CI, entry point) |
-| `trace_check.py` | Ogni AC citato in almeno un test; requisiti senza test |
+| `trace_check.py` | Ogni AC citato in almeno un test della sua spec (`SPEC-nnn/AC-nnn` o file dichiarato); requisiti senza test; citazioni ambigue |
 | `bug_lint.py` | Completezza del file di un bug in funzione del suo stato |
 | `diff_scope.py` | File modificati: zone vietate (`Non modificare:` in `AGENTS.md`), test bloccati (`Test-Lock`) modificati dopo il blocco, file fuori piano, file pianificati non toccati |
 | `docs_check.py` | Link relativi validi; esempi Python marcati eseguiti con successo |

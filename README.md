@@ -1,4 +1,4 @@
-# sdlc-playbook (versione 0.5.0)
+# sdlc-playbook (versione 0.6.0)
 
 Plugin per Claude Code e Codex che accompagna lo sviluppatore lungo tutto il ciclo di vita descritto nel
 [playbook](docs/playbook-ai-software-lifecycle.md): spec, piano, task, test, implementazione, review,

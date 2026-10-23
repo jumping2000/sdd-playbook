@@ -66,10 +66,18 @@ python scripts/spec_lint.py <spec.md> [--plan <plan.md>] [--tasks <tasks.md>]
 python scripts/trace_check.py <spec.md> [--tests DIR ...] [--warn-only]
 ```
 
-Cerca `AC-001`, `AC_001` o `AC001` nei file di test (cartelle di default: `tests`, `test`, `__tests__`, `spec`,
-`src/test`; estensioni dei linguaggi più comuni). Stampa per ogni AC il numero di riferimenti o `NESSUN TEST`, segnala i
-REQ senza alcun AC testato e, come avviso, gli ID citati nei test ma assenti dalla spec. Exit `1` se un AC non ha test
-(salvo `--warn-only`), `2` se non trova cartelle di test.
+Cerca le citazioni degli AC nei file di test (cartelle di default: `tests`, `test`, `__tests__`, `spec`, `src/test`;
+estensioni dei linguaggi più comuni) e le attribuisce a una spec, perché gli AC ripartono da AC-001 in ogni spec. L'ID
+della spec viene dal titolo `# SPEC-nnn: ...`.
+- `SPEC-001/AC-001` (anche `SPEC-001-AC-001`, `SPEC_001_AC_001`, `SPEC001_AC001`) vale per SPEC-001;
+- `AC-001`, `AC_001`, `AC001` in un file che nomina una sola spec (es. `# SPEC-001` in testa) vale per quella spec;
+- `AC-001` in un file che non nomina spec vale solo se `docs/specs/` contiene una sola spec; altrimenti è **ambigua**,
+  non conta ed è segnalata come avviso;
+- le citazioni su righe con `TODO`, `FIXME` o `XXX` non contano e sono segnalate.
+
+Stampa per ogni AC il numero di riferimenti o `NESSUN TEST`, segnala i REQ senza alcun AC testato e, come avvisi, gli AC
+attribuiti alla spec ma assenti dalla spec, le citazioni ambigue e quelle ignorate. Exit `1` se un AC non ha test (salvo
+`--warn-only`), `2` se non trova cartelle di test.
 
 ### bug_lint.py
 
@@ -129,7 +137,8 @@ python scripts/sync_check.py docs/specs/001-x [--area docs/system/<area>.md] [--
 
 Verifica che: la spec sia valida con `Stato: implemented`; nessuna task sia aperta; `review.md` abbia un esito valido,
 diverso da `non conforme`, e la "Decisione di" compilata; esista una pagina d'area (o quella indicata) con le sezioni
-richieste, "Ultimo allineamento" compilato e la spec tra le "Specifiche collegate"; ogni AC sia citato in un test.
+richieste, "Ultimo allineamento" compilato e la spec tra le "Specifiche collegate"; ogni AC sia citato in un test **di
+questa spec**, con le regole di `trace_check.py` (se mancano test e ci sono citazioni ambigue, l'errore lo dice).
 
 ### loop.py
 

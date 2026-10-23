@@ -1,6 +1,6 @@
 # Architettura del plugin
 
-Documento di progetto **come costruito** (versione 0.5.0): scelte, struttura, contratti tra i file e limiti.
+Documento di progetto **come costruito** (versione 0.6.0): scelte, struttura, contratti tra i file e limiti.
 
 ## Obiettivo e criterio di successo
 
@@ -89,6 +89,7 @@ Gli script leggono pochi campi con convenzioni fisse. Se si cambia un template v
 | `plan.md` | `- Approvato da / data:`; sezione `## Componenti e file da creare/modificare` con righe `- percorso: ...` (percorso = prima parola o testo tra backtick); sezione `## Strategia di test ...` con gli ID AC esatti e, se c'è, la colonna `Dove` | `spec_lint`, `state`, `diff_scope` |
 | `tasks.md` | righe `- [ ] T-nn ...` con i campi `verifica:` (comando tra backtick) e `copre:` (ID degli AC), senza segnaposto; `T-DOC`, `T-SYNC`; la marcatura `atteso: rosso` sulle task di test definisce la **fase rossa** (ultima task `T-nn` chiusa con la marcatura, successiva aperta) | `spec_lint`, `state`, `loop`, `sync_check`, hook `Stop` |
 | commit git | trailer `Test-Lock: T-nn` sul commit dei test rossi: blocca i suoi file di test | `diff_scope` |
+| file di test | citazioni `SPEC-nnn/AC-nnn` (o `SPEC001_AC001`), oppure `# SPEC-nnn` nel file più `AC-nnn`; righe `TODO`/`FIXME`/`XXX` ignorate | `trace_check`, `sync_check` |
 | `review.md` | `- Esito:` (`conforme`, `conforme con riserve`, `non conforme`); `- Decisione di:` | `state`, `sync_check` |
 | `docs/bugs/BUG-*.md` | `- Stato:` (`aperto`, `diagnosticato`, `corretto`, `verificato`); sezioni di `bugfix-template.md`; voci spuntabili in `## Chiusura` | `bug_lint`, `state` |
 | `docs/system/<area>.md` | `- Ultimo allineamento:`; `- Specifiche collegate:`; sezioni `## Comportamento attuale`, `Vincoli e punti delicati`, `Test di caratterizzazione` | `sync_check` |
@@ -131,8 +132,8 @@ Un campo con segnaposto `<...>` o vuoto vale come **non compilato**.
 - **Fase rossa e `Test-Lock`:** si basano su convenzioni (marcatura nelle task, trailer nei commit) che l'agente potrebbe
   usare a sproposito; la review umana resta il controllo finale.
 - **`claude -p` da stdin:** la lettura del prompt da stdin con `-p` va verificata sulla versione in uso.
-- **Euristiche:** `diff_scope.py` dipende dal formato `- percorso: ...` del piano; `trace_check.py` trova gli ID per testo, non
-  capisce la semantica dei test; `scan_repo.py` è un inventario; nessuno sostituisce la lettura del codice.
+- **Euristiche:** `diff_scope.py` dipende dal formato `- percorso: ...` del piano; `trace_check.py` trova gli ID per testo
+  (qualificati per spec), non capisce la semantica dei test né controlla che passino; `scan_repo.py` è un inventario; nessuno sostituisce la lettura del codice.
 - **Perimetro:** il plugin non copre rilascio, sicurezza dell'infrastruttura, osservabilità e operazione (§8 del playbook), non
   configura i permessi dell'agente, non approva al posto dell'umano.
 

@@ -6,16 +6,22 @@ Uso:
   python scripts/trace_check.py docs/specs/001-x/spec.md --tests tests integration
   python scripts/trace_check.py docs/specs/001-x/spec.md --warn-only
 
-Un test "cita" un AC se nel nome, in un commento o in una stringa compare AC-001, AC_001 o AC001.
+Gli AC ripartono da AC-001 in ogni spec, quindi una citazione vale per una spec precisa:
+  1. qualificata: SPEC-002/AC-001 (anche SPEC-002-AC-001, SPEC_002_AC_001, SPEC002_AC001) -> vale per SPEC-002;
+  2. breve (AC-001, AC_001, AC001) in un file che nomina una sola spec (es. "# SPEC-002" in testa) -> vale per quella;
+  3. breve in un file che non nomina spec -> vale solo se il progetto ha una sola spec in docs/specs/; altrimenti è
+     ambigua, non conta ed è segnalata.
+Le citazioni su righe con TODO, FIXME o XXX non contano: un promemoria non è un test.
+L'ID della spec si legge dal titolo "# SPEC-nnn: ...".
 Cartelle di test cercate di default: tests, test, __tests__, spec, src/test.
-Exit code: 0 tutti gli AC citati; 1 AC senza test; 2 uso errato.
-Solo stdlib, cross-platform.
+Exit code: 0 tutti gli AC citati; 1 AC senza test; 2 uso errato. Solo stdlib, cross-platform.
 """
 from __future__ import annotations
 
 import re
 import sys
 from pathlib import Path
+from typing import NamedTuple
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import spec_lint  # noqa: E402
@@ -25,32 +31,85 @@ ESTENSIONI = {".py", ".js", ".jsx", ".ts", ".tsx", ".java", ".kt", ".cs", ".go",
 CARTELLE = ("tests", "test", "__tests__", "spec", "src/test")
 SALTA = {"node_modules", ".git", ".venv", "venv", "__pycache__", "dist", "build", "target", "bin", "obj"}
 AC_REF = re.compile(r"(?<![A-Za-z0-9])AC[-_]?0*(\d+)(?!\d)")
+SPEC_REF = re.compile(r"(?<![A-Za-z0-9])SPEC[-_]?0*(\d+)(?!\d)")
+QUALIFICATO = re.compile(r"(?<![A-Za-z0-9])SPEC[-_]?0*(\d+)[-_/:. ]{0,3}AC[-_]?0*(\d+)(?!\d)")
+PROMEMORIA = re.compile(r"\b(TODO|FIXME|XXX)\b")
 
 
-def raccogli(cartelle: list[Path]) -> dict[int, list[str]]:
-    """Numero AC -> posizioni (file:riga) in cui è citato."""
-    trovati: dict[int, list[str]] = {}
+class Esito(NamedTuple):
+    acs: dict[str, list[str]]
+    coperti: dict[str, list[str]]
+    senza: list[str]
+    orfani: list[int]
+    req_coperti: dict[str, bool]
+    ambigui: list[str]
+    ignorati: list[str]
+
+
+def numero_spec(spec_text: str) -> int | None:
+    m = re.search(r"^#\s+SPEC-0*(\d+)\b", spec_text, re.M)
+    return int(m.group(1)) if m else None
+
+
+def spec_nel_progetto() -> int:
+    base = Path("docs/specs")
+    return sum(1 for p in base.glob("*/spec.md")) if base.is_dir() else 0
+
+
+def file_di_test(cartelle: list[Path]):
     for base in cartelle:
         for f in sorted(base.rglob("*")):
-            if not f.is_file() or f.suffix not in ESTENSIONI or SALTA & set(f.parts):
+            if f.is_file() and f.suffix in ESTENSIONI and not SALTA & set(f.parts):
+                yield f
+
+
+def raccogli(cartelle: list[Path], spec: int | None, spec_unica: bool):
+    """(numero AC -> posizioni per la spec indicata, citazioni ambigue, citazioni ignorate perché promemoria)."""
+    trovati: dict[int, list[str]] = {}
+    ambigui: list[str] = []
+    ignorati: list[str] = []
+    for f in file_di_test(cartelle):
+        testo = f.read_text(encoding="utf-8", errors="ignore")
+        dichiarate = {int(n) for n in SPEC_REF.findall(testo)}
+        if spec is not None and dichiarate == {spec}:
+            brevi = "valide"
+        elif not dichiarate:
+            brevi = "valide" if spec_unica else "ambigue"
+        elif spec in dichiarate:
+            brevi = "ambigue"  # il file nomina più spec: una citazione breve non dice di quale
+        else:
+            brevi = "altrui"  # il file appartiene ad altre spec
+        for n, riga in enumerate(testo.splitlines(), 1):
+            pos = f"{f.as_posix()}:{n}"
+            if not (QUALIFICATO.search(riga) or AC_REF.search(riga)):
                 continue
-            for n, riga in enumerate(f.read_text(encoding="utf-8", errors="ignore").splitlines(), 1):
-                for m in AC_REF.finditer(riga):
-                    trovati.setdefault(int(m.group(1)), []).append(f"{f.as_posix()}:{n}")
-    return trovati
+            if PROMEMORIA.search(riga):
+                ignorati.append(pos)
+                continue
+            for m in QUALIFICATO.finditer(riga):
+                if int(m.group(1)) == spec:
+                    trovati.setdefault(int(m.group(2)), []).append(pos)
+            for m in AC_REF.finditer(QUALIFICATO.sub(" ", riga)):
+                if brevi == "valide":
+                    trovati.setdefault(int(m.group(1)), []).append(pos)
+                elif brevi == "ambigue":
+                    ambigui.append(pos)
+    return trovati, ambigui, ignorati
 
 
-def analizza(spec_text: str, cartelle: list[Path]):
+def analizza(spec_text: str, cartelle: list[Path], spec_unica: bool | None = None) -> Esito:
     _, acs = spec_lint.parse_spec(spec_text)
-    trovati = raccogli(cartelle)
+    unica = spec_nel_progetto() <= 1 if spec_unica is None else spec_unica
+    trovati, ambigui, ignorati = raccogli(cartelle, numero_spec(spec_text), unica)
     coperti = {ac: trovati.get(int(ac[3:]), []) for ac in acs}
     senza = [ac for ac, pos in coperti.items() if not pos]
-    orfani = sorted(n for n in trovati if f"AC-{n:03d}" not in acs and not any(int(a[3:]) == n for a in acs))
+    numeri = {int(a[3:]) for a in acs}
+    orfani = sorted(n for n in trovati if n not in numeri)
     req_coperti: dict[str, bool] = {}
     for ac, refs in acs.items():
         for r in refs:
             req_coperti[r] = req_coperti.get(r, False) or bool(coperti[ac])
-    return acs, coperti, senza, orfani, req_coperti
+    return Esito(acs, coperti, senza, orfani, req_coperti, ambigui, ignorati)
 
 
 def main(argv: list[str]) -> int:
@@ -70,18 +129,26 @@ def main(argv: list[str]) -> int:
     if not cartelle:
         print("[ERRORE] nessuna cartella di test trovata: usa --tests <cartella>")
         return 2
-    acs, coperti, senza, orfani, req_coperti = analizza(Path(spec_path).read_text(encoding="utf-8"), cartelle)
-    for ac in acs:
-        pos = coperti[ac]
+    testo = Path(spec_path).read_text(encoding="utf-8")
+    e = analizza(testo, cartelle)
+    if numero_spec(testo) is None:
+        print("[WARN] la spec non ha un titolo '# SPEC-nnn: ...': valgono solo le citazioni brevi, e solo con una spec")
+    for ac in e.acs:
+        pos = e.coperti[ac]
         print(f"{ac}: " + (f"{len(pos)} riferimenti (es. {pos[0]})" if pos else "NESSUN TEST"))
-    for req, ok in req_coperti.items():
+    for req, ok in e.req_coperti.items():
         if not ok:
             print(f"[ERRORE] {req}: nessuno dei suoi AC ha test")
-    if orfani:
-        print("[WARN] ID citati nei test ma assenti dalla spec: " + ", ".join(f"AC-{n:03d}" for n in orfani)
-              + " (possono appartenere ad altre spec)")
-    print("TRACE: " + ("OK" if not senza else f"{len(senza)} AC senza test: {', '.join(senza)}"))
-    return 0 if (not senza or warn_only) else 1
+    if e.orfani:
+        print("[WARN] AC attribuiti a questa spec nei test ma assenti dalla spec: "
+              + ", ".join(f"AC-{n:03d}" for n in e.orfani))
+    if e.ambigui:
+        print(f"[WARN] {len(e.ambigui)} citazioni AC senza spec in file che non dichiarano una sola spec (es. "
+              f"{', '.join(e.ambigui[:3])}): non contano. Usa SPEC-nnn/AC-nnn o dichiara la spec nel file")
+    if e.ignorati:
+        print(f"[WARN] {len(e.ignorati)} citazioni su righe TODO/FIXME/XXX ignorate (es. {', '.join(e.ignorati[:3])})")
+    print("TRACE: " + ("OK" if not e.senza else f"{len(e.senza)} AC senza test: {', '.join(e.senza)}"))
+    return 0 if (not e.senza or warn_only) else 1
 
 
 if __name__ == "__main__":

@@ -34,8 +34,54 @@ class TestTraceCheck(unittest.TestCase):
     def test_formati_dell_id(self):
         with TmpDir() as d:
             scrivi(d, "tests/t.py", "def test_AC001(): pass\ndef test_x_AC_002_y(): pass\n# ACCESS 12\n")
-            trovati = trace_check.raccogli([d / "tests"])
+            trovati, _, _ = trace_check.raccogli([d / "tests"], 1, spec_unica=True)
             self.assertEqual(sorted(trovati), [1, 2])
+            scrivi(d, "tests/q.py", "def test_SPEC001_AC003(): pass\ndef test_SPEC_001_AC_004(): pass\n"
+                                    "it('SPEC-001/AC-005: x')\n# SPEC-001-AC-006\n# SPEC-002/AC-007\n")
+            trovati, _, _ = trace_check.raccogli([d / "tests"], 1, spec_unica=False)
+            self.assertEqual(sorted(trovati), [3, 4, 5, 6])
+
+    def test_ac_qualificati_con_piu_spec(self):
+        spec2 = SPEC_OK.replace("SPEC-001", "SPEC-002")
+        with TmpDir() as d:
+            copia_script(d)
+            scrivi(d, "docs/specs/001-a/spec.md", SPEC_OK)
+            scrivi(d, "docs/specs/002-b/spec.md", spec2)
+            # test di SPEC-001 senza dichiarazione: con due spec sono ambigui e non coprono SPEC-002
+            scrivi(d, "tests/test_vecchi.py", "def test_AC_001(): pass\ndef test_AC_002(): pass\n")
+            r = cli(d, "trace_check", "docs/specs/002-b/spec.md")
+            self.assertEqual(r.returncode, 1, r.stdout)
+            self.assertIn("TRACE: 2 AC senza test: AC-001, AC-002", r.stdout)
+            self.assertIn("2 citazioni AC senza spec", r.stdout)
+            # un file dichiarato per SPEC-001 non copre SPEC-002
+            scrivi(d, "tests/test_vecchi.py", "# SPEC-001\ndef test_AC_001(): pass\ndef test_AC_002(): pass\n")
+            self.assertEqual(cli(d, "trace_check", "docs/specs/002-b/spec.md").returncode, 1)
+            self.assertEqual(cli(d, "trace_check", "docs/specs/001-a/spec.md").returncode, 0)
+            # file dichiarato per SPEC-002 e citazione qualificata in un file qualsiasi
+            scrivi(d, "tests/test_b.py", "# SPEC-002\ndef test_AC_001(): pass\n")
+            scrivi(d, "tests/test_c.py", "def test_SPEC002_AC002_errore(): pass\n")
+            r = cli(d, "trace_check", "docs/specs/002-b/spec.md")
+            self.assertEqual(r.returncode, 0, r.stdout)
+            self.assertNotIn("citazioni AC senza spec", r.stdout)
+
+    def test_promemoria_non_contano(self):
+        with TmpDir() as d:
+            copia_script(d)
+            scrivi(d, "spec.md", SPEC_OK)
+            scrivi(d, "tests/test_a.py", "def test_AC_001(): pass\n# TODO AC-002 da scrivere\n")
+            r = cli(d, "trace_check", "spec.md")
+            self.assertEqual(r.returncode, 1, r.stdout)
+            self.assertIn("AC-002: NESSUN TEST", r.stdout)
+            self.assertIn("1 citazioni su righe TODO/FIXME/XXX ignorate", r.stdout)
+
+    def test_spec_senza_id_nel_titolo(self):
+        senza_id = SPEC_OK.replace("# SPEC-001: Esempio", "# Esempio")
+        with TmpDir() as d:
+            scrivi(d, "tests/t.py", "def test_AC_001(): pass\ndef test_AC_002(): pass\n")
+            self.assertEqual(trace_check.analizza(senza_id, [d / "tests"], spec_unica=True).senza, [])
+            esito = trace_check.analizza(senza_id, [d / "tests"], spec_unica=False)
+            self.assertEqual(esito.senza, ["AC-001", "AC-002"])
+            self.assertEqual(len(esito.ambigui), 2)
 
     def test_senza_cartella_di_test(self):
         with TmpDir() as d:
@@ -292,6 +338,19 @@ class TestSyncCheck(unittest.TestCase):
                     r = cli(d, "sync_check", "docs/specs/001-x")
                     self.assertEqual(r.returncode, 1, r.stdout)
                     self.assertIn(atteso, r.stdout)
+
+    def test_test_di_un_altra_spec_non_bastano(self):
+        with TmpDir() as d:
+            self.prepara(d)
+            scrivi(d, "docs/specs/002-y/spec.md", SPEC_OK.replace("SPEC-001", "SPEC-002"))
+            scrivi(d, "tests/test_export.py", "# SPEC-002\ndef test_AC_001(): pass\ndef test_AC_002(): pass\n")
+            r = cli(d, "sync_check", "docs/specs/001-x")
+            self.assertEqual(r.returncode, 1, r.stdout)
+            self.assertIn("AC senza test: AC-001, AC-002", r.stdout)
+            scrivi(d, "tests/test_export.py", "def test_AC_001(): pass\ndef test_AC_002(): pass\n")
+            self.assertIn("citazioni ambigue: usa SPEC-001/AC-nnn", cli(d, "sync_check", "docs/specs/001-x").stdout)
+            scrivi(d, "tests/test_export.py", "def test_SPEC001_AC001(): pass\ndef test_SPEC001_AC002(): pass\n")
+            self.assertEqual(cli(d, "sync_check", "docs/specs/001-x").returncode, 0)
 
     def test_output_utf8_anche_con_console_cp1252(self):
         with TmpDir() as d:

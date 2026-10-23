@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.6.0
+Correzione del punto B4 della review (`REVIEW.md`): tracciabilità degli AC per spec.
+- `trace_check.py` attribuisce ogni citazione a una spec: `SPEC-nnn/AC-nnn` (o `SPEC001_AC001`) vale per quella spec;
+  `AC-nnn` vale per la spec dichiarata nel file (`# SPEC-nnn`), oppure, in un file non dichiarato, solo se il progetto
+  ha una sola spec. Le citazioni ambigue non contano e sono segnalate. Prima i test di SPEC-001 coprivano anche SPEC-002.
+- Le citazioni su righe `TODO`/`FIXME`/`XXX` non contano più come test.
+- `sync_check.py` usa le stesse regole e, se mancano test, indica le citazioni ambigue.
+- Convenzioni dei test e skill `sdlc-tests-from-ac` aggiornate agli ID qualificati.
+- Compatibilità: un progetto con una sola spec continua a funzionare con le citazioni brevi.
+
 ## 0.5.0
 Correzioni dalla review del 2026-10-23 (`REVIEW.md`, punti B1-B3, B5-B8, B11 e conflitto TDD/hook/loop di A2).
 - Output UTF-8 in tutti gli script e negli hook: la suite ora passa anche su Windows con console cp1252 (B1).

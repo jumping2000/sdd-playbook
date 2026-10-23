@@ -10,7 +10,7 @@ Verifica:
   3. review.md presente con Esito valido, diverso da "non conforme", e con la decisione umana compilata
   4. pagina d'area (--area, o la prima in docs/system/ che cita la spec) con le sezioni richieste,
      "Ultimo allineamento" compilato e la spec tra le "Specifiche collegate"
-  5. ogni AC citato in almeno un test (trace_check)
+  5. ogni AC citato in almeno un test di questa spec (trace_check: ID qualificati SPEC-nnn/AC-nnn)
 Exit code: 0 allineato; 1 errori; 2 uso errato. Solo stdlib, cross-platform.
 """
 from __future__ import annotations
@@ -100,9 +100,11 @@ def controlla(feature: Path, area_arg: str | None, tests: list[Path]) -> list[st
     if not cartelle:
         err.append("nessuna cartella di test trovata (usa --tests)")
     else:
-        _, _, senza, _, _ = trace_check.analizza(spec, cartelle)
-        if senza:
-            err.append("AC senza test: " + ", ".join(senza))
+        esito = trace_check.analizza(spec, cartelle)
+        if esito.senza:
+            nota = (f" ({len(esito.ambigui)} citazioni ambigue: usa {spec_id}/AC-nnn o dichiara la spec nel file)"
+                    if esito.ambigui else "")
+            err.append("AC senza test: " + ", ".join(esito.senza) + nota)
     return err
 
 

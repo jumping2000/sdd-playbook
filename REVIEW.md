@@ -137,17 +137,18 @@ Conclusione per piattaforma: **Linux** è la piattaforma su cui il plugin funzio
 che su un'installazione pulita non partono (B2). **Windows nativo**, indicato come supportato, non passa la propria
 suite.
 
-## Stato delle correzioni (0.5.0)
+## Stato delle correzioni (0.5.0 e 0.6.0)
 
 | Punto | Stato | Come |
 |---|---|---|
 | B1 | corretto | `reconfigure(encoding="utf-8")` in ogni script e hook; test con `PYTHONIOENCODING=cp1252` |
 | B2 | corretto | `hooks/run.sh`: abilitazione controllata prima di cercare Python, poi `python3`/`python`/`py -3`; senza Python exit 1 visibile |
 | B3 | corretto | `normalizza()` toglie solo il prefisso `./` |
+| B4 | corretto (0.6.0) | citazioni attribuite alla spec: `SPEC-nnn/AC-nnn`, file dichiarato `# SPEC-nnn`, o citazione breve solo con una spec nel progetto; ambigue segnalate; righe `TODO`/`FIXME`/`XXX` ignorate. Resta vero che lo script legge testo e non controlla che i test passino |
 | B5 | corretto | tutte le righe `Non modificare:`; percorso = prima parola o testo tra backtick; colonna "Dove" nel piano |
 | B6 | corretto | segnaposto nelle task `T-nn` = errore; il template ora risulta "da compilare" |
 | B7 | corretto | AC cercati per ID esatto nella sezione "Strategia di test" |
 | B8 | corretto | impronta con `git diff HEAD` e contenuto dei non tracciati; `--timeout`; exit code riportato; baseline controllata |
 | B11 | corretto | `.gitattributes` con LF |
 | A2 | corretto | commit `Test-Lock` dei test rossi + controllo in `diff_scope.py`; fase rossa nell'hook `Stop` e in `loop.py`; `PROMPT.md` e skill aggiornati |
-| B4, B9, B10, A1, A3-A8, C | aperti | non compresi in questa correzione |
+| B9, B10, A1, A3-A8, C | aperti | non compresi in queste correzioni (A3 è coperto per la parte degli ID; resta il collegamento ai report dei test eseguiti) |

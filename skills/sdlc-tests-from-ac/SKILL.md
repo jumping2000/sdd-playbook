@@ -12,8 +12,9 @@ errori); la task di test è indicata in `tasks.md`. Convenzioni di nome: `refere
 
 1. **Parti dagli AC che la task copre**, non dall'implementazione. Nel brownfield leggi solo le interfacce da
    chiamare; non copiare la logica esistente nei test.
-2. **Un test per AC, più i casi di errore** presenti negli AC. Cita l'ID (`AC-001`) nel nome o in un commento,
-   così `trace_check.py` lo trova. Non inventare requisiti: un caso non coperto dalla spec è una domanda
+2. **Un test per AC, più i casi di errore** presenti negli AC. Cita l'ID qualificato con la spec
+   (`SPEC-001/AC-001`, o `SPEC001_AC001` nei nomi di funzione) nel nome o in un commento, così `trace_check.py`
+   lo attribuisce alla spec giusta: gli AC ripartono da AC-001 in ogni spec. Un `TODO AC-001` non conta come test. Non inventare requisiti: un caso non coperto dalla spec è una domanda
    per l'utente.
 3. **Scheletro minimo** del codice da testare, solo se serve a far girare i test (firma che lancia un errore
    "non implementato"): lo scopo è che i test falliscano sul comportamento, non su un import.
