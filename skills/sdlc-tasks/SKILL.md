@@ -29,6 +29,9 @@ Playbook §3.5 e §4 (fase 4).
      task che implementa. Usa "atteso: rosso" **solo** sulle task che scrivono test: hook `Stop` e `loop.py` la
      leggono per riconoscere la fase rossa.
    - Nessun segnaposto `<...>` nelle task `T-nn`: `spec_lint.py --tasks` li segnala come errore.
+   - In testa al file `- Basato su piano:` con il valore di `- Hash:` del piano approvato: se il piano cambia,
+     `spec_lint.py <spec> --plan <plan> --tasks <tasks>` e `state.py` chiedono di rivedere le task.
+   - Le task `T-Rnn` non si scrivono qui: le aggiunge `sdlc-review-diff` dopo una review non conforme.
    - Ogni AC è coperto da almeno una task; nessuna task tocca ciò che è nel non-scope.
    - Includi sempre `T-DOC` (documentazione, esempi eseguiti: `sdlc-docs`) e `T-SYNC` (riconciliazione spec e
      `docs/system/`, poi `Stato: implemented`: `sdlc-sync`). Non hanno `copre:`: si eseguono dopo la review.

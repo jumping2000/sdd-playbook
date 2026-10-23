@@ -34,15 +34,21 @@ def campo(testo: str, nome: str) -> str:
 
 
 def id_spec(spec: str, feature: Path) -> str:
-    m = re.search(r"^#\s+(SPEC-\d+)", spec, re.M)
-    return m.group(1) if m else feature.name
+    sid = spec_lint.id_spec(spec)
+    return f"SPEC-{sid}" if sid else feature.name
+
+
+def cita(testo: str, spec_id: str) -> bool:
+    """Il testo cita esattamente questa spec (SPEC-2026-10-24-x non vale per SPEC-2026-10-24-x-y)."""
+    chiave = spec_lint.chiave_id(spec_id[5:] if spec_id.startswith("SPEC-") else spec_id)
+    return chiave in {spec_lint.chiave_id(n) for n in trace_check.SPEC_REF.findall(testo)}
 
 
 def trova_area(feature: Path, spec_id: str, esplicita: str | None) -> Path | None:
     if esplicita:
         return Path(esplicita) if Path(esplicita).is_file() else None
     for p in sorted(Path("docs/system").glob("*.md")) if Path("docs/system").is_dir() else []:
-        if p.name != "mappa.md" and spec_id in p.read_text(encoding="utf-8"):
+        if p.name != "mappa.md" and cita(p.read_text(encoding="utf-8"), spec_id):
             return p
     return None
 
@@ -55,7 +61,7 @@ def controlla(feature: Path, area_arg: str | None, tests: list[Path]) -> list[st
     spec = spec_p.read_text(encoding="utf-8")
     spec_id = id_spec(spec, feature)
 
-    e, _ = spec_lint.lint_spec(spec)
+    e, _ = spec_lint.lint_spec(spec, feature.resolve().name)
     err += [f"spec: {x}" for x in e]
     stato = spec_lint.pulisci(spec_lint.campo(spec, "Stato")).split("|")[0].strip()
     if stato != "implemented":
@@ -93,7 +99,7 @@ def controlla(feature: Path, area_arg: str | None, tests: list[Path]) -> list[st
         agg = campo(t, "Ultimo allineamento")
         if not agg or PLACEHOLDER.search(agg):
             err.append(f"{area.as_posix()}: 'Ultimo allineamento' non compilato")
-        if spec_id not in campo(t, "Specifiche collegate"):
+        if not cita(campo(t, "Specifiche collegate"), spec_id):
             err.append(f"{area.as_posix()}: {spec_id} non è tra le 'Specifiche collegate'")
 
     cartelle = [d for d in (tests or [Path(c) for c in trace_check.CARTELLE]) if d.is_dir()]

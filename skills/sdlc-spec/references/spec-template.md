@@ -1,4 +1,4 @@
-# SPEC-001: <titolo>
+# SPEC-<aaaa-mm-gg-slug, uguale al nome della cartella>: <titolo>
 
 - Stato: draft
 - Proprietario: <nome>
@@ -32,3 +32,6 @@
 
 ## Domande aperte
 - <da chiudere prima del piano>
+
+## Revisioni
+- nessuna <!-- spec in-revisione: aaaa-mm-gg, cosa cambia e perché -->

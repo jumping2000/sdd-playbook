@@ -1,6 +1,6 @@
 # Architettura del plugin
 
-Documento di progetto **come costruito** (versione 0.7.0): scelte, struttura, contratti tra i file e limiti.
+Documento di progetto **come costruito** (versione 0.8.0): scelte, struttura, contratti tra i file e limiti.
 
 ## Obiettivo e criterio di successo
 
@@ -65,17 +65,22 @@ le cartelle delle skill devono restare sorelle.
 senza AGENTS.md / verify.py ............................ sdlc-init
 codice esistente, senza mappa e senza spec .............. sdlc-map-codebase
 nessuna spec attiva ..................................... sdlc-spec
-spec in bozza o non approvata ........................... sdlc-spec
-piano mancante o non approvato .......................... sdlc-plan
-tasks.md mancante ....................................... sdlc-tasks
-task T-nn aperte ........................................ sdlc-implement   (valuta sdlc-loop)
+più spec attive, nessuna scelta (branch o --spec) ....... scegli (lo decide l'utente)
+--- per la spec scelta ---
+spec in-revisione ....................................... sdlc-spec
+spec in bozza, non approvata o con hash non valido ...... sdlc-spec
+piano mancante, non approvato o decaduto ................ sdlc-plan
+tasks.md mancante o basato su un altro piano ............ sdlc-tasks
+task T-nn o T-Rnn aperte ................................ sdlc-implement   (valuta sdlc-loop)
 review.md mancante o senza esito valido ................. sdlc-review-diff
-review "non conforme" ................................... sdlc-implement
+review "non conforme" senza T-R ......................... sdlc-review-diff (crea le T-R)
+review "non conforme" con T-R tutte chiuse .............. sdlc-review-diff (ripeti la review)
 T-DOC aperta ............................................ sdlc-docs
 altrimenti (T-SYNC aperta o stato non implemented) ...... sdlc-sync
 ```
 
-Una spec con `Stato: implemented` o `superseded` non è più attiva. I bug non verificati sono segnalati a parte
+La spec scelta è quella di `--spec`, quella il cui nome di cartella compare nel branch corrente, o l'unica attiva. Una
+spec con `Stato: implemented` o `superseded` non è più attiva. I bug non verificati sono segnalati a parte
 (`sdlc-bugfix`): la priorità la decide l'umano.
 
 ## Contratti sui file
@@ -85,11 +90,12 @@ Gli script leggono pochi campi con convenzioni fisse. Se si cambia un template v
 
 | File | Campi e strutture lette | Script |
 |---|---|---|
-| `spec.md` | titolo `# SPEC-nnn: ...`; `- Stato:` (`draft`, `approved`, `implemented`, `superseded`); `- Approvata da / data:`; `- Hash: sha256:...` del corpo (dalla prima sezione `## `); sezioni `## Problema e obiettivo`, `Scope`, `Requisiti`, `Acceptance criteria`, `Domande aperte`; riga `**Non-scope (esplicito):**`; `- REQ-nnn`; `- AC-nnn [REQ-nnn]`; marcatore `[ASSUNZIONE]` | `spec_lint`, `state`, `trace_check`, `sync_check` |
+| `spec.md` | titolo `# SPEC-<id>: ...` (data + slug uguale alla cartella, o numero); `- Stato:` (`draft`, `approved`, `in-revisione`, `implemented`, `superseded`); sezione `## Revisioni` (obbligatoria con voce se `in-revisione`); `- Approvata da / data:`; `- Hash: sha256:...` del corpo (dalla prima sezione `## `); sezioni `## Problema e obiettivo`, `Scope`, `Requisiti`, `Acceptance criteria`, `Domande aperte`; riga `**Non-scope (esplicito):**`; `- REQ-nnn`; `- AC-nnn [REQ-nnn]`; marcatore `[ASSUNZIONE]` | `spec_lint`, `state`, `trace_check`, `sync_check` |
 | `plan.md` | `- Approvato da / data:`; `- Basato su spec:` (hash della spec); `- Hash:` del corpo; sezione `## Componenti e file da creare/modificare` con righe `- percorso: ...` (percorso = prima parola o testo tra backtick); sezione `## Strategia di test ...` con gli ID AC esatti e, se c'è, la colonna `Dove` | `spec_lint`, `state`, `diff_scope` |
-| `tasks.md` | righe `- [ ] T-nn ...` con i campi `verifica:` (comando tra backtick) e `copre:` (ID degli AC), senza segnaposto; `T-DOC`, `T-SYNC`; la marcatura `atteso: rosso` sulle task di test definisce la **fase rossa** (ultima task `T-nn` chiusa con la marcatura, successiva aperta) | `spec_lint`, `state`, `loop`, `sync_check`, hook `Stop` |
+| `tasks.md` | `- Basato su piano:` (hash del piano); righe `- [ ] T-nn ...` con i campi `verifica:` (comando tra backtick) e `copre:` (ID degli AC), senza segnaposto; righe `- [ ] T-Rnn ...` dai problemi della review (`verifica:`, `copre:` facoltativo); `T-DOC`, `T-SYNC`; la marcatura `atteso: rosso` sulle task di test definisce la **fase rossa** (ultima task `T-nn` chiusa con la marcatura, successiva aperta) | `spec_lint`, `state`, `loop`, `sync_check`, hook `Stop` |
 | commit git | trailer `Test-Lock: T-nn` sul commit dei test rossi: blocca i suoi file di test | `diff_scope` |
-| file di test | citazioni `SPEC-nnn/AC-nnn` (o `SPEC001_AC001`), oppure `# SPEC-nnn` nel file più `AC-nnn`; righe `TODO`/`FIXME`/`XXX` ignorate | `trace_check`, `sync_check` |
+| file di test | `# SPEC-<id>` nel file più `AC-nnn`, oppure citazioni `SPEC-<id>/AC-nnn` (nei nomi di funzione `SPEC_<id con _>_AC_nnn`); righe `TODO`/`FIXME`/`XXX` ignorate | `trace_check`, `sync_check` |
+| cartelle `docs/specs/<id>/` | `<id>` = data + slug (`2026-10-24-export-csv`), uguale all'ID del titolo; i vecchi `NNN-slug` restano validi | `spec_lint`, `state` (associazione al branch) |
 | `review.md` | `- Esito:` (`conforme`, `conforme con riserve`, `non conforme`); `- Decisione di:` | `state`, `sync_check` |
 | `docs/bugs/BUG-*.md` | `- Stato:` (`aperto`, `diagnosticato`, `corretto`, `verificato`); sezioni di `bugfix-template.md`; voci spuntabili in `## Chiusura` | `bug_lint`, `state` |
 | `docs/system/<area>.md` | `- Ultimo allineamento:`; `- Specifiche collegate:`; sezioni `## Comportamento attuale`, `Vincoli e punti delicati`, `Test di caratterizzazione` | `sync_check` |

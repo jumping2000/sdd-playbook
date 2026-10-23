@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.8.0
+Secondo rilascio del piano sulle criticità di processo: ID e ciclo di vita delle spec, lavoro in team (A8).
+- ID della spec = data + slug (`docs/specs/2026-10-24-export-csv/`, titolo `# SPEC-2026-10-24-export-csv: ...`):
+  `spec_lint.py` controlla che titolo e cartella coincidano e che la data sia valida. I vecchi `SPEC-NNN` restano
+  validi. `trace_check.py` e `sync_check.py` riconoscono i nuovi ID (anche nella forma con `_` dei nomi di funzione) e
+  li confrontano per ID esatto: `SPEC-2026-10-24-export` non vale per `SPEC-2026-10-24-export-csv`.
+- Stato `in-revisione` per modificare una spec approvata, con voce obbligatoria in `## Revisioni`. Le task registrano
+  `- Basato su piano:`; con `--plan` e `--tasks` insieme `spec_lint.py` le segnala se il piano è cambiato.
+- Task `T-Rnn` dai problemi della review: controllate da `spec_lint.py` (`copre:` facoltativo), eseguite da
+  `sdlc-implement` e dal loop; `state.py` chiede di crearle dopo un `non conforme` e di ripetere la review quando sono
+  chiuse.
+- `state.py`: passo successivo per ogni spec attiva; `PROSSIMO` per la spec di `--spec`, del branch corrente o l'unica
+  attiva, altrimenti `scegli`.
+- Hook `Stop`: il contatore dei blocchi sta in una cartella privata dell'utente (0700) e si apre senza seguire link
+  simbolici (segnalazione della review automatica di sicurezza sulla 0.7.0).
+
 ## 0.7.0
 Primo rilascio del piano sulle criticità di processo (`REVIEW.md`): fiducia nelle attestazioni (A1, A4, B9).
 - Hash anti-deriva: spec approvata e piano approvato riportano `- Hash:` del proprio corpo; il piano riporta anche

@@ -14,6 +14,11 @@ Approvazione (playbook §1.2):
     "- Basato su spec: sha256:..." e decade se la spec cambia.
   - --base <ref>: spec (e piano) devono esistere su <ref> ed essere identici: il merge della PR di design su un
     branch protetto è l'approvazione, e l'agente non può farlo da solo.
+  - con --plan e --tasks insieme: tasks.md riporta "- Basato su piano: sha256:..." e decade se il piano cambia.
+ID e stati (playbook §3.3): titolo "# SPEC-aaaa-mm-gg-slug: ..." con l'ID uguale al nome della cartella (il vecchio
+"# SPEC-NNN: ..." resta valido). Stato in-revisione: spec approvata che si sta modificando, con una voce in
+"## Revisioni"; torna approved solo con nuova approvazione e nuovo hash.
+Task: T-nn dal piano (verifica: e copre: obbligatori), T-Rnn dai problemi della review (copre: facoltativo).
 Exit code 0 = nessun errore (gli avvisi non bloccano). Solo stdlib + git (per --base), cross-platform.
 """
 from __future__ import annotations
@@ -22,10 +27,14 @@ import hashlib
 import re
 import subprocess
 import sys
+from datetime import date
 from pathlib import Path
 
-STATI = ("draft", "approved", "implemented", "superseded")
+STATI = ("draft", "approved", "in-revisione", "implemented", "superseded")
 SEZIONI = ("Problema e obiettivo", "Scope", "Requisiti", "Acceptance criteria", "Domande aperte")
+# ID di una spec: data + slug (2026-10-24-export-csv, uguale al nome della cartella) o il vecchio numero (001).
+ID_DATA = r"\d{4}-\d{2}-\d{2}-[a-z0-9]+(?:-[a-z0-9]+)*"
+TITOLO = re.compile(rf"^#\s+SPEC-({ID_DATA}|\d+)\s*:", re.M)
 REQ_DEF = re.compile(r"^\s*[-*]\s+(REQ-\d+)\b")
 AC_DEF = re.compile(r"^\s*[-*]\s+(AC-\d+)\s*\[([^\]]*)\]")
 PLACEHOLDER = re.compile(r"<[^<>\n]{1,80}>")
@@ -57,6 +66,34 @@ def campo(testo: str, nome: str) -> str | None:
 def pulisci(valore: str | None) -> str:
     """Valore del campo senza commenti HTML."""
     return re.sub(r"<!--.*?-->", "", valore or "").strip()
+
+
+def id_spec(testo: str) -> str | None:
+    """ID dal titolo "# SPEC-<id>: ...": data + slug oppure numero."""
+    m = TITOLO.search(testo)
+    return m.group(1) if m else None
+
+
+def chiave_id(valore: str) -> str:
+    """Forma confrontabile di un ID: numeri senza zeri iniziali, slug in minuscolo con "-"."""
+    v = valore.replace("_", "-").lower()
+    return str(int(v)) if v.isdigit() else v
+
+
+def problemi_id(testo: str, cartella: str | None) -> list[str]:
+    sid = id_spec(testo)
+    if sid is None:
+        return ["Titolo senza ID: atteso '# SPEC-aaaa-mm-gg-slug: titolo' (o il vecchio '# SPEC-NNN: titolo')"]
+    if not sid.isdigit():
+        try:
+            date.fromisoformat(sid[:10])
+        except ValueError:
+            return [f"ID {sid}: la data iniziale non è valida (atteso aaaa-mm-gg)"]
+        if cartella is not None and cartella != sid:
+            return [f"ID del titolo ({sid}) diverso dal nome della cartella ({cartella}): devono coincidere"]
+    elif cartella is not None and (m := re.match(r"^(\d+)-", cartella)) and int(m.group(1)) != int(sid):
+        return [f"ID del titolo (SPEC-{sid}) diverso dal numero della cartella ({cartella})"]
+    return []
 
 
 def impronta(testo: str) -> str:
@@ -116,13 +153,23 @@ def parse_spec(testo: str):
     return reqs, acs
 
 
-def lint_spec(testo: str) -> tuple[list[str], list[str]]:
+def voci_compilate(righe: list[str]) -> list[str]:
+    """Voci di elenco con contenuto reale (non segnaposto, non "nessuna")."""
+    return [r.strip() for r in righe if r.strip().startswith(("-", "*")) and not PLACEHOLDER.search(r)
+            and not re.match(r"^[-*]\s*(nessuna|none)\b", r.strip(), re.I)]
+
+
+def lint_spec(testo: str, cartella: str | None = None) -> tuple[list[str], list[str]]:
+    """cartella: nome della cartella della spec, che per gli ID con data deve coincidere con l'ID."""
     err: list[str] = []
     avv: list[str] = []
     stato = pulisci(campo(testo, "Stato")).split("|")[0].strip()
     if stato not in STATI:
         err.append(f"Stato mancante o non valido (atteso uno tra: {', '.join(STATI)}); trovato '{stato}'")
+    err += problemi_id(testo, cartella)
     sez = sezioni(testo)
+    if stato == "in-revisione" and not voci_compilate(sez.get("Revisioni", [])):
+        err.append("Spec in revisione senza una voce in '## Revisioni' (data, cosa cambia e perché)")
     for s in SEZIONI:
         if s not in sez:
             err.append(f"Sezione mancante: '## {s}'")
@@ -159,7 +206,7 @@ def lint_spec(testo: str) -> tuple[list[str], list[str]]:
         aperte = [
             r.strip() for r in sez.get("Domande aperte", [])
             if r.strip().startswith(("-", "*")) and not re.match(r"^[-*]\s*(nessuna|none)\b", r.strip(), re.I)
-        ]
+        ]  # qui anche un segnaposto conta come domanda aperta
         if aperte:
             err.append(f"Spec approvata con {len(aperte)} domande aperte")
         if "[ASSUNZIONE]" in testo:
@@ -195,11 +242,13 @@ def lint_tasks(spec: str, tasks: str) -> tuple[list[str], list[str]]:
         tid = re.search(r"\bT-[A-Z0-9]+\b", r).group(0)
         ids.append(tid)
         coperti.update(re.findall(r"AC-\d+", r.split("copre:")[-1] if "copre:" in r else ""))
-        if re.fullmatch(r"T-\d+", tid):
+        if re.fullmatch(r"T-R?\d+", tid):  # T-nn dal piano, T-Rnn dai problemi della review
             if (m := PLACEHOLDER.search(r)):
                 err.append(f"{tid}: segnaposto non compilato {m.group(0)}")
             if not re.search(r"verifica:\s*`[^`]+`", r):
                 err.append(f"{tid}: manca 'verifica: `<comando>`'")
+            if tid.startswith("T-R"):
+                continue  # una correzione può non toccare un AC: copre: è facoltativo
             if "copre:" not in r or not re.search(r"AC-\d+", r.split("copre:")[-1]):
                 err.append(f"{tid}: manca 'copre: AC-nnn'")
     if len(ids) != len(set(ids)):
@@ -213,6 +262,16 @@ def lint_tasks(spec: str, tasks: str) -> tuple[list[str], list[str]]:
     return err, []
 
 
+def tasks_su_piano(plan: str, tasks: str) -> tuple[list[str], list[str]]:
+    """Le task registrano l'hash del piano da cui derivano: se il piano cambia vanno riviste."""
+    base = pulisci(campo(tasks, "Basato su piano"))
+    if not base or PLACEHOLDER.search(base):
+        return [], ["Task senza '- Basato su piano: sha256:...': non si accorgono se il piano cambia"]
+    if base != impronta(plan):
+        return ["Task basate su un'altra versione del piano ('Basato su piano' diverso): rivedile e aggiornalo"], []
+    return [], []
+
+
 def main(argv: list[str]) -> int:
     if not argv or argv[0].startswith("--"):
         print(__doc__)
@@ -222,18 +281,25 @@ def main(argv: list[str]) -> int:
     if "--hash" in opts:
         print(impronta(spec))
         return 0
-    err, avv = lint_spec(spec)
+    err, avv = lint_spec(spec, Path(spec_path).resolve().parent.name)
     da_confrontare = [spec_path]
+    plan = tasks = None
     for i, o in enumerate(opts):
         if o == "--plan" and i + 1 < len(opts):
-            e, a = lint_plan(spec, leggi(opts[i + 1]))
+            plan = leggi(opts[i + 1])
+            e, a = lint_plan(spec, plan)
             err += e
             avv += a
             da_confrontare.append(opts[i + 1])
         if o == "--tasks" and i + 1 < len(opts):
-            e, a = lint_tasks(spec, leggi(opts[i + 1]))
+            tasks = leggi(opts[i + 1])
+            e, a = lint_tasks(spec, tasks)
             err += e
             avv += a
+    if plan is not None and tasks is not None:
+        e, a = tasks_su_piano(plan, tasks)
+        err += e
+        avv += a
     if "--base" in opts and opts.index("--base") + 1 < len(opts):
         ref = opts[opts.index("--base") + 1]
         for f in da_confrontare:

@@ -18,13 +18,15 @@ Se la modifica si descrive con un diff di una frase, proponi una spec minima e d
    `sdlc-characterize` **prima** di scrivere la spec.
 2. **Chiarisci prima di scrivere.** Elenca all'utente domande aperte e assunzioni e **ponile**; non rispondere
    tu. Una domanda su una decisione che spetta a lui resta aperta finché non risponde.
-3. **Scrivi** `docs/specs/<NNN>-<slug>/spec.md` con `references/spec-template.md`. Regole:
+3. **Scrivi** `docs/specs/<id>/spec.md` con `references/spec-template.md`. L'`<id>` è la data di oggi più uno
+   slug breve in minuscolo (`2026-10-24-export-csv`): è il nome della cartella e compare nel titolo
+   (`# SPEC-2026-10-24-export-csv: Export CSV`), così due persone o due branch non scelgono lo stesso ID. Regole:
    - ogni requisito è una frase verificabile; ogni REQ ha almeno un AC in forma Dato/quando/allora, con un caso
      di errore dove ha senso;
    - il **non-scope** è obbligatorio e concreto (cosa non va fatto né toccato); nel brownfield descrivi solo il delta;
    - ogni assunzione è marcata `[ASSUNZIONE]`;
    - `Stato: draft`; i campi di approvazione restano vuoti.
-4. **Controlla** con `python scripts/spec_lint.py docs/specs/<NNN>-<slug>/spec.md` e correggi finché non ci sono
+4. **Controlla** con `python scripts/spec_lint.py docs/specs/<id>/spec.md` e correggi finché non ci sono
    errori (gli avvisi vanno letti e riportati).
 5. **Riassumi** all'utente: elenco dei REQ, assunzioni, non-scope, domande aperte residue.
 
@@ -36,8 +38,12 @@ Chiedi l'approvazione esplicita. Solo dopo una conferma chiara **e** il nome del
 - calcola l'hash con `python scripts/spec_lint.py <spec> --hash` e scrivilo in `- Hash:`;
 - riesegui `spec_lint.py`: deve passare.
 
-Da qui ogni modifica al corpo della spec fa decadere l'approvazione (l'hash non corrisponde più): torna in bozza e
-chiedi di nuovo. L'approvazione vera è il merge della PR di design su `main` (playbook §1.2): spec, piano e task vanno
+Da qui ogni modifica al corpo della spec fa decadere l'approvazione (l'hash non corrisponde più).
+
+**Modificare una spec già approvata:** imposta `Stato: in-revisione` e aggiungi in `## Revisioni` una voce con data,
+cosa cambia e perché; fai le modifiche e chiedi di nuovo l'approvazione come sopra (nuovo nome, data e hash). Il
+piano, che registra l'hash della spec, decade da solo e va riapprovato; le task, che registrano l'hash del piano,
+vanno riviste se il piano cambia. L'approvazione vera è il merge della PR di design su `main` (playbook §1.2): spec, piano e task vanno
 insieme in quella PR, che apre l'utente o l'identità bot dell'agente, mai unita dall'agente.
 
 Non approvare di tua iniziativa e non inferire il consenso dal silenzio. Non avviare piano né codice.

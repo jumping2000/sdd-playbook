@@ -39,8 +39,9 @@ del processo stanno nel [playbook](playbook-ai-software-lifecycle.md), che ogni 
 ### sdlc-next
 
 - **Quando:** non sai da dove ripartire, o vuoi sapere a che punto sei.
-- **Cosa fa:** esegue `state.py`, riporta infrastruttura, spec (stato, approvazioni, task, review), bug non
-  verificati e la riga `PROSSIMO` con il motivo; chiede se procedere.
+- **Cosa fa:** esegue `state.py`, riporta infrastruttura, spec (stato, approvazioni, task, review e passo di ognuna),
+  bug non verificati e la riga `PROSSIMO` con il motivo; chiede se procedere. Con più spec attive e nessuna legata al
+  branch (`scegli`), chiede all'utente su quale lavorare e rilancia con `--spec <id>`.
 - **Non fa:** non modifica file, non avvia la fase successiva, non deduce lo stato dalla conversazione.
 
 ### sdlc-init
@@ -128,7 +129,8 @@ del processo stanno nel [playbook](playbook-ai-software-lifecycle.md), che ogni 
 - **Cosa fa:** `diff_scope.py` e `trace_check.py`; revisione indipendente (subagent `sdlc-reviewer` in Claude Code, altrimenti
   sessione nuova con spec, piano, output degli script e diff); scrive `review.md` con esito, problemi con file e riga,
   tentativi di confutazione.
-- **Gate:** la **decisione è dell'utente** ("Decisione di"); `non conforme` rimanda a `sdlc-implement`.
+- **Gate:** la **decisione è dell'utente** ("Decisione di"); con `non conforme` ogni problema `alta`/`media` diventa una
+  task `T-Rnn` in `tasks.md`, eseguita da `sdlc-implement` o dal loop; chiuse le `T-R`, la review si ripete.
 - **Non fa:** non modifica codice.
 
 ### sdlc-docs

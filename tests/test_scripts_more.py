@@ -34,12 +34,26 @@ class TestTraceCheck(unittest.TestCase):
     def test_formati_dell_id(self):
         with TmpDir() as d:
             scrivi(d, "tests/t.py", "def test_AC001(): pass\ndef test_x_AC_002_y(): pass\n# ACCESS 12\n")
-            trovati, _, _ = trace_check.raccogli([d / "tests"], 1, spec_unica=True)
+            trovati, _, _ = trace_check.raccogli([d / "tests"], "1", spec_unica=True)
             self.assertEqual(sorted(trovati), [1, 2])
             scrivi(d, "tests/q.py", "def test_SPEC001_AC003(): pass\ndef test_SPEC_001_AC_004(): pass\n"
                                     "it('SPEC-001/AC-005: x')\n# SPEC-001-AC-006\n# SPEC-002/AC-007\n")
-            trovati, _, _ = trace_check.raccogli([d / "tests"], 1, spec_unica=False)
+            trovati, _, _ = trace_check.raccogli([d / "tests"], "1", spec_unica=False)
             self.assertEqual(sorted(trovati), [3, 4, 5, 6])
+
+    def test_id_con_data_e_slug(self):
+        csv = SPEC_OK.replace("# SPEC-001: Esempio", "# SPEC-2026-10-24-export-csv: Export CSV")
+        breve = SPEC_OK.replace("# SPEC-001: Esempio", "# SPEC-2026-10-24-export: Export")
+        with TmpDir() as d:
+            scrivi(d, "tests/test_qualificati.py",
+                   "it('SPEC-2026-10-24-export-csv/AC-001: csv valido')\n"
+                   "def test_SPEC_2026_10_24_export_csv_AC_002_vuoto(): pass\n")
+            scrivi(d, "tests/test_dichiarato.py", "# SPEC-2026-10-24-export\ndef test_AC_001(): pass\n")
+            esito = trace_check.analizza(csv, [d / "tests"], spec_unica=False)
+            self.assertEqual(esito.senza, [])
+            self.assertEqual(len(esito.coperti["AC-001"]), 1)  # il file di SPEC-2026-10-24-export non conta
+            esito = trace_check.analizza(breve, [d / "tests"], spec_unica=False)
+            self.assertEqual(esito.senza, ["AC-002"])  # una spec con ID più corto non eredita le citazioni
 
     def test_ac_qualificati_con_piu_spec(self):
         spec2 = SPEC_OK.replace("SPEC-001", "SPEC-002")
@@ -351,6 +365,26 @@ class TestSyncCheck(unittest.TestCase):
             self.assertIn("citazioni ambigue: usa SPEC-001/AC-nnn", cli(d, "sync_check", "docs/specs/001-x").stdout)
             scrivi(d, "tests/test_export.py", "def test_SPEC001_AC001(): pass\ndef test_SPEC001_AC002(): pass\n")
             self.assertEqual(cli(d, "sync_check", "docs/specs/001-x").returncode, 0)
+
+    def test_spec_con_data_e_pagina_d_area(self):
+        cartella = "docs/specs/2026-10-24-export-csv/"
+        with TmpDir() as d:
+            copia_script(d)
+            spec = SPEC_OK.replace("# SPEC-001: Esempio", "# SPEC-2026-10-24-export-csv: Export").replace(
+                "Stato: approved", "Stato: implemented")
+            scrivi(d, cartella + "spec.md", spec)
+            scrivi(d, cartella + "tasks.md", TASKS_OK.replace("[ ]", "[x]"))
+            scrivi(d, cartella + "review.md", REVIEW_OK)
+            scrivi(d, "tests/test_export.py", "# SPEC-2026-10-24-export-csv\ndef test_AC_001(): pass\n"
+                                              "def test_AC_002(): pass\n")
+            # una pagina che cita solo una spec con ID più corto non vale
+            scrivi(d, "docs/system/export.md", AREA_OK.replace("SPEC-001", "SPEC-2026-10-24-export"))
+            r = cli(d, "sync_check", cartella)
+            self.assertEqual(r.returncode, 1, r.stdout)
+            self.assertIn("nessuna pagina d'area in docs/system/ che citi SPEC-2026-10-24-export-csv", r.stdout)
+            scrivi(d, "docs/system/export.md", AREA_OK.replace("SPEC-001", "SPEC-2026-10-24-export-csv"))
+            r = cli(d, "sync_check", cartella)
+            self.assertEqual(r.returncode, 0, r.stdout)
 
     def test_output_utf8_anche_con_console_cp1252(self):
         with TmpDir() as d:

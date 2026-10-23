@@ -1,6 +1,6 @@
 {
   "name": "sdlc-playbook",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "description": "Skill e script per il ciclo di vita software con coding agent: spec-driven, verify cross-platform, bug fixing, review, riconciliazione",
   "skills": "./skills/"
 }

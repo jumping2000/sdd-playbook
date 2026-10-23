@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Loop esterno: rilancia l'agente finché verify è verde e non restano task numerate (T-nn) aperte.
+"""Loop esterno: rilancia l'agente finché verify è verde e non restano task numerate aperte (T-nn e T-Rnn).
 
 Uso:
   python scripts/loop.py docs/specs/001-x [--max 15] [--stall 3] [--timeout 1800] [--agent "claude -p"]
@@ -7,7 +7,7 @@ Uso:
 
 Legge PROMPT.md dalla cartella della spec e lo passa all'agente da stdin (evita i limiti di
 lunghezza della riga di comando su Windows). Si ferma quando:
-  - verify è verde, non ci sono task T-nn aperte e i controlli finali passano -> exit 0
+  - verify è verde, non ci sono task T-nn o T-Rnn aperte e i controlli finali passano -> exit 0
     (controlli finali: trace_check.py sulla spec e diff_scope.py sulla cartella, se presenti in scripts/;
     le caselle le spunta l'agente, questi controlli no. Se diff_scope non può calcolare il diff è un avviso)
   - raggiunto il tetto --max di iterazioni                  -> exit 1
@@ -34,7 +34,7 @@ from pathlib import Path
 
 PROTETTI = {"main", "master"}
 OPZIONI_CON_VALORE = {"--max", "--stall", "--timeout", "--agent"}
-TASK_APERTA = re.compile(r"^\s*-\s+\[ \]\s+T-\d+\b", re.M)
+TASK_APERTA = re.compile(r"^\s*-\s+\[ \]\s+T-R?\d+\b", re.M)  # T-nn dal piano e T-Rnn dalla review
 TASK = re.compile(r"^\s*-\s+\[([ xX])\]\s+(T-\d+)\b(.*)$", re.M)
 
 

@@ -26,7 +26,10 @@ Playbook §4 (fase 7), §5 (passo 8) e §3.8. Serve un **contesto indipendente**
    Il revisore prova a **confutare** il risultato, non a confermarlo.
 3. **Scrivi** `review.md` nella cartella della spec da `references/review-template.md`: esito proposto
    (`conforme`, `conforme con riserve`, `non conforme`), problemi con file e riga, tentativi di confutazione.
-4. Se l'esito è `non conforme`: elenca cosa correggere e torna a `sdlc-implement`; dopo la correzione la review si ripete.
+4. Se l'esito è `non conforme`: trasforma ogni problema `alta` o `media` in una task in `tasks.md`, sezione
+   `## Correzioni dalla review`, con numerazione che prosegue (`- [ ] T-R01 <problema> — verifica: \`<comando>\``,
+   `copre:` se tocca un AC). `spec_lint.py --tasks` le controlla, `sdlc-implement` e il loop le eseguono, `state.py`
+   chiede di ripetere la review quando sono tutte chiuse. La review ripetuta aggiorna `review.md`.
 
 ## STOP
 

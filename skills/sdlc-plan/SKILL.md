@@ -9,7 +9,7 @@ Playbook §3.4 e §4 (fase 3).
 
 ## Precondizioni (controlla prima di tutto)
 
-- `docs/specs/<NNN>-<slug>/spec.md` esiste, `Stato: approved`, e `python scripts/spec_lint.py <spec>` passa.
+- `docs/specs/<id>/spec.md` esiste, `Stato: approved`, e `python scripts/spec_lint.py <spec>` passa.
   Altrimenti fermati e indica `sdlc-spec`.
 
 ## Passi

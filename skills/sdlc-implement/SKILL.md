@@ -21,14 +21,15 @@ Playbook §4 (fase 6) e §6. Lavora sulle sole task numerate `T-nn`: `T-DOC` e `
 
 ## Ciclo (una task per volta)
 
-1. Prendi la **prima task `T-nn` aperta** (`- [ ]`). Leggi gli AC che copre nella spec.
+1. Prendi la **prima task `T-nn` o `T-Rnn` aperta** (`- [ ]`). Le `T-Rnn` vengono dai problemi della review
+   (`review.md`): leggi il problema e gli AC che copre, se li indica. Per le `T-nn` leggi gli AC nella spec.
 2. Se la task **scrive test dagli AC**, applica la procedura di `sdlc-tests-from-ac` (leggila). Altrimenti
    implementa **solo quella task**: non toccare il non-scope e non fare refactoring non richiesti.
 3. Esegui il comando di `verifica:` della task, poi `python scripts/verify.py` completo
    (`--fast` è ammesso solo durante il lavoro, mai come criterio di fatto).
 4. **Rosso:** leggi l'errore, correggi, riprova. Dopo **3 tentativi** sulla stessa task, fermati: descrivi cosa
    hai provato e chiedi indicazioni (task troppo grande o spec ambigua).
-5. **Verde:** spunta la task in `tasks.md`. Fai commit con messaggio chiaro e i trailer `Spec: SPEC-<NNN>` e
+5. **Verde:** spunta la task in `tasks.md`. Fai commit con messaggio chiaro e i trailer `Spec: SPEC-<id>` e
    `Agent: <nome e versione>`. Se l'utente non ha autorizzato i commit, proponi il messaggio e non committare.
    Una task di test "atteso: rosso" si chiude con il commit `Test-Lock` dei soli test (vedi `sdlc-tests-from-ac`).
    Nelle task successive **non modificare i file di test bloccati**: se un test sembra sbagliato, fermati e chiedi.

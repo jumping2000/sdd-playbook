@@ -55,7 +55,7 @@ repo/
 ├── docs/
 │   ├── constitution.md       # principi non negoziabili del progetto
 │   ├── specs/
-│   │   └── 001-nome-feature/
+│   │   └── 2026-10-24-nome-feature/   # data + slug: è anche l'ID della spec
 │   │       ├── spec.md       # PRD + use case + requisiti + acceptance criteria
 │   │       ├── plan.md       # design tecnico
 │   │       ├── tasks.md      # checklist di task
@@ -133,7 +133,7 @@ verify:
 | Permessi | Allowlist di comandi **e** deny-list esplicita (cancellazioni ricorsive, `git push --force`, download-ed-esegui, lettura di `.env`) |
 | Ambiente | Container, worktree o macchina isolata per i loop autonomi; niente accesso a produzione né a segreti |
 | Gate tecnici | Branch protetto, PR obbligatoria, CI obbligatoria. Opzionali (Claude Code, plugin §11): hook `Stop` che impedisce di dichiarare completato senza `verify` verde, hook `PreToolUse` che blocca i comandi a rischio. Sono una rete di sicurezza, non un sandbox |
-| Tracciabilità | Commit con trailer `Spec: SPEC-001` e `Agent: <nome/versione>`; PR template con link alla spec, output di `verify`, elenco degli AC coperti |
+| Tracciabilità | Commit con trailer `Spec: SPEC-2026-10-24-nome-feature` e `Agent: <nome/versione>`; PR template con link alla spec, output di `verify`, elenco degli AC coperti |
 | Identità dell'agente | Separata da quella di chi approva (vedi sotto): l'agente non deve poter unire una PR su `main` né approvarla |
 | Approvazioni | Il **merge della PR di design** (spec, piano, task) su `main` protetto, con review dei code owner obbligatoria (`CODEOWNERS` su `docs/specs/` e sui test), è l'approvazione: `spec_lint.py --base main` lo verifica. Nei documenti restano nome, data e **hash del contenuto approvato**: se il contenuto cambia, l'approvazione decade. In contesti regolati l'approvatore è il product owner o l'analista, non lo sviluppatore che lancia l'agente |
 | Log delle azioni | `progress.md` per i loop; per audit formale usa i log dell'agente e della CI, non la chat |
@@ -194,6 +194,10 @@ Regola per le feature piccole: se descrivi il diff in una frase, salta piano e t
 
 Qualità minima di una spec: nomina file/interfacce coinvolti, dichiara il non-scope, chiude con un controllo end-to-end che dimostra la feature. Lo stato `approved` richiede approvatore e data compilati, nessuna domanda aperta e l'**hash del corpo** (`- Hash:`, calcolato con `spec_lint.py --hash` dopo l'approvazione): `spec_lint.py` segnala se il contenuto è cambiato dopo l'ok. Il piano riporta in più `- Basato su spec:` con l'hash della spec su cui è stato approvato, e decade se la spec cambia.
 
+**ID della spec.** Data di creazione più uno slug breve in minuscolo: `2026-10-24-export-csv`. È il nome della cartella e compare nel titolo (`# SPEC-2026-10-24-export-csv: Export CSV`); `spec_lint.py` controlla che coincidano. Con i numeri progressivi due persone o due branch sceglievano lo stesso `SPEC-004`; con data e slug non succede, e le cartelle restano in ordine cronologico. I vecchi `SPEC-NNN` restano validi.
+
+**Modificare una spec approvata.** `Stato: in-revisione` e una voce in `## Revisioni` (data, cosa cambia, perché); dopo le modifiche, nuova approvazione con nuovo hash. La catena di hash fa il resto: il piano registra l'hash della spec e decade, le task (`- Basato su piano:`) registrano l'hash del piano e vanno riviste se il piano cambia. Stati: `draft` → `approved` ⇄ `in-revisione` → `implemented` (o `superseded`).
+
 ### 3.4 `plan.md`
 
 {{FILE skills/sdlc-plan/references/plan-template.md markdown}}
@@ -204,7 +208,7 @@ I file nella sezione "Componenti e file" vanno **uno per riga nel formato `- per
 
 {{FILE skills/sdlc-tasks/references/tasks-template.md markdown}}
 
-Le task `T-nn` hanno `verifica:` e `copre:` e nessun segnaposto `<...>`; `T-DOC` e `T-SYNC` sono obbligatorie e si eseguono dopo la review. La marcatura "atteso: rosso" va solo sulle task che scrivono test: quando l'ultima task chiusa la porta e la successiva è aperta, la spec è in **fase rossa** (i test rossi sono il risultato atteso) e l'hook `Stop` e `loop.py` lo tengono in conto.
+Le task `T-nn` hanno `verifica:` e `copre:` e nessun segnaposto `<...>`; `T-DOC` e `T-SYNC` sono obbligatorie e si eseguono dopo la review. `- Basato su piano:` registra l'hash del piano da cui derivano. Le task `T-Rnn` le aggiunge la review quando l'esito è `non conforme` (§3.8): hanno `verifica:`, `copre:` facoltativo, e si eseguono come le `T-nn`. La marcatura "atteso: rosso" va solo sulle task che scrivono test: quando l'ultima task chiusa la porta e la successiva è aperta, la spec è in **fase rossa** (i test rossi sono il risultato atteso) e l'hook `Stop` e `loop.py` lo tengono in conto.
 
 ### 3.6 `bugfix.md`
 
@@ -224,7 +228,7 @@ La **pagina d'area** (`docs/system/<area>.md`) cresce area per area e si riconci
 
 {{FILE skills/sdlc-review-diff/references/review-template.md markdown}}
 
-L'esito è uno tra `conforme`, `conforme con riserve`, `non conforme`. La decisione finale è dell'umano.
+L'esito è uno tra `conforme`, `conforme con riserve`, `non conforme`. La decisione finale è dell'umano. Con `non conforme` ogni problema `alta` o `media` diventa una task `T-Rnn` in `tasks.md`; quando sono tutte chiuse la review si ripete (`state.py` lo indica).
 
 ---
 
@@ -270,7 +274,7 @@ Differenze rispetto al greenfield: più tempo in lettura/caratterizzazione, spec
 **Test**
 - Genera i test **dagli acceptance criteria**, non dal codice: altrimenti l'agente scrive test che confermano i propri bug. *(`sdlc-tests-from-ac`)*
 - **Test bloccati:** i test rossi si committano da soli con il trailer `Test-Lock: T-nn` (lo scheletro del codice, se serve, in un commit precedente). Da lì l'implementazione deve farli passare senza toccarli: `diff_scope.py` segnala come errore ogni modifica successiva a quei file fuori da un nuovo commit `Test-Lock`, che va motivato nella review. La CI del branch resta rossa fino alla task di implementazione.
-- Tracciabilità: nel nome o commento del test cita l'ID dell'AC **qualificato con la spec** (`SPEC-001/AC-001`, o `test_SPEC001_AC001_...` nei nomi di funzione), perché gli AC ripartono da AC-001 in ogni spec; in alternativa dichiara la spec in testa al file (`# SPEC-001`) e cita `AC-001`. `trace_check.py` verifica che ogni AC compaia in almeno un test della sua spec, segnala i requisiti senza test e le citazioni ambigue, e ignora quelle nei `TODO`.
+- Tracciabilità: gli AC ripartono da AC-001 in ogni spec, quindi ogni citazione va attribuita a una spec. Dichiara la spec in testa al file di test (`# SPEC-2026-10-24-export-csv`) e cita `AC-001` nel nome o in un commento, oppure usa la forma qualificata `SPEC-2026-10-24-export-csv/AC-001` (nei nomi di funzione `SPEC_2026_10_24_export_csv_AC_001`). `trace_check.py` verifica che ogni AC compaia in almeno un test della sua spec, segnala i requisiti senza test e le citazioni ambigue, e ignora quelle nei `TODO`.
 - Livelli: unit per la logica, integrazione per i confini, almeno un e2e per il flusso principale.
 - Verifica che i test sappiano fallire: rompi di proposito il codice (o fai una mutation test) e controlla che qualcosa diventi rosso.
 - Se il team sviluppa su Windows, almeno la suite di integrazione gira anche su Windows in CI.
@@ -440,7 +444,7 @@ a ogni punto di approvazione) e **script** (controlli deterministici copiati nel
 |---|---|
 | `verify.py` | Format, lint, tipi, test del progetto: il criterio di "fatto" |
 | `spec_lint.py` | Spec (sezioni, ID, REQ→AC, non-scope, approvazione, domande aperte); con `--plan` ogni AC è nella strategia di test; con `--tasks` ogni task ha verifica e copertura e nessun segnaposto, ogni AC è coperto, ci sono `T-DOC` e `T-SYNC` |
-| `state.py` | Stato del progetto e prossima fase suggerita |
+| `state.py` | Stato del progetto e prossima fase per ogni spec attiva; con più spec usa quella del branch corrente o `--spec` |
 | `scan_repo.py` | Inventario deterministico di una codebase (stack, linguaggi, test, CI, entry point) |
 | `trace_check.py` | Ogni AC citato in almeno un test della sua spec (`SPEC-nnn/AC-nnn` o file dichiarato); requisiti senza test; citazioni ambigue |
 | `bug_lint.py` | Completezza del file di un bug in funzione del suo stato |

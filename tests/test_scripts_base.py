@@ -55,6 +55,39 @@ class TestSpecLint(unittest.TestCase):
         senza = PLAN_OK.replace("## Strategia di test (mappata sugli AC)", "## Note")
         self.assertTrue(any("Strategia di test" in e for e in spec_lint.lint_plan(SPEC_OK, senza)[0]))
 
+    def test_id_con_data_e_cartella(self):
+        con_data = SPEC_OK.replace("# SPEC-001: Esempio", "# SPEC-2026-10-24-export-csv: Esempio")
+        self.assertEqual(spec_lint.id_spec(con_data), "2026-10-24-export-csv")
+        self.assertEqual(spec_lint.lint_spec(con_data, "2026-10-24-export-csv")[0], [])
+        self.assertTrue(any("diverso dal nome della cartella" in e
+                            for e in spec_lint.lint_spec(con_data, "2026-10-24-export")[0]))
+        data_errata = con_data.replace("2026-10-24", "2026-13-40")
+        self.assertTrue(any("data iniziale non è valida" in e for e in spec_lint.lint_spec(data_errata)[0]))
+        senza_id = SPEC_OK.replace("# SPEC-001: Esempio", "# Esempio")
+        self.assertTrue(any("Titolo senza ID" in e for e in spec_lint.lint_spec(senza_id)[0]))
+        self.assertEqual(spec_lint.lint_spec(SPEC_OK, "001-x")[0], [])  # i vecchi ID restano validi
+        self.assertTrue(any("numero della cartella" in e for e in spec_lint.lint_spec(SPEC_OK, "002-x")[0]))
+        self.assertEqual(spec_lint.chiave_id("SPEC_2026_10_24_Export_csv"[5:]), "2026-10-24-export-csv")
+        self.assertEqual(spec_lint.chiave_id("007"), "7")
+
+    def test_spec_in_revisione(self):
+        rev = SPEC_OK.replace("Stato: approved", "Stato: in-revisione").replace("Esportare il report in CSV.",
+                                                                              "Esportare il report in CSV e XLSX.")
+        self.assertTrue(any("Revisioni" in e for e in spec_lint.lint_spec(rev)[0]))
+        con_voce = rev + "\n## Revisioni\n- 2026-10-24: aggiunto XLSX, richiesto dal cliente\n"
+        self.assertEqual(spec_lint.lint_spec(con_voce)[0], [])  # in revisione l'hash vecchio non conta
+
+    def test_task_dalla_review_e_task_legate_al_piano(self):
+        con_r = TASKS_OK + "- [ ] T-R01 Gestire il file vuoto — verifica: `pytest -k vuoto`\n"
+        self.assertEqual(spec_lint.lint_tasks(SPEC_OK, con_r)[0], [])
+        senza_verifica = TASKS_OK + "- [ ] T-R01 Gestire il file vuoto\n"
+        self.assertTrue(any("T-R01" in e and "verifica" in e for e in spec_lint.lint_tasks(SPEC_OK, senza_verifica)[0]))
+        self.assertTrue(spec_lint.tasks_su_piano(PLAN_OK, TASKS_OK)[1])  # senza 'Basato su piano': avviso
+        legate = f"- Basato su piano: {spec_lint.impronta(PLAN_OK)}\n" + TASKS_OK
+        self.assertEqual(spec_lint.tasks_su_piano(PLAN_OK, legate), ([], []))
+        nuovo_piano = PLAN_OK.replace("nuova funzione di export", "export riscritto")
+        self.assertTrue(spec_lint.tasks_su_piano(nuovo_piano, legate)[0])
+
     def test_hash_anti_deriva_della_spec(self):
         self.assertEqual(spec_lint.lint_spec(SPEC_OK.replace("Stato: approved", "Stato: implemented"))[0], [])
         modificata = SPEC_OK.replace("Esportare il report in CSV.", "Esportare il report in CSV e XLSX.")
@@ -179,7 +212,13 @@ class TestState(unittest.TestCase):
         senza_doc = fatte.replace("[ ] T-DOC", "[x] T-DOC")
         self.assertEqual(self.prossimo(lambda r: self.con_spec(r, tasks=senza_doc, review=REVIEW_OK))["skill"], "sdlc-sync")
         nc = REVIEW_OK.replace("Esito: conforme", "Esito: non conforme")
-        self.assertEqual(self.prossimo(lambda r: self.con_spec(r, tasks=fatte, review=nc))["skill"], "sdlc-implement")
+        p = self.prossimo(lambda r: self.con_spec(r, tasks=fatte, review=nc))
+        self.assertEqual((p["skill"], "T-R" in p["motivo"]), ("sdlc-review-diff", True))
+        con_r = fatte + "- [ ] T-R01 Correggi — verifica: `pytest`\n"
+        self.assertEqual(self.prossimo(lambda r: self.con_spec(r, tasks=con_r, review=nc))["skill"], "sdlc-implement")
+        r_fatte = con_r.replace("[ ] T-R01", "[x] T-R01")
+        p = self.prossimo(lambda r: self.con_spec(r, tasks=r_fatte, review=nc))
+        self.assertEqual((p["skill"], "ripeti la review" in p["motivo"]), ("sdlc-review-diff", True))
         tutte = fatte.replace("[ ]", "[x]")
         self.assertEqual(self.prossimo(lambda r: self.con_spec(r, tasks=tutte, review=REVIEW_OK, stato="implemented"))["skill"], "sdlc-spec")
 
@@ -188,6 +227,38 @@ class TestState(unittest.TestCase):
             self.con_spec(r)
             scrivi(r, "docs/specs/001-x/plan.md", PLAN_OK.replace("Anna Rossi, 2026-10-19", "<nome>"))
         self.assertEqual(self.prossimo(setup)["skill"], "sdlc-plan")
+
+    def test_revisione_e_task_su_altro_piano(self):
+        def in_revisione(r):
+            self.con_spec(r, tasks=TASKS_OK, stato="in-revisione")
+        p = self.prossimo(in_revisione)
+        self.assertEqual((p["skill"], "revisione" in p["motivo"]), ("sdlc-spec", True))
+
+        def task_vecchie(r):
+            self.con_spec(r, tasks="- Basato su piano: sha256:vecchio\n" + TASKS_OK)
+        p = self.prossimo(task_vecchie)
+        self.assertEqual((p["skill"], "altra versione del piano" in p["motivo"]), ("sdlc-tasks", True))
+
+    def test_piu_spec_attive(self):
+        def due(r):
+            self.con_spec(r, tasks=TASKS_OK)
+            data = SPEC_OK.replace("# SPEC-001: Esempio", "# SPEC-2026-10-24-export-csv: Export")
+            scrivi(r, "docs/specs/2026-10-24-export-csv/spec.md", data)
+        with TmpDir() as d:
+            due(d)
+            st = state.analizza(d)
+            self.assertEqual(st["prossimo"]["skill"], "scegli")
+            self.assertIn("001-x (sdlc-implement)", st["prossimo"]["motivo"])
+            self.assertIn("2026-10-24-export-csv (sdlc-plan)", st["prossimo"]["motivo"])
+            self.assertEqual(state.analizza(d, "SPEC-2026-10-24-export-csv")["prossimo"]["skill"], "sdlc-plan")
+            self.assertEqual(state.analizza(d, "001-x")["prossimo"]["skill"], "sdlc-implement")
+            self.assertEqual(state.analizza(d, "inesistente")["prossimo"]["skill"], "scegli")
+            repo_git(d, "feat/2026-10-24-export-csv")
+            self.assertEqual(state.analizza(d)["prossimo"]["spec"], "2026-10-24-export-csv")
+            copia_script(d)
+            r = esegui([sys.executable, "scripts/state.py", "--spec", "001-x"], d)
+            self.assertIn("PROSSIMO: sdlc-implement su 001-x", r.stdout)
+            self.assertIn("BRANCH: feat/2026-10-24-export-csv", r.stdout)
 
     def test_approvazioni_decadute(self):
         def spec_cambiata(r):

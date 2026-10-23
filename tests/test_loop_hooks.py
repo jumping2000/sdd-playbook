@@ -107,6 +107,14 @@ class TestLoop(unittest.TestCase):
             self.assertEqual(r.returncode, 0, r.stdout)
             self.assertEqual((d / "src.txt").read_text().count("+"), 4)
 
+    def test_task_della_review_tengono_aperto_il_loop(self):
+        with TmpDir() as d:
+            progetto(d, "- [x] T-01 a\n- [ ] T-R01 correggi — verifica: `t`\n- [ ] T-DOC d\n",
+                     agente=AGENTE_CHE_SPUNTA.replace("(T-\\d+)", "(T-R?\\d+)"))
+            r = loop(d, "--max", "2")
+            self.assertEqual(r.returncode, 0, r.stdout)
+            self.assertIn("[x] T-R01", (d / "docs/specs/001-x/tasks.md").read_text(encoding="utf-8"))
+
     def test_controlli_finali_bloccano_la_chiusura(self):
         with TmpDir() as d:
             progetto(d, DUE)

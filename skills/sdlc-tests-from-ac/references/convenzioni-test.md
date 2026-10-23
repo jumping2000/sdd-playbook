@@ -1,11 +1,14 @@
 # Come citare gli AC nei test
 
-Gli AC ripartono da AC-001 in ogni spec, quindi `scripts/trace_check.py` attribuisce ogni citazione a una spec:
+Gli AC ripartono da AC-001 in ogni spec, quindi `scripts/trace_check.py` attribuisce ogni citazione a una spec.
+L'ID della spec è quello del titolo: data più slug (`SPEC-2026-10-24-export-csv`) o, nei progetti nati prima, un
+numero (`SPEC-001`).
 
-1. **Citazione qualificata** (preferita): `SPEC-001/AC-001`, oppure `SPEC-001-AC-001`, `SPEC_001_AC_001`,
-   `SPEC001_AC001` dove i caratteri `-` e `/` non sono ammessi (nomi di funzione). Vale sempre e solo per quella spec.
-2. **File dichiarato:** un file di test che nomina una sola spec (per esempio `# SPEC-001` in testa) le assegna anche
-   le citazioni brevi `AC-001`, `AC_001`, `AC001`.
+1. **File dichiarato** (consigliato con gli ID con data): il file di test nomina una sola spec in testa
+   (`# SPEC-2026-10-24-export-csv`) e poi cita gli AC in forma breve: `AC-001`, `AC_001`, `AC001`.
+2. **Citazione qualificata**, valida in qualsiasi file: `SPEC-2026-10-24-export-csv/AC-001` in stringhe e commenti;
+   nei nomi di funzione `SPEC_2026_10_24_export_csv_AC_001` (lo slug resta in minuscolo, `AC` in maiuscolo).
+   Per i vecchi ID numerici anche `SPEC-001-AC-001`, `SPEC_001_AC_001`, `SPEC001_AC001`.
 3. **Citazione breve in un file non dichiarato:** vale solo se il progetto ha una sola spec. Con più spec è ambigua,
    non conta e `trace_check.py` la segnala.
 
@@ -13,12 +16,11 @@ Le citazioni su righe con `TODO`, `FIXME` o `XXX` non contano: un promemoria non
 
 | Linguaggio | Esempio |
 |---|---|
-| Python (pytest) | `def test_SPEC001_AC001_esporta_csv_valido(): ...` |
-| JavaScript / TypeScript | `it("SPEC-001/AC-001: esporta un CSV valido", () => { ... })` |
-| Java (JUnit) | `@DisplayName("SPEC-001/AC-001 esporta un CSV valido") @Test void spec001Ac001EsportaCsv() { ... }` |
-| C# (xUnit) | `[Fact] public void SPEC001_AC001_EsportaCsvValido() { ... }` |
-| Go | `func TestSPEC001_AC001_EsportaCsv(t *testing.T) { ... }` |
-| Gherkin | `# SPEC-001/AC-001` sopra lo `Scenario:` |
-| Qualsiasi, file dedicato a una spec | `# SPEC-001` in testa al file, poi `test_AC_001_...` |
+| Python (pytest) | `# SPEC-2026-10-24-export-csv` in testa, poi `def test_AC_001_esporta_csv_valido(): ...` |
+| JavaScript / TypeScript | `it("SPEC-2026-10-24-export-csv/AC-001: esporta un CSV valido", () => { ... })` |
+| Java (JUnit) | `@DisplayName("SPEC-2026-10-24-export-csv/AC-001 esporta un CSV valido") @Test void esportaCsv() { ... }` |
+| C# (xUnit) | `// SPEC-2026-10-24-export-csv` in testa, poi `[Fact] public void AC_001_EsportaCsvValido() { ... }` |
+| Go | `// SPEC-2026-10-24-export-csv` in testa, poi `func TestAC001_EsportaCsv(t *testing.T) { ... }` |
+| Gherkin | `# SPEC-2026-10-24-export-csv/AC-001` sopra lo `Scenario:` |
 
 Un test per più AC è ammesso (cita tutti gli ID). Un AC può avere più test: servono i casi di errore.

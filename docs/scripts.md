@@ -39,13 +39,19 @@ Exit: `0` verde, `1` almeno uno step rosso o comando non trovato, `2` nessuno st
 ### state.py
 
 Sola lettura. Riporta infrastruttura (`AGENTS.md`, `verify.py`, CI, `docs/`), presenza di codice esistente e della mappa,
-stato di ogni spec, bug non verificati e la riga `PROSSIMO`. Ordine del suggerimento: `sdlc-init` → `sdlc-map-codebase`
-(codice esistente senza mappa e senza spec) → `sdlc-spec` → `sdlc-plan` → `sdlc-tasks` → `sdlc-implement` (task `T-nn`
-aperte) → `sdlc-review-diff` (review mancante) → `sdlc-implement` (review `non conforme`) → `sdlc-docs` (`T-DOC` aperta) →
-`sdlc-sync`. `scripts/`, `docs/`, `.github/` e `.vscode/` non contano come codice esistente.
+stato di ogni spec con il suo passo successivo (`-> skill`), bug non verificati, branch corrente e la riga `PROSSIMO`.
+Ordine del suggerimento per una spec: `sdlc-spec` (bozza, `in-revisione`, approvazione decaduta) → `sdlc-plan` (mancante,
+da approvare o decaduto) → `sdlc-tasks` (mancanti o basate su un altro piano) → `sdlc-implement` (task `T-nn`/`T-Rnn`
+aperte) → `sdlc-review-diff` (review mancante; con `non conforme`: creare le `T-R`, o ripetere la review quando sono
+chiuse) → `sdlc-docs` (`T-DOC` aperta) → `sdlc-sync`. Prima di tutto `sdlc-init` e, nel brownfield senza mappa né spec,
+`sdlc-map-codebase`. `scripts/`, `docs/`, `.github/` e `.vscode/` non contano come codice esistente.
+
+**Più spec attive.** `PROSSIMO` riguarda la spec indicata con `--spec <id>` (nome della cartella o ID del titolo), quella
+il cui nome di cartella compare nel branch corrente (`feat/2026-10-24-export-csv`), o l'unica attiva. Altrimenti riporta
+`scegli` con l'elenco delle spec e del loro passo: la scelta è dell'utente.
 
 ```
-python scripts/state.py [--json] [radice]
+python scripts/state.py [--json] [--spec <id>] [radice]
 ```
 
 ### spec_lint.py
@@ -64,10 +70,11 @@ protetto è l'approvazione che l'agente non può darsi da solo (playbook §1.2).
 
 | Modalità | Errori rilevati |
 |---|---|
-| spec | stato non valido; sezioni mancanti; ID REQ/AC duplicati; REQ senza AC; AC che cita REQ inesistenti; non-scope assente o con segnaposto; se `approved`/`implemented`: approvatore mancante, hash mancante o non corrispondente, domande aperte (avviso se restano `[ASSUNZIONE]`) |
+| spec | stato non valido (`draft`, `approved`, `in-revisione`, `implemented`, `superseded`); titolo senza ID `# SPEC-<id>:`, data non valida o ID diverso dal nome della cartella; `in-revisione` senza una voce in `## Revisioni`; sezioni mancanti; ID REQ/AC duplicati; REQ senza AC; AC che cita REQ inesistenti; non-scope assente o con segnaposto; se `approved`/`implemented`: approvatore mancante, hash mancante o non corrispondente, domande aperte (avviso se restano `[ASSUNZIONE]`) |
 | `--plan` | sezione `## Strategia di test` mancante; AC della spec assenti da quella sezione (ID esatto: `AC-001` non vale per `AC-0011`); piano approvato con hash non valido o basato su un'altra versione della spec; avviso se il piano non è approvato |
 | `--base` | spec o piano assenti su `<ref>` o diversi dalla versione su `<ref>` |
-| `--tasks` | nessuna task; task `T-nn` senza `verifica:` o `copre:` o con segnaposto `<...>`; ID duplicati; `T-DOC` o `T-SYNC` mancanti; AC non coperto da nessuna task |
+| `--tasks` | nessuna task; task `T-nn` senza `verifica:` o `copre:` o con segnaposto `<...>`; task `T-Rnn` senza `verifica:` o con segnaposto (`copre:` facoltativo); ID duplicati; `T-DOC` o `T-SYNC` mancanti; AC non coperto da nessuna task |
+| `--plan` e `--tasks` insieme | task con `- Basato su piano:` diverso dall'hash del piano (avviso se il campo manca) |
 
 ### trace_check.py
 
@@ -77,9 +84,12 @@ python scripts/trace_check.py <spec.md> [--tests DIR ...] [--warn-only]
 
 Cerca le citazioni degli AC nei file di test (cartelle di default: `tests`, `test`, `__tests__`, `spec`, `src/test`;
 estensioni dei linguaggi più comuni) e le attribuisce a una spec, perché gli AC ripartono da AC-001 in ogni spec. L'ID
-della spec viene dal titolo `# SPEC-nnn: ...`.
-- `SPEC-001/AC-001` (anche `SPEC-001-AC-001`, `SPEC_001_AC_001`, `SPEC001_AC001`) vale per SPEC-001;
-- `AC-001`, `AC_001`, `AC001` in un file che nomina una sola spec (es. `# SPEC-001` in testa) vale per quella spec;
+della spec viene dal titolo `# SPEC-<id>: ...` (data + slug, o numero nei progetti più vecchi) e si confronta in forma
+normalizzata (`_` come `-`, numeri senza zeri iniziali): `SPEC-2026-10-24-export` non vale per `SPEC-2026-10-24-export-csv`.
+- `SPEC-2026-10-24-export-csv/AC-001` (nei nomi di funzione `SPEC_2026_10_24_export_csv_AC_001`; per i numeri anche
+  `SPEC-001-AC-001`, `SPEC001_AC001`) vale per quella spec;
+- `AC-001`, `AC_001`, `AC001` in un file che nomina una sola spec (es. `# SPEC-2026-10-24-export-csv` in testa) vale per
+  quella spec: è il modo consigliato con gli ID con data;
 - `AC-001` in un file che non nomina spec vale solo se `docs/specs/` contiene una sola spec; altrimenti è **ambigua**,
   non conta ed è segnalata come avviso;
 - le citazioni su righe con `TODO`, `FIXME` o `XXX` non contano e sono segnalate.
@@ -157,7 +167,7 @@ python scripts/loop.py docs/specs/001-x [--max 15] [--stall 3] [--timeout 1800] 
 ```
 
 Legge `PROMPT.md` dalla cartella della spec e lo passa all'agente da stdin. Dopo ogni iterazione esegue `verify`.
-Si ferma con exit `0` se `verify` è verde, non restano task `T-nn` aperte (`T-DOC` e `T-SYNC` restano fuori) **e i
+Si ferma con exit `0` se `verify` è verde, non restano task `T-nn` né `T-Rnn` aperte (`T-DOC` e `T-SYNC` restano fuori) **e i
 controlli finali passano**: `trace_check.py` sulla spec e `diff_scope.py` sulla cartella, se presenti in `scripts/`. Le
 caselle le spunta l'agente; questi due controlli no. Se `diff_scope` non può calcolare il diff (exit `2`, per esempio
 senza ref di base) è un avviso; con

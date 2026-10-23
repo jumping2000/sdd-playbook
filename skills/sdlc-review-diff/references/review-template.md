@@ -15,6 +15,8 @@
 
 ## Problemi trovati
 - [alta|media|bassa] <file:riga> - <descrizione> - <AC o regola violata>
+<!-- Esito "non conforme": ogni problema alta/media diventa una task T-Rnn in tasks.md (sezione "Correzioni dalla review") -->
+
 
 ## Decisione umana
 - Decisione di: <nome, aaaa-mm-gg>

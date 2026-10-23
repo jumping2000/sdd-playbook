@@ -137,7 +137,7 @@ Conclusione per piattaforma: **Linux** è la piattaforma su cui il plugin funzio
 che su un'installazione pulita non partono (B2). **Windows nativo**, indicato come supportato, non passa la propria
 suite.
 
-## Stato delle correzioni (0.5.0-0.7.0)
+## Stato delle correzioni (0.5.0-0.8.0)
 
 | Punto | Stato | Come |
 |---|---|---|
@@ -154,4 +154,5 @@ suite.
 | A1 | corretto (0.7.0) | hash anti-deriva su spec e piano; approvazione = merge della PR di design su `main` protetto (`spec_lint.py --base`), con identità separata dell'agente; template CODEOWNERS e PR. La protezione del branch va configurata sulla piattaforma |
 | A4 | corretto (0.7.0) | il loop chiude con successo solo se passano anche `trace_check.py` e `diff_scope.py` |
 | B9 | corretto in parte (0.7.0) | contatore per sessione (`SDLC_STOP_MAX`); resta il `verify` completo a ogni fine turno, riducibile con `SDLC_VERIFY_ARGS` |
-| B10, A3 (report eseguiti), A5-A8, C | aperti | pianificati nei rilasci 0.8.0-0.11.0 (ID e ciclo di vita, livelli, verifica con JUnit, sicurezza e manutenzione) |
+| A8 | corretto in gran parte (0.8.0) | ID data + slug (niente collisioni tra branch), stato `in-revisione` con catena di hash spec → piano → task, problemi della review come task `T-R`, `state.py` con più spec e associazione al branch. Resta da gestire il conflitto di merge di due modifiche alla stessa spec |
+| B10, A3 (report eseguiti), A5-A7, C | aperti | pianificati nei rilasci 0.9.0-0.11.0 (livelli, verifica con JUnit, sicurezza e manutenzione) |
