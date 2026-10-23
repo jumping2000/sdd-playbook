@@ -1,4 +1,4 @@
-# sdlc-playbook (versione 0.10.0)
+# sdlc-playbook (versione 0.11.0)
 
 Plugin per Claude Code e Codex che accompagna lo sviluppatore lungo tutto il ciclo di vita descritto nel
 [playbook](docs/playbook-ai-software-lifecycle.md): spec, piano, task, test, implementazione, review,
@@ -12,9 +12,9 @@ sia stato fatto davvero*. Un check che gira vale più di una regola in prosa.
 | Parte | Contenuto | Dettaglio |
 |---|---|---|
 | 14 skill | `sdlc-next`, `sdlc-init`, `sdlc-map-codebase`, `sdlc-characterize`, `sdlc-spec`, `sdlc-plan`, `sdlc-tasks`, `sdlc-tests-from-ac`, `sdlc-implement`, `sdlc-bugfix`, `sdlc-review-diff`, `sdlc-docs`, `sdlc-sync`, `sdlc-loop` | [docs/skills.md](docs/skills.md) |
-| 10 script Python | `verify`, `state`, `spec_lint`, `trace_check`, `bug_lint`, `diff_scope`, `scan_repo`, `docs_check`, `sync_check`, `loop` | [docs/scripts.md](docs/scripts.md) |
+| 11 script Python | `verify`, `state`, `spec_lint`, `trace_check`, `bug_lint`, `diff_scope`, `scan_repo`, `docs_check`, `sync_check`, `loop`, `secrets_check` | [docs/scripts.md](docs/scripts.md) |
 | 2 hook opzionali | `Stop` (verify obbligatorio) e `PreToolUse` (guard), solo Claude Code | [docs/scripts.md](docs/scripts.md#hook-opzionali-solo-claude-code) |
-| 1 subagent | `sdlc-reviewer`, revisore indipendente in sola lettura, solo Claude Code | [docs/architettura.md](docs/architettura.md) |
+| 1 subagent | `sdlc-reviewer`, revisore indipendente con soli strumenti di lettura, solo Claude Code | [docs/architettura.md](docs/architettura.md) |
 | Playbook | Il processo, con template e script identici a quelli del plugin | [docs/playbook-ai-software-lifecycle.md](docs/playbook-ai-software-lifecycle.md) |
 
 ## Flusso
@@ -29,6 +29,8 @@ Il processo è proporzionato al rischio: la spec dichiara un **livello** S, M o 
 `review.md`; L aggiunge ADR e revisione umana del diff; `diff_scope.py` segnala un diff che supera il livello dichiarato.
 I test scritti dagli AC si bloccano con un commit `Test-Lock` e, nei livelli M e L, li approva l'umano prima
 dell'implementazione; con il report JUnit di `verify`, `trace_check.py --junit` conta solo i test eseguiti e passati.
+Sicurezza di base: `secrets_check.py` come step di `verify`, dipendenze nuove solo nel piano o con un ADR
+(`diff_scope.py`), permessi d'esempio per il loop (`skills/sdlc-loop/references/settings.loop.json`).
 
 Ogni skill che produce un documento da approvare termina con uno **STOP**: l'agente non avanza e non approva
 da solo. Le approvazioni (spec, piano, decisione sulla review) portano nome e data e sono controllate dagli script.
@@ -41,7 +43,9 @@ da solo. Le approvazioni (spec, piano, decisione sulla review) portano nome e da
 3. `python scripts/state.py` (o la skill `sdlc-next`) dice a che punto sei e qual è il passo successivo.
 4. Prosegui con `sdlc-spec` (greenfield) oppure `sdlc-map-codebase` (codice esistente).
 
-Gli script restano **nel progetto**: la verifica in CI e da VS Code funziona anche senza il plugin.
+Gli script restano **nel progetto**: la verifica in CI e da VS Code funziona anche senza il plugin. Ognuno porta la
+versione del plugin in seconda riga; per aggiornarli chiedi a `sdlc-init` di confrontarli (non tocca gli `STEPS` di
+`verify.py`).
 
 ## Installazione
 
@@ -66,7 +70,7 @@ Gli script restano **nel progetto**: la verifica in CI e da VS Code funziona anc
 | `SDLC_ENFORCE_VERIFY=1` | Abilita l'hook `Stop`: l'agente non può fermarsi con `verify` rosso | spento |
 | `SDLC_VERIFY_ARGS` | Argomenti di `verify.py` per l'hook `Stop` (es. `--fast`) | vuoto (verifica completa) |
 | `SDLC_STOP_MAX` | Quante volte di fila l'hook `Stop` blocca nella stessa sessione prima di lasciar fermare l'agente | 3 |
-| `SDLC_GUARD=1` | Abilita l'hook `PreToolUse`: blocca comandi e letture a rischio | spento |
+| `SDLC_GUARD=1` | Abilita l'hook `PreToolUse`: blocca comandi e letture a rischio (fail-closed) | spento |
 
 **Approvazioni.** Per un controllo che l'agente non può aggirare, dagli un'identità separata (nessun diritto di push,
 oppure un account bot o token senza diritti di merge) e proteggi `main` con PR, review dei code owner e CI obbligatorie.
@@ -87,7 +91,7 @@ di Git for Windows). In fase rossa (ultima task chiusa "atteso: rosso") l'hook `
 
 | Cosa | Esito |
 |---|---|
-| Suite di test | Passa su Linux (Ubuntu 24.04 su WSL2) e su Windows 11 (comprende loop con agente finto, hook e launcher `run.sh`, script su repository git temporanei) |
+| Suite di test | Passa su Linux (comprende loop con agente finto, hook e launcher `run.sh`, script su repository git temporanei). Su Windows 11 verificata fino alla 0.8.0; dalla 0.9.0 la copre solo la matrice CI `windows-latest`, il cui esito va controllato |
 | `claude plugin validate .` | Passava sulla 0.4.0 (Claude Code 2.1.303, avvisi su `author`); **non rieseguito** sulla 0.5.0 con il nuovo `hooks.json` |
 | Esecuzione su Windows | Suite locale e CI `windows-latest` |
 | Manifest Codex | **Non validato** con uno strumento Codex |

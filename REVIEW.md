@@ -137,7 +137,7 @@ Conclusione per piattaforma: **Linux** è la piattaforma su cui il plugin funzio
 che su un'installazione pulita non partono (B2). **Windows nativo**, indicato come supportato, non passa la propria
 suite.
 
-## Stato delle correzioni (0.5.0-0.10.0)
+## Stato delle correzioni (0.5.0-0.11.0)
 
 | Punto | Stato | Come |
 |---|---|---|
@@ -159,4 +159,9 @@ suite.
 | A5 | corretto in parte (0.9.0) | revisione umana del diff obbligatoria nel livello L (aree sensibili). Restano gli strumenti del subagent |
 | A3 | corretto (0.10.0) | con `--junit` `trace_check.py` e `sync_check.py` contano solo i test eseguiti e passati nel report JUnit (obbligatorio nel livello L) |
 | C (`sdlc-tests-from-ac` + `sdlc-implement`) | corretto (0.10.0) | nei livelli M e L i test bloccati si approvano prima dell'implementazione (`test approvati:`), controllato da `state.py`, `loop.py` e `sync_check.py` |
-| B10, A5 (subagent), A7, C (permessi del loop, versioni degli script, action CI) | aperti | pianificati nel rilascio 0.11.0 (sicurezza e manutenzione) |
+| A5 | corretto (0.9.0, 0.11.0) | revisione umana del diff nel livello L; subagent con soli strumenti di lettura; modello diverso possibile con `model:`. Resta un modello della stessa famiglia, salvo scelta dell'utente |
+| A7 | corretto (0.11.0) | `secrets_check.py` in `verify` e nel loop; dipendenze solo nel piano o con ADR (`diff_scope.py`); prompt injection in playbook e `PROMPT.md`. L'audit delle dipendenze è documentato per stack, non incluso |
+| B10 | corretto in gran parte (0.11.0) | guard per segmenti e parole, tutti i casi della tabella B bloccati, fail-closed. Resta aggirabile da comandi costruiti apposta: il controllo vero sono i permessi nativi |
+| C (`sdlc-loop`, `sdlc-init`) | corretto (0.11.0) | `settings.loop.json` d'esempio; versione negli script copiati e procedura di aggiornamento |
+| CI su GitHub (Node 20) | corretto (0.11.0) | `checkout@v6` e `setup-python@v6` nella CI e nel template |
+| Prova end-to-end (D.8) | aperto | skill, hook e loop non ancora eseguiti da un agente reale su un progetto |

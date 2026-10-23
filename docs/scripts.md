@@ -2,7 +2,8 @@
 
 Tutti gli script stanno in `skills/sdlc-init/scripts/` e `sdlc-init` li copia in `scripts/` del progetto. Sono Python con sola
 libreria standard, senza comandi di shell, e girano uguali su Windows, Linux e macOS. Si lanciano dalla **radice del
-progetto**. Exit code: `0` ok, `1` controllo fallito, `2` uso errato o precondizione mancante. L'output è sempre UTF-8,
+progetto**. La seconda riga di ogni script riporta la versione del plugin (`# sdlc-playbook: <versione>`), per
+sapere quali copie aggiornare (`sdlc-init`, sezione "Aggiornare un progetto"). Exit code: `0` ok, `1` controllo fallito, `2` uso errato o precondizione mancante. L'output è sempre UTF-8,
 anche con una console Windows in cp1252.
 
 I formati dei file che gli script leggono sono descritti in [architettura.md](architettura.md#contratti-sui-file).
@@ -18,6 +19,7 @@ I formati dei file che gli script leggono sono descritti in [architettura.md](ar
 | `scan_repo.py` | map-codebase | inventario di una codebase |
 | `docs_check.py` | docs | link ed esempi |
 | `sync_check.py` | sync | chiusura di una feature |
+| `secrets_check.py` | review-diff, loop, `verify` | segreti nei file |
 | `loop.py` | loop | loop autonomo esterno |
 
 ---
@@ -48,10 +50,10 @@ chiuse) → `sdlc-docs` (`T-DOC` aperta) → `sdlc-sync`. Prima di tutto `sdlc-i
 `sdlc-map-codebase`. `scripts/`, `docs/`, `.github/` e `.vscode/` non contano come codice esistente.
 
 **Livelli** (playbook §2.1). Livello S: dopo la spec approvata `sdlc-tasks` (senza piano), poi `sdlc-implement`,
-`sdlc-docs` se `T-DOC` è aperta e `sdlc-sync`. Livelli M e L: una task di test "atteso: rosso" chiusa senza
-`test approvati:` porta a `sdlc-tests-from-ac` prima dell'implementazione. Livello S: `review.md` conta solo se c'è ed è `non conforme`. Livello L: dopo una
-review accettata serve anche `- Revisione umana del diff:` in `review.md`, altrimenti `sdlc-review-diff`. Senza il campo
-`- Livello:` la spec vale M.
+`sdlc-docs` se `T-DOC` è aperta e `sdlc-sync`; `review.md` conta solo se c'è ed è `non conforme`. Livelli M e L: una
+task di test "atteso: rosso" chiusa senza `test approvati:` porta a `sdlc-tests-from-ac` prima dell'implementazione.
+Livello L: dopo una review accettata serve anche `- Revisione umana del diff:` in `review.md`, altrimenti
+`sdlc-review-diff`. Senza il campo `- Livello:` la spec vale M.
 
 **Più spec attive.** `PROSSIMO` riguarda la spec indicata con `--spec <id>` (nome della cartella o ID del titolo), quella
 il cui nome di cartella compare nel branch corrente (`feat/2026-10-24-export-csv`), o l'unica attiva. Altrimenti riporta
@@ -143,6 +145,8 @@ Calcola i file modificati dal merge-base con il ref di base (default: il primo e
   `requirements*.txt`, `go.mod`, `*.csproj`, i lockfile, ...) o più di 3 file di produzione (esclusi test, `docs/` e
   `*.md`) richiedono almeno M. Il livello dichiarato viene da `- Livello:` della spec (M se manca); nel livello S senza
   piano il confronto con il piano è saltato;
+- **errore** (exit 1): **dipendenze senza decisione**: un manifest o lockfile modificato che il piano non elenca, in un diff
+  che non aggiunge né modifica un ADR in `docs/adr/` (playbook §8: nuove dipendenze solo con ADR o nel piano approvato);
 - **info**: percorsi del piano non toccati.
 
 Percorsi: esatti, cartelle (prefisso) o glob; il prefisso `./` si ignora, i punti iniziali (`.github/`) restano. Exit
@@ -182,6 +186,22 @@ anche `- Revisione umana del diff:` compilato. Nei livelli M e L le task di test
 `test approvati:`. Con `--junit` gli AC devono essere verificati dal report dei test eseguiti, come in `trace_check.py`;
 nel livello L il report è obbligatorio.
 
+### secrets_check.py
+
+```
+python scripts/secrets_check.py [--base <ref>]     # file del ramo: modificati dal merge-base e non tracciati
+python scripts/secrets_check.py --all              # tutti i file tracciati (lo step "secrets" di verify)
+python scripts/secrets_check.py <file o cartella> ...
+```
+
+Errore (exit 1): chiavi private (`-----BEGIN ... PRIVATE KEY-----`), token con formato riconoscibile (AWS, GitHub,
+GitLab, Slack, Stripe live, Google, Anthropic, OpenAI) e file `.env` nel repository (non `.env.example`, `.sample`,
+`.template`). Avviso: password, secret, token o chiavi assegnati a una stringa letterale di almeno 8 caratteri, esclusi i
+segnaposto evidenti. Il valore trovato non viene mai stampato. Una riga con `secrets-check: ignore` non viene controllata
+(il falso positivo va motivato nella review). Salta file binari e oltre 1 MB. Exit `2` senza git o ref di base (usa
+`--base`, `--all` o percorsi). È una rete veloce, non una scansione della storia: per quella serve uno strumento dedicato
+in CI.
+
 ### loop.py
 
 ```
@@ -191,8 +211,8 @@ python scripts/loop.py docs/specs/001-x [--max 15] [--stall 3] [--timeout 1800] 
 
 Legge `PROMPT.md` dalla cartella della spec e lo passa all'agente da stdin. Dopo ogni iterazione esegue `verify`.
 Si ferma con exit `0` se `verify` è verde, non restano task `T-nn` né `T-Rnn` aperte (`T-DOC` e `T-SYNC` restano fuori) **e i
-controlli finali passano**: `trace_check.py` sulla spec e `diff_scope.py` sulla cartella, se presenti in `scripts/`. Le
-caselle le spunta l'agente; questi due controlli no. Se `diff_scope` non può calcolare il diff (exit `2`, per esempio
+controlli finali passano**: `trace_check.py` sulla spec, `diff_scope.py` sulla cartella e `secrets_check.py`, se presenti
+in `scripts/`. Le caselle le spunta l'agente; questi controlli no. Se `diff_scope` non può calcolare il diff (exit `2`, per esempio
 senza ref di base) è un avviso; con
 exit `1` al tetto `--max` o dopo `--stall` iterazioni senza cambiamenti (tasks.md, HEAD di git, **contenuto** delle
 modifiche tracciate e non tracciate: un agente che lavora sempre sullo stesso file non è in stallo). Ogni iterazione dura al
@@ -203,7 +223,8 @@ riportato come avviso. Rifiuta di partire (exit `2`) su `main`/`master` (salvo `
 `test approvati:`, il loop si ferma con exit `1` perché l'umano rilegga i test bloccati; con un'approvazione già in
 attesa non parte (exit `2`). Con `--junit` il controllo finale `trace_check.py` usa il report dei test eseguiti.
 `--dry-run` controlla le precondizioni senza lanciare l'agente e mostra se c'è una fase rossa. Non fa push. Permessi e
-modalità non interattiva dell'agente vanno configurati a parte.
+modalità non interattiva dell'agente vanno configurati a parte: `skills/sdlc-loop/references/settings.loop.json` è un
+esempio di allowlist e deny-list per Claude Code (`--agent "claude -p --settings <file>"`, da verificare sulla versione).
 
 ---
 
@@ -221,7 +242,8 @@ Python 3 esce `1` con un messaggio, cioè un errore visibile ma non bloccante.
 
 Abilitazione: `SDLC_ENFORCE_VERIFY=1`. Se `scripts/verify.py` esiste ed è rosso, esce con codice 2 e riporta le ultime
 30 righe all'agente, che non può dichiarare il lavoro finito. Blocca fino a `SDLC_STOP_MAX` volte di fila per sessione
-(default 3; contatore per `session_id` nella cartella temporanea, azzerato quando `verify` torna verde), poi lascia fermare
+(default 3; contatore per `session_id` in una cartella privata dell'utente, `%LOCALAPPDATA%\sdlc-playbook` o
+`~/.cache/sdlc-playbook`, aperto senza seguire link simbolici e azzerato quando `verify` torna verde), poi lascia fermare
 l'agente con un avviso per l'utente (`systemMessage`). Senza `session_id` blocca una volta sola (`stop_hook_active`).
 Non agisce se il progetto non ha `verify.py`, o se una spec è in **fase rossa** (in `docs/specs/*/tasks.md` l'ultima task `T-nn` chiusa è
 marcata "atteso: rosso" e la successiva è aperta): lì i test rossi sono il risultato atteso. `SDLC_VERIFY_ARGS` restringe la
@@ -229,9 +251,19 @@ verifica (es. `--fast`).
 
 ### Hook `PreToolUse` — `hooks/pretool_guard.py`
 
-Abilitazione: `SDLC_GUARD=1`. Per Bash e PowerShell blocca: `git push --force`/`-f`, `git reset --hard`, `rm -rf`,
-`Remove-Item -Recurse -Force`, `rd /s`, `del /s|/f|/q`, download-ed-esegui (`curl|wget ... | sh`, `iwr ... | iex`), lettura di
-`.env`; per lo strumento Read blocca i file `.env` (non `.env.example`). Esce con codice 2 e un messaggio.
+Abilitazione: `SDLC_GUARD=1`. Analizza ogni comando di Bash e PowerShell per segmenti (`;`, `&&`, `||`, `|`) e parole,
+non con una sola espressione regolare. Blocca:
+- push forzati o distruttivi: `--force`, `-f` (anche dentro `-uf`), `--force-with-lease`, refspec con `+` (`+main`),
+  `--delete`/`-d`, refspec `:branch`, `--mirror`;
+- `git reset --hard`, `git clean -f`;
+- cancellazioni ricorsive: `rm` con `-r`/`-R`/`--recursive` in qualsiasi forma (`rm -r -f`, `rm --recursive --force`),
+  `Remove-Item -Recurse` (anche abbreviato), `rd /s`, `del /s|/f|/q`, `shutil.rmtree`;
+- download-ed-esegui (`curl|wget ... | sh`, `iwr ... | iex`);
+- qualsiasi riferimento a un file `.env` (anche `cp`, `Select-String`, `grep`; maiuscole e stream NTFS come `.env::$DATA`),
+  tranne `.env.example`, `.sample`, `.template` e l'aggiunta a `.gitignore`.
+Per gli strumenti Read e Grep blocca i file `.env` (anche `glob: .env*`). Con un JSON illeggibile **blocca** (fail-closed).
+Esce con codice 2 e un messaggio. Resta una rete minima: un comando abbastanza contorto la aggira, per questo il
+controllo vero sono i permessi nativi dell'agente e l'isolamento.
 
 **Non verificato:** il comportamento in una sessione reale di Claude Code (codice di uscita 2 come blocco, formato del JSON in
 ingresso, shell usata per il comando su Windows). Gli script e `run.sh` sono provati con l'input atteso su Linux e Windows

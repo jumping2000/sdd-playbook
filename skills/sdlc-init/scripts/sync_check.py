@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# sdlc-playbook: 0.11.0
 """Controllo di chiusura di una feature: spec, task, review, pagina d'area e tracciabilità allineate.
 
 Uso:

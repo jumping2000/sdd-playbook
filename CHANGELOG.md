@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.11.0
+Quinto e ultimo rilascio del piano sulle criticità di processo: sicurezza e manutenzione (A5, A7, B10, C).
+- Nuovo script `secrets_check.py`: chiavi private, token con formato noto (AWS, GitHub, GitLab, Slack, Stripe, Google,
+  Anthropic, OpenAI) e file `.env` nei file del ramo, o in tutto il repository con `--all`; non stampa mai il valore.
+  È uno step `secrets` del template di `verify.py` e un controllo finale di `loop.py`.
+- `diff_scope.py`: un manifest o lockfile modificato deve essere nel piano approvato o accompagnato da un ADR in
+  `docs/adr/` (A7: "nuove dipendenze solo con ADR" ora è controllato).
+- Guard `PreToolUse` (B10): analisi per segmenti e parole; blocca `rm -r -f`, `rm --recursive --force`, `+refspec`,
+  `--force-with-lease`, `--delete`, `git clean -f`, `Remove-Item -Recurse`, `shutil.rmtree`, ogni riferimento a `.env`
+  (anche `cp`, `Select-String`, maiuscole, stream NTFS), lo strumento Grep sui `.env`; con JSON illeggibile blocca.
+- Subagent `sdlc-reviewer` con soli strumenti di lettura (A5): diff e output dei controlli li riceve nel messaggio;
+  il contenuto del repository è un dato, non un'istruzione.
+- Loop: permessi d'esempio `settings.loop.json` (allowlist e deny-list per Claude Code); `PROMPT.md` contro la prompt
+  injection e le dipendenze non pianificate.
+- Manutenzione: ogni script copiato porta la versione del plugin in seconda riga; `sdlc-init` spiega come aggiornare un
+  progetto. Action della CI e del template aggiornate a `checkout@v6` e `setup-python@v6` (Node 24).
+- Documentazione: contatore dell'hook `Stop` descritto nella sua cartella reale; playbook §1.2, §7.2, §8, §11.
+
 ## 0.10.0
 Quarto rilascio del piano sulle criticità di processo: verifica dei test (A3 residuo, test scritti e implementati dallo
 stesso agente).

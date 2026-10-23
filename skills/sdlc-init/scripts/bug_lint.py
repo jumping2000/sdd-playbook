@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# sdlc-playbook: 0.11.0
 """Controlli sul file di un bug (docs/bugs/BUG-nnn-*.md) secondo il playbook.
 
 Uso:  python scripts/bug_lint.py docs/bugs/BUG-001-esempio.md

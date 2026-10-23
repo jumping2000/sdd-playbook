@@ -25,6 +25,8 @@ Playbook §3.4 e §4 (fase 3).
    - la tabella della strategia di test deve contenere **tutti** gli AC della spec;
    - rischi con il modo di verificarli; rilascio e rollback;
    - non introdurre nulla che la spec non richieda: se serve, è una domanda per l'utente;
+   - ogni manifest o lockfile da modificare (nuove dipendenze) va in "Componenti e file": `diff_scope.py` accetta
+     una modifica alle dipendenze solo se è nel piano approvato o accompagnata da un ADR;
    - `- Basato su spec:` con il valore di `- Hash:` della spec approvata.
 3. **Controlla** con `python scripts/spec_lint.py <spec> --plan <plan>`: deve passare. L'avviso sul piano non
    approvato è atteso a questo punto.

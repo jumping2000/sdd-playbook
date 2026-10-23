@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# sdlc-playbook: 0.11.0
 """Loop esterno: rilancia l'agente finché verify è verde e non restano task numerate aperte (T-nn e T-Rnn).
 
 Uso:
@@ -8,7 +9,7 @@ Uso:
 Legge PROMPT.md dalla cartella della spec e lo passa all'agente da stdin (evita i limiti di
 lunghezza della riga di comando su Windows). Si ferma quando:
   - verify è verde, non ci sono task T-nn o T-Rnn aperte e i controlli finali passano -> exit 0
-    (controlli finali: trace_check.py sulla spec e diff_scope.py sulla cartella, se presenti in scripts/;
+    (controlli finali: trace_check.py sulla spec, diff_scope.py sulla cartella e secrets_check.py, se presenti in scripts/;
     le caselle le spunta l'agente, questi controlli no. Se diff_scope non può calcolare il diff è un avviso;
     con --junit, trace_check controlla anche che ogni AC abbia un test eseguito e passato nel report scritto da verify)
   - raggiunto il tetto --max di iterazioni                  -> exit 1
@@ -97,7 +98,7 @@ def controlli_finali(feature: Path, junit: str | None = None) -> list[str]:
     """Controlli che non dipendono da ciò che dichiara l'agente. Restituisce i controlli falliti."""
     falliti = []
     trace = [str(feature / "spec.md")] + (["--junit", junit] if junit else [])
-    controlli = [("trace_check", trace), ("diff_scope", [str(feature)])]
+    controlli = [("trace_check", trace), ("diff_scope", [str(feature)]), ("secrets_check", [])]
     for nome, args in controlli:
         script = Path("scripts") / f"{nome}.py"
         if not script.is_file() or (nome == "trace_check" and not (feature / "spec.md").is_file()):

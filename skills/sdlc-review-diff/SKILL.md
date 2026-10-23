@@ -21,8 +21,12 @@ Playbook §4 (fase 7), §5 (passo 8) e §3.8. Serve un **contesto indipendente**
      blocco e livello sottostimato (errori), file fuori piano (avviso);
    - `python scripts/trace_check.py <spec> --junit <report>`: ogni AC ha un test, eseguito e passato nel report
      JUnit scritto da `verify` (senza report controlla solo le citazioni: dillo nel report).
+   - `python scripts/secrets_check.py`: nessun segreto nei file del ramo.
 2. **Revisione indipendente.**
-   - Claude Code: delega al subagent `sdlc-reviewer`, passando cartella della spec, ref di base e output del punto 1.
+   - Claude Code: delega al subagent `sdlc-reviewer`, passando nel messaggio cartella della spec, il diff completo
+     (`git diff <merge-base>` più i file non tracciati) e l'output di `verify` e del punto 1: il subagent non ha Bash,
+     quindi non può eseguire comandi né modificare file. Per errori meno correlati con chi ha implementato, l'utente
+     può impostare nel frontmatter dell'agente (`model:`) un modello diverso da quello della sessione.
    - Altri agenti (Codex incluso): apri una **sessione nuova** e dai solo spec, piano, output del punto 1 e
      il diff; non portare la conversazione dell'implementazione. Usa le stesse istruzioni dell'agente
      `agents/sdlc-reviewer.md` del plugin.

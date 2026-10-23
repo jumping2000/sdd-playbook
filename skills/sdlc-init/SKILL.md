@@ -23,7 +23,8 @@ per `.vscode/tasks.json` fai il merge dei task, senza sostituire il file.
    (default GitHub Actions). Non assumere.
 3. **Copia gli script** da `scripts/` della skill a `scripts/` del progetto: `verify.py`, `state.py`,
    `spec_lint.py`, `trace_check.py`, `bug_lint.py`, `diff_scope.py`, `docs_check.py`, `sync_check.py`,
-   `scan_repo.py`, `loop.py`. Le altre skill si aspettano `python scripts/<nome>.py`.
+   `scan_repo.py`, `loop.py`, `secrets_check.py`. Le altre skill si aspettano `python scripts/<nome>.py`. Ogni script
+   porta in seconda riga la versione del plugin (`# sdlc-playbook: <versione>`).
 4. **Adatta `STEPS` in `scripts/verify.py`** ai comandi reali. Esegui a mano ogni comando prima di
    registrarlo. Non registrare step che il progetto non ha e non inventare test: se non ci sono, dillo.
 5. **Crea** (solo se mancano):
@@ -42,6 +43,14 @@ per `.vscode/tasks.json` fai il merge dei task, senza sostituire il file.
 6. **Esegui** `python scripts/verify.py` e riporta l'esito così com'è. Se è rosso perché mancano i test,
    non è un errore dell'inizializzazione: segnalalo.
 7. **Esegui** `python scripts/state.py` per mostrare lo stato risultante.
+
+## Aggiornare un progetto già inizializzato
+
+Se l'utente chiede di aggiornare gli script: confronta la riga `# sdlc-playbook:` di ogni `scripts/<nome>.py` con quella
+della skill. Per ogni script più vecchio o mancante mostra la differenza e copialo dopo conferma, in un commit dedicato.
+`verify.py` non si sovrascrive: contiene gli `STEPS` del progetto, quindi riporta solo le righe nuove del template
+(per esempio lo step `secrets`) e lascia decidere all'utente. Poi esegui `verify` e `state.py`, e leggi il CHANGELOG del
+plugin per i cambi di formato (campi nuovi in spec, task e review).
 
 ## STOP
 

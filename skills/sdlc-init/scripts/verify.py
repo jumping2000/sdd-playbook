@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# sdlc-playbook: 0.11.0
 """Verifica unica del progetto: format, lint, type-check, test.
 
 Exit code 0 = tutto verde. Solo stdlib; gira uguale su Windows, Linux, macOS.
@@ -21,6 +22,8 @@ STEPS = [
     ("lint", ["uv", "run", "ruff", "check", "."], True),
     ("types", ["uv", "run", "mypy", "src"], False),
     ("test", ["uv", "run", "pytest", "-q", "--junitxml=reports/junit.xml"], False),  # report per trace_check --junit
+    ("secrets", [sys.executable, "scripts/secrets_check.py", "--all"], True),
+    # ("audit", ["uv", "run", "pip-audit"], False),  # audit delle dipendenze: richiede rete, vedi stacks.md
 ]
 
 

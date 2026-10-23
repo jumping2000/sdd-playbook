@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# sdlc-playbook: 0.11.0
 """Confronta i file modificati con il piano, con le zone vietate e con i test bloccati.
 
 Uso:
@@ -15,6 +16,8 @@ Uso:
   Richiede L un file nelle righe "- Aree sensibili: a, b" di AGENTS.md; richiede almeno M una modifica a un
   manifest o lockfile delle dipendenze, o più di 3 file di produzione (esclusi test, docs/ e *.md).
   Una spec di livello S non ha piano: il confronto con il piano è saltato.
+- Dipendenze (playbook §8): un manifest o lockfile modificato deve essere nel piano approvato, oppure il diff deve
+  aggiungere o modificare un ADR in docs/adr/ -> altrimenti errore (exit 1).
 - Pianificati ma non toccati: solo informativo.
 Il diff è calcolato dal merge-base con --base (default: il primo tra main, master, origin/main,
 origin/master) e include modifiche non committate e file non tracciati.
@@ -218,6 +221,13 @@ def problemi_livello(feature: Path, modificati: list[str], agents: str) -> tuple
     return dichiarato, []
 
 
+def dipendenze_senza_decisione(modificati: list[str], piano: list[str]) -> list[str]:
+    """Manifest modificati che il piano non elenca, se il diff non tocca nessun ADR."""
+    if any(normalizza(f).startswith("docs/adr/") for f in modificati):
+        return []
+    return [f for f in modificati if e_un_manifest(f) and not any(corrisponde(f, p) for p in piano)]
+
+
 def analizza(feature: Path, modificati: list[str], agents: str):
     piano = percorsi_piano((feature / "plan.md").read_text(encoding="utf-8")) if (feature / "plan.md").is_file() else []
     vietati = percorsi_vietati(agents)
@@ -269,6 +279,10 @@ def main(argv: list[str]) -> int:
         print("[WARN] nessun percorso estratto da plan.md: il confronto con il piano non è affidabile")
     for e in sottostimato:
         print(f"[ERRORE] {e}")
+    dipendenze = dipendenze_senza_decisione(modificati, piano)
+    for f in dipendenze:
+        print(f"[ERRORE] dipendenze modificate senza piano né ADR: {f} (nuove dipendenze solo con un ADR in docs/adr/ "
+              "o nel piano approvato)")
     for f in violazioni:
         print(f"[ERRORE] file in zona vietata (AGENTS.md): {f}")
     for f in test_toccati:
@@ -279,7 +293,7 @@ def main(argv: list[str]) -> int:
         print(f"[{'ERRORE' if strict else 'WARN'}] file fuori piano: {f}")
     for p in non_toccati:
         print(f"[INFO] nel piano ma non toccato: {p}")
-    ko = bool(violazioni) or bool(test_toccati) or bool(sottostimato) or (strict and bool(fuori))
+    ko = bool(violazioni) or bool(test_toccati) or bool(sottostimato) or bool(dipendenze) or (strict and bool(fuori))
     print("SCOPE: " + ("OK" if not ko else "VIOLAZIONI"))
     return 1 if ko else 0
 

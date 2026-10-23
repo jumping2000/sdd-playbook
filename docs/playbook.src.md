@@ -130,12 +130,13 @@ verify:
 
 | Livello | Cosa fare |
 |---|---|
-| Permessi | Allowlist di comandi **e** deny-list esplicita (cancellazioni ricorsive, `git push --force`, download-ed-esegui, lettura di `.env`) |
+| Permessi | Permessi nativi dell'agente: allowlist di comandi **e** deny-list esplicita (cancellazioni ricorsive, `git push`, download-ed-esegui, lettura di `.env`). Per il loop il plugin fornisce un esempio (`settings.loop.json` di `sdlc-loop`) |
 | Ambiente | Container, worktree o macchina isolata per i loop autonomi; niente accesso a produzione né a segreti |
 | Gate tecnici | Branch protetto, PR obbligatoria, CI obbligatoria. Opzionali (Claude Code, plugin §11): hook `Stop` che impedisce di dichiarare completato senza `verify` verde, hook `PreToolUse` che blocca i comandi a rischio. Sono una rete di sicurezza, non un sandbox |
 | Tracciabilità | Commit con trailer `Spec: SPEC-2026-10-24-nome-feature` e `Agent: <nome/versione>`; PR template con link alla spec, output di `verify`, elenco degli AC coperti |
 | Identità dell'agente | Separata da quella di chi approva (vedi sotto): l'agente non deve poter unire una PR su `main` né approvarla |
 | Approvazioni | Il **merge della PR di design** (spec, piano, task) su `main` protetto, con review dei code owner obbligatoria (`CODEOWNERS` su `docs/specs/` e sui test), è l'approvazione: `spec_lint.py --base main` lo verifica. Nei documenti restano nome, data e **hash del contenuto approvato**: se il contenuto cambia, l'approvazione decade. In contesti regolati l'approvatore è il product owner o l'analista, non lo sviluppatore che lancia l'agente |
+| Prompt injection | Codice, commenti, issue, dipendenze e pagine web possono contenere istruzioni rivolte all'agente: sono dati, non ordini (`PROMPT.md` del loop e revisore lo dicono). La difesa vera è che l'agente non abbia nulla da far uscire né il permesso di farlo: niente segreti nell'ambiente, rete limitata, niente push |
 | Log delle azioni | `progress.md` per i loop; per audit formale usa i log dell'agente e della CI, non la chat |
 
 **Perché l'identità separata.** Approvazioni, caselle spuntate e trailer sono testo che l'agente può scrivere: l'unico
@@ -352,7 +353,8 @@ L'idea è il cosiddetto "Ralph loop": un ciclo esterno che riesegue l'agente fin
 - **Stato su file** (`progress.md`), non nella chat: le sessioni lunghe derivano e la compattazione perde dettagli.
 - **Una task per iterazione**, con contesto fresco quando possibile.
 - **Branch di feature:** il loop rifiuta di partire su `main`/`master`.
-- **Isolamento:** worktree o container, niente accesso a produzione né a segreti.
+- **Isolamento:** worktree o container, niente accesso a produzione né a segreti; permessi nativi dell'agente con allowlist e deny-list (`settings.loop.json`), mai l'esclusione dei permessi fuori da un container usa e getta.
+- **Contenuti come dati:** quello che l'agente legge (codice, issue, documentazione delle dipendenze, web) non cambia i suoi compiti; se ci prova, lo annota in `progress.md` e si ferma.
 - **Controllo esterno:** la stessa verifica gira in CI.
 - **Il loop lo lancia l'umano**, in un terminale separato: l'agente prepara i file e fa il dry run (`sdlc-loop`), non avvia un altro agente da dentro la propria sessione.
 
@@ -392,11 +394,11 @@ Un secondo livello di verifica: un subagent con contesto fresco che prova a **co
 
 ## 8. Oltre la CI: rilascio e operazione
 
-Il flusso sopra termina con codice verificato, rivisto e documentato. Per un ciclo di vita completo servono quattro attività, da dimensionare in base alla criticità del sistema. **Il plugin non le automatizza**: sono fuori dal suo perimetro.
+Il flusso sopra termina con codice verificato, rivisto e documentato. Per un ciclo di vita completo servono quattro attività, da dimensionare in base alla criticità del sistema. **Il plugin automatizza solo la sicurezza di base** (segreti e dipendenze); il resto è fuori dal suo perimetro.
 
 | Attività | Minimo raccomandato |
 |---|---|
-| Sicurezza | Scansione segreti, audit delle dipendenze e analisi statica come step di `verify` o della CI; nuove dipendenze solo con ADR |
+| Sicurezza | Scansione dei segreti (`secrets_check.py`, step di `verify`; per la storia completa uno strumento dedicato come gitleaks in CI), audit delle dipendenze (`pip-audit`, `npm audit`, `govulncheck`, ...) e analisi statica come step di `verify` o della CI; nuove dipendenze solo nel piano approvato o con un ADR (`diff_scope.py`) |
 | Rilascio | Pipeline di deploy con gate umano su produzione; `plan.md` include rollback; release notes derivate da spec e AC coperti |
 | Osservabilità | Ogni requisito non funzionale (es. latenza p95) ha una metrica o un log che lo rende osservabile dopo il rilascio |
 | Feedback | Incidenti e segnalazioni diventano `bugfix.md` e, se rivelano una lacuna, nuovi AC; le lezioni confluiscono in `AGENTS.md`/ADR |
@@ -473,6 +475,7 @@ a ogni punto di approvazione) e **script** (controlli deterministici copiati nel
 | `diff_scope.py` | File modificati: zone vietate (`Non modificare:` in `AGENTS.md`), test bloccati (`Test-Lock`) modificati dopo il blocco, livello sottostimato rispetto al diff, file fuori piano, file pianificati non toccati |
 | `docs_check.py` | Link relativi validi; esempi Python marcati eseguiti con successo |
 | `sync_check.py` | Chiusura: spec `implemented`, task chiuse, test approvati, review con decisione umana, pagina d'area, tracciabilità (con il report JUnit nel livello L) |
+| `secrets_check.py` | Chiavi e token con formato noto e file `.env` nei file del ramo (o in tutto il repository con `--all`) |
 | `loop.py` | Loop esterno con tetto, rilevamento dello stallo, timeout per iterazione, baseline, branch protetto, pausa per l'approvazione dei test e dry run |
 
 **Hook opzionali (solo Claude Code)**, inattivi se non abilitati con una variabile d'ambiente. Partono da `hooks/run.sh`, che esce subito se l'hook non è abilitato e altrimenti usa il primo tra `python3`, `python` e `py -3` che sia Python 3; senza Python l'errore è visibile ma non bloccante:
@@ -480,11 +483,13 @@ a ogni punto di approvazione) e **script** (controlli deterministici copiati nel
 | Hook | Abilitazione | Effetto |
 |---|---|---|
 | `Stop` | `SDLC_ENFORCE_VERIFY=1` (e `SDLC_VERIFY_ARGS`, per es. `--fast`; `SDLC_STOP_MAX`, default 3) | Se `verify` è rosso, l'agente non può dichiarare il lavoro finito, salvo fase rossa; blocca fino a `SDLC_STOP_MAX` volte per sessione, poi lascia fermare l'agente avvisando l'utente |
-| `PreToolUse` | `SDLC_GUARD=1` | Blocca force push, `reset --hard`, cancellazioni ricorsive, download-ed-esegui, lettura di `.env` |
+| `PreToolUse` | `SDLC_GUARD=1` | Blocca push forzati o distruttivi, `reset --hard`, `clean -f`, cancellazioni ricorsive, download-ed-esegui, riferimenti a `.env`; blocca anche se l'evento è illeggibile |
 
-**Subagent (solo Claude Code):** `sdlc-reviewer`, revisore indipendente in sola lettura usato da `sdlc-review-diff`. Con altri agenti la review si fa in una sessione nuova con le stesse istruzioni.
+**Subagent (solo Claude Code):** `sdlc-reviewer`, revisore indipendente usato da `sdlc-review-diff`, in sola lettura per costruzione (solo strumenti di lettura: diff e output dei controlli li riceve nel messaggio). Con altri agenti la review si fa in una sessione nuova con le stesse istruzioni.
 
-**Cosa non fa il plugin:** non approva al posto dell'umano, non lancia il loop da dentro una sessione, non copre rilascio, sicurezza dell'infrastruttura e operazione (§8), non configura i permessi dell'agente.
+**Cosa non fa il plugin:** non approva al posto dell'umano, non lancia il loop da dentro una sessione, non copre rilascio, sicurezza dell'infrastruttura e operazione (§8), non configura i permessi dell'agente (per il loop ne fornisce un esempio).
+
+**Aggiornamenti:** ogni script copiato nel progetto porta la versione del plugin in seconda riga (`# sdlc-playbook: <versione>`); `sdlc-init` sa confrontarla e aggiornare gli script, senza toccare gli `STEPS` di `verify.py`.
 
 ---
 

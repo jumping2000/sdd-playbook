@@ -50,7 +50,7 @@ del diff.
 
 - **Quando:** una volta per progetto, prima di spec o codice.
 - **Cosa fa:** rileva sistema operativo, stack e se c'è già codice; chiede in un solo messaggio ciò che non
-  rileva (comandi reali, Windows sì/no, provider CI); copia i 10 script in `scripts/`; adatta `STEPS` di
+  rileva (comandi reali, Windows sì/no, provider CI); copia gli 11 script in `scripts/` (ognuno con la versione del plugin in seconda riga, per gli aggiornamenti); adatta `STEPS` di
   `verify.py` provando ogni comando; crea `AGENTS.md`, `CLAUDE.md` (`@AGENTS.md`), `.gitattributes`,
   `.vscode/tasks.json`, `docs/constitution.md`, le cartelle `docs/*` e il workflow CI; esegue `verify` e `state`.
 - **Regole:** non sovrascrive mai file esistenti (mostra la differenza, fa il merge di `tasks.json`); non inventa
@@ -127,9 +127,10 @@ del diff.
 
 ### sdlc-review-diff
 
-- **Precondizioni:** nessuna task `T-nn` aperta, `verify` verde, lavoro committato. Nel livello S bastano i due
+- **Precondizioni:** nessuna task `T-nn` aperta, `verify` verde, lavoro committato. Nel livello S bastano i
   controlli deterministici, riportati nella PR.
-- **Cosa fa:** `diff_scope.py` (anche livello sottostimato) e `trace_check.py`; revisione indipendente (subagent `sdlc-reviewer` in Claude Code, altrimenti
+- **Cosa fa:** `diff_scope.py` (anche livello sottostimato e dipendenze senza decisione), `trace_check.py` e
+  `secrets_check.py`; revisione indipendente (subagent `sdlc-reviewer` in Claude Code, senza Bash: riceve diff e output nel messaggio; altrimenti
   sessione nuova con spec, piano, output degli script e diff); scrive `review.md` con esito, problemi con file e riga,
   tentativi di confutazione.
 - **Gate:** la **decisione è dell'utente** ("Decisione di"; nel livello L anche "Revisione umana del diff", dopo che
@@ -155,6 +156,6 @@ del diff.
 ### sdlc-loop
 
 - **Quando:** molte task piccole e indipendenti. Per poche task o molto accoppiate è meglio `sdlc-implement`.
-- **Cosa fa:** prepara `PROMPT.md` e `progress.md`, concorda `--max`, `--stall` e `--timeout`, esegue `loop.py --dry-run`, mostra la
+- **Cosa fa:** prepara `PROMPT.md` e `progress.md`, propone i permessi d'esempio (`settings.loop.json`), concorda `--max`, `--stall` e `--timeout`, esegue `loop.py --dry-run`, mostra la
   checklist di sicurezza e il comando.
 - **Non fa:** **non lancia il loop**: lo lancia l'utente in un terminale isolato, dopo l'approvazione esplicita.

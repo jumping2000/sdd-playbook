@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# sdlc-playbook: 0.11.0
 """Tracciabilità AC -> test: ogni acceptance criterion della spec deve comparire in almeno un test.
 
 Uso:

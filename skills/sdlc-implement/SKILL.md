@@ -42,6 +42,8 @@ Playbook §4 (fase 6) e §6. Lavora sulle sole task numerate `T-nn`: `T-DOC` e `
 
 - Requisito ambiguo o mancante: **fermati e chiedi**, non assumere (scrivi la domanda in `progress.md` se esiste).
 - Serve modificare qualcosa nel non-scope: fermati e chiedi.
+- Serve una dipendenza nuova o diversa che il piano non elenca: fermati e chiedi (serve un ADR o un piano aggiornato;
+  `diff_scope.py` segnala come errore un manifest modificato senza l'uno o l'altro).
 - La modifica supera il livello della spec (più di 3 file di produzione in S, un'area sensibile di `AGENTS.md`
   sotto L, una dipendenza in S): fermati e chiedi; `diff_scope.py` la segnalerebbe come errore.
 - Non dichiarare mai una task o la feature completata senza aver eseguito `verify` e senza mostrare l'esito.
