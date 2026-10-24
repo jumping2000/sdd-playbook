@@ -78,7 +78,7 @@ repo/
 
 ```python
 #!/usr/bin/env python3
-# sdlc-playbook: 0.11.0
+# sdlc-playbook: 0.11.1
 """Verifica unica del progetto: format, lint, type-check, test.
 
 Exit code 0 = tutto verde. Solo stdlib; gira uguale su Windows, Linux, macOS.
@@ -214,11 +214,36 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0  # storia completa: i controlli di processo confrontano il ramo con la base
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
       # <setup del toolchain del progetto: dipendenze, runtime, ecc.>
       - run: python scripts/verify.py
+      # Controlli di processo sulla PR (playbook §1.2): girano qui, con gli script e AGENTS.md di questo commit,
+      # che CODEOWNERS protegge. Per ogni spec toccata dalla PR: se spec o piano cambiano è una PR di design
+      # (lint senza --base); altrimenti è una PR di implementazione (spec e piano già su main, diff, test, segreti).
+      - name: Controlli di processo
+        if: github.event_name == 'pull_request' && runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -e
+          base="origin/${{ github.base_ref }}"
+          for d in $(git diff --name-only "$base"...HEAD -- docs/specs | cut -d/ -f3 | sort -u); do
+            s="docs/specs/$d"
+            [ -f "$s/spec.md" ] || continue
+            piano=(); [ -f "$s/plan.md" ] && piano=(--plan "$s/plan.md")
+            task=(); [ -f "$s/tasks.md" ] && task=(--tasks "$s/tasks.md")
+            if git diff --quiet "$base"...HEAD -- "$s/spec.md" "$s/plan.md"; then
+              python scripts/spec_lint.py "$s/spec.md" "${piano[@]}" "${task[@]}" --base "$base"
+              python scripts/diff_scope.py "$s" --base "$base"
+              python scripts/trace_check.py "$s/spec.md" --junit reports/junit.xml
+            else
+              python scripts/spec_lint.py "$s/spec.md" "${piano[@]}" "${task[@]}"
+            fi
+          done
+          python scripts/secrets_check.py --base "$base"
 ```
 
 **Dove gira `verify`, e chi lo lancia**
@@ -335,8 +360,8 @@ Regola per i bug banali (causa evidente, una riga di diff): test rosso, fix, `ve
 - Niente comandi specifici di una shell negli script: devono girare su Windows e Linux.
 
 ## Regole
-- Non modificare: <percorsi, es. migrazioni già applicate, codice generato>
-- Aree sensibili: <percorsi che richiedono il livello L, es. autenticazione, pagamenti, migrazioni>
+- Non modificare: <percorsi tra backtick, es. `migrations/applied/`, `src/generated/`>
+- Aree sensibili: <percorsi tra backtick che richiedono il livello L, es. `src/auth/`, `src/payments/`, `migrations/`>
 - Ogni modifica di comportamento richiede un test.
 - Non dichiarare un compito completato senza aver eseguito `python scripts/verify.py` con esito positivo.
 - Ambiguità o requisiti mancanti: fermati e chiedi, non assumere.
@@ -456,14 +481,14 @@ I file nella sezione "Componenti e file" vanno **uno per riga nel formato `- per
 - [ ] T-SYNC Riconciliare spec e docs/system/<area>.md con il comportamento reale; poi impostare Stato = implemented nella spec
 
 <!-- Livelli M e L: dopo il commit Test-Lock di una task "atteso: rosso", e solo dopo che l'umano ha riletto i test,
-si aggiunge in fondo alla sua riga: — test approvati: <nome, aaaa-mm-gg> -->
+si aggiunge in fondo alla sua riga: — test approvati: <nome, aaaa-mm-gg, sha del commit Test-Lock> -->
 
 ## Correzioni dalla review
 <!-- Solo dopo una review "non conforme": una task per problema alta/media, per esempio
 - [ ] T-R01 <problema da review.md> — verifica: `<comando>` — copre: AC-nnn (facoltativo) -->
 ```
 
-Le task `T-nn` hanno `verifica:` e `copre:` e nessun segnaposto `<...>`; `T-DOC` e `T-SYNC` sono obbligatorie e si eseguono dopo la review. `- Basato su piano:` registra l'hash del piano da cui derivano. Le task `T-Rnn` le aggiunge la review quando l'esito è `non conforme` (§3.8): hanno `verifica:`, `copre:` facoltativo, e si eseguono come le `T-nn`. Nei livelli M e L, quando l'umano ha riletto i test bloccati di una task "atteso: rosso", in fondo alla sua riga si aggiunge `— test approvati: <nome, data>`: fino ad allora `state.py` non indica l'implementazione e `loop.py` si ferma. La marcatura "atteso: rosso" va solo sulle task che scrivono test: quando l'ultima task chiusa la porta e la successiva è aperta, la spec è in **fase rossa** (i test rossi sono il risultato atteso) e l'hook `Stop` e `loop.py` lo tengono in conto.
+Le task `T-nn` hanno `verifica:` e `copre:` e nessun segnaposto `<...>`; `T-DOC` e `T-SYNC` sono obbligatorie e si eseguono dopo la review. `- Basato su piano:` registra l'hash del piano da cui derivano. Le task `T-Rnn` le aggiunge la review quando l'esito è `non conforme` (§3.8): hanno `verifica:`, `copre:` facoltativo, e si eseguono come le `T-nn`. Nei livelli M e L, quando l'umano ha riletto i test bloccati di una task "atteso: rosso", in fondo alla sua riga si aggiunge `— test approvati: <nome, aaaa-mm-gg, sha>`, con lo SHA del commit `Test-Lock` riletto: fino ad allora `state.py` non indica l'implementazione e `loop.py` si ferma. La marcatura "atteso: rosso" va solo sulle task che scrivono test: quando l'ultima task chiusa la porta e la successiva è aperta, la spec è in **fase rossa** (i test rossi sono il risultato atteso) e l'hook `Stop` e `loop.py` lo tengono in conto.
 
 ### 3.6 `bugfix.md`
 
@@ -631,7 +656,7 @@ Differenze rispetto al greenfield: più tempo in lettura/caratterizzazione, spec
 **Test**
 - Genera i test **dagli acceptance criteria**, non dal codice: altrimenti l'agente scrive test che confermano i propri bug. *(`sdlc-tests-from-ac`)*
 - **Test bloccati:** i test rossi si committano da soli con il trailer `Test-Lock: T-nn` (lo scheletro del codice, se serve, in un commit precedente). Da lì l'implementazione deve farli passare senza toccarli: `diff_scope.py` segnala come errore ogni modifica successiva a quei file fuori da un nuovo commit `Test-Lock`, che va motivato nella review. La CI del branch resta rossa fino alla task di implementazione.
-- **Test approvati:** i test bloccati definiscono "fatto" per l'implementazione, e li ha scritti lo stesso agente che implementerà. Nei livelli M e L l'umano li rilegge (il diff del commit `Test-Lock`) prima dell'implementazione e lo registra sulla riga della task (`test approvati: <nome, data>`); `state.py`, `loop.py` e `sync_check.py` lo controllano.
+- **Test approvati:** i test bloccati definiscono "fatto" per l'implementazione, e li ha scritti lo stesso agente che implementerà. Nei livelli M e L l'umano li rilegge (il diff del commit `Test-Lock`) prima dell'implementazione e lo registra sulla riga della task (`test approvati: <nome, aaaa-mm-gg, sha>`); `state.py`, `loop.py` e `sync_check.py` lo controllano, e `diff_scope.py` segnala un nuovo commit `Test-Lock` dopo lo SHA approvato: i test cambiati vanno riapprovati.
 - Tracciabilità: gli AC ripartono da AC-001 in ogni spec, quindi ogni citazione va attribuita a una spec. Dichiara la spec in testa al file di test (`# SPEC-2026-10-24-export-csv`) e cita `AC-001` nel nome o in un commento, oppure usa la forma qualificata `SPEC-2026-10-24-export-csv/AC-001` (nei nomi di funzione `SPEC_2026_10_24_export_csv_AC_001`). `trace_check.py` verifica che ogni AC compaia in almeno un test della sua spec, segnala i requisiti senza test e le citazioni ambigue, e ignora quelle nei `TODO`.
 - **Test eseguiti, non solo citati:** `verify` scrive un report JUnit XML (`reports/junit.xml`); con `--junit` `trace_check.py` richiede per ogni AC almeno un caso di test eseguito e passato, e nessuno fallito. Una citazione in un test saltato o mai eseguito non basta più. Obbligatorio nel livello L (`sync_check.py --junit`), consigliato sempre.
 - Livelli: unit per la logica, integrazione per i confini, almeno un e2e per il flusso principale.
@@ -702,7 +727,7 @@ L'idea è il cosiddetto "Ralph loop": un ciclo esterno che riesegue l'agente fin
 
 ```python
 #!/usr/bin/env python3
-# sdlc-playbook: 0.11.0
+# sdlc-playbook: 0.11.1
 """Loop esterno: rilancia l'agente finché verify è verde e non restano task numerate aperte (T-nn e T-Rnn).
 
 Uso:
@@ -712,12 +737,14 @@ Uso:
 Legge PROMPT.md dalla cartella della spec e lo passa all'agente da stdin (evita i limiti di
 lunghezza della riga di comando su Windows). Si ferma quando:
   - verify è verde, non ci sono task T-nn o T-Rnn aperte e i controlli finali passano -> exit 0
-    (controlli finali: trace_check.py sulla spec, diff_scope.py sulla cartella e secrets_check.py, se presenti in scripts/;
+    (controlli finali: spec_lint.py su spec, piano e task, trace_check.py sulla spec, diff_scope.py sulla cartella e
+    secrets_check.py, se presenti in scripts/;
     le caselle le spunta l'agente, questi controlli no. Se diff_scope non può calcolare il diff è un avviso;
     con --junit, trace_check controlla anche che ogni AC abbia un test eseguito e passato nel report scritto da verify)
   - raggiunto il tetto --max di iterazioni                  -> exit 1
   - nessun progresso per --stall iterazioni consecutive     -> exit 1
-    (progresso = cambia tasks.md, l'HEAD di git o il contenuto dell'albero di lavoro)
+    (progresso = cambia tasks.md, l'HEAD di git o il contenuto dell'albero di lavoro; i file generati dagli strumenti,
+    come __pycache__/ e reports/ con il report JUnit, non contano)
   - una task di test "atteso: rosso" è chiusa senza "test approvati:" (livelli M e L) -> exit 1: l'umano rilegge i
     test bloccati, scrive l'approvazione sulla riga della task e rilancia il loop
 Ogni iterazione ha un tempo massimo (--timeout secondi): oltre, l'agente viene terminato e il loop prosegue.
@@ -740,17 +767,21 @@ import subprocess
 import sys
 from pathlib import Path
 
+sys.dont_write_bytecode = True  # niente __pycache__ nel progetto
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import spec_lint  # noqa: E402
+
 PROTETTI = {"main", "master"}
 OPZIONI_CON_VALORE = {"--max", "--stall", "--timeout", "--agent", "--junit"}
 TASK_APERTA = re.compile(r"^\s*-\s+\[ \]\s+T-R?\d+\b", re.M)  # T-nn dal piano e T-Rnn dalla review
 TASK = re.compile(r"^\s*-\s+\[([ xX])\]\s+(T-\d+)\b(.*)$", re.M)
-LIVELLO_S = re.compile(r"^\s*[-*]\s+Livello\s*:\s*S\b", re.M | re.I)
-APPROVATI = re.compile(r"test approvati:\s*[^\s<—]")  # come spec_lint.test_da_approvare, senza importarlo
+RUMORE = re.compile(r"(^|/)(__pycache__|\.pytest_cache|reports)/|\.py[co]$")  # file generati dagli strumenti
 
 
 def git(*args: str) -> str:
     try:
-        r = subprocess.run(["git", *args], capture_output=True, text=True, encoding="utf-8", errors="replace")
+        r = subprocess.run(["git", "-c", "core.quotePath=false", *args], capture_output=True, text=True,
+                           encoding="utf-8", errors="replace")
         return r.stdout.strip() if r.returncode == 0 else ""
     except OSError:
         return ""
@@ -765,29 +796,27 @@ def fase_rossa(feature: Path) -> str | None:
     precedente = None
     for stato, tid, resto in TASK.findall((feature / "tasks.md").read_text(encoding="utf-8")):
         if stato == " ":
-            return precedente[0] if precedente and "atteso: rosso" in precedente[1] else None
+            return precedente[0] if precedente and re.search(r"atteso:\s*rosso", precedente[1], re.I) else None
         precedente = (tid, resto)
     return None
 
 
 def test_da_approvare(feature: Path) -> list[str]:
-    """Task di test "atteso: rosso" chiuse senza "test approvati:" (non nel livello S)."""
+    """Task di test "atteso: rosso" chiuse senza "test approvati:" valido (non nel livello S)."""
     spec = feature / "spec.md"
-    if spec.is_file() and LIVELLO_S.search(spec.read_text(encoding="utf-8")):
+    if spec.is_file() and spec_lint.livello(spec.read_text(encoding="utf-8")) == "S":
         return []
-    return [tid for stato, tid, resto in TASK.findall((feature / "tasks.md").read_text(encoding="utf-8"))
-            if stato != " " and "atteso: rosso" in resto and not APPROVATI.search(resto)]
+    return spec_lint.test_da_approvare((feature / "tasks.md").read_text(encoding="utf-8"))
 
 
 def impronta(feature: Path) -> str:
-    """Hash di tasks.md, HEAD e contenuto delle modifiche (tracciate e non tracciate)."""
+    """Hash di tasks.md, HEAD e contenuto delle modifiche (tracciate e non tracciate), senza i file generati."""
     h = hashlib.sha256()
-    for parte in ((feature / "tasks.md").read_text(encoding="utf-8"), git("rev-parse", "HEAD"),
-                  git("status", "--porcelain"), git("diff", "HEAD")):
+    for parte in ((feature / "tasks.md").read_text(encoding="utf-8"), git("rev-parse", "HEAD"), git("diff", "HEAD")):
         h.update(parte.encode("utf-8"))
     for nome in git("ls-files", "--others", "--exclude-standard").splitlines():
         p = Path(nome)
-        if p.is_file():
+        if p.is_file() and not RUMORE.search(nome):
             h.update(nome.encode("utf-8"))
             h.update(p.read_bytes())
     return h.hexdigest()
@@ -800,15 +829,19 @@ def verify_verde() -> bool:
 def controlli_finali(feature: Path, junit: str | None = None) -> list[str]:
     """Controlli che non dipendono da ciò che dichiara l'agente. Restituisce i controlli falliti."""
     falliti = []
-    trace = [str(feature / "spec.md")] + (["--junit", junit] if junit else [])
-    controlli = [("trace_check", trace), ("diff_scope", [str(feature)]), ("secrets_check", [])]
+    spec = feature / "spec.md"
+    trace = [str(spec)] + (["--junit", junit] if junit else [])
+    lint = [str(spec), "--tasks", str(feature / "tasks.md")]
+    if (feature / "plan.md").is_file():
+        lint += ["--plan", str(feature / "plan.md")]
+    controlli = [("spec_lint", lint), ("trace_check", trace), ("diff_scope", [str(feature)]), ("secrets_check", [])]
     for nome, args in controlli:
         script = Path("scripts") / f"{nome}.py"
-        if not script.is_file() or (nome == "trace_check" and not (feature / "spec.md").is_file()):
+        if not script.is_file() or (nome in ("spec_lint", "trace_check") and not spec.is_file()):
             print(f"[WARN] controllo finale saltato: {nome} (script o spec mancante)", flush=True)
             continue
         codice = subprocess.run([sys.executable, str(script), *args]).returncode
-        if codice == 1 or (codice != 0 and nome == "trace_check"):
+        if codice == 1 or (codice != 0 and nome in ("spec_lint", "trace_check")):
             falliti.append(nome)
         elif codice != 0:
             print(f"[WARN] {nome} non ha potuto completare il controllo (exit {codice})", flush=True)
@@ -857,6 +890,8 @@ def main(argv: list[str]) -> int:
         print(f"[ERRORE] agente non trovato nel PATH: {agente[0]}")
         return 2
     rossa = fase_rossa(feature)
+    if junit and subprocess.run(["git", "check-ignore", "-q", junit], capture_output=True).returncode != 0:
+        print(f"[WARN] {junit} non è ignorato da git: aggiungi la sua cartella a .gitignore", flush=True)
     if (attesa := test_da_approvare(feature)):
         print(f"[ERRORE] i test bloccati di {', '.join(attesa)} aspettano l'approvazione umana: rileggili e scrivi "
               "'test approvati: <nome, data>' sulla riga della task, poi rilancia")

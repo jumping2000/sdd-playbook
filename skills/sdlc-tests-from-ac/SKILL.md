@@ -44,5 +44,6 @@ errori); la task di test è indicata in `tasks.md`. Convenzioni di nome: `refere
 Mostra l'elenco AC → test, i messaggi di fallimento e lo SHA del commit `Test-Lock`. Nei livelli M e L chiedi
 all'utente di **rileggere i test bloccati** (il diff di quel commit): sono loro a definire "fatto" per
 l'implementazione. Solo dopo la sua conferma esplicita, con il nome, aggiungi in fondo alla riga della task
-`— test approvati: <nome, aaaa-mm-gg>`; fino ad allora `state.py` non indica l'implementazione e `loop.py` si ferma.
+`— test approvati: <nome, aaaa-mm-gg, sha>` con lo SHA breve del commit `Test-Lock` che l'utente ha riletto (un
+nuovo commit `Test-Lock` per la stessa task fa decadere l'approvazione: `diff_scope.py`); fino ad allora `state.py` non indica l'implementazione e `loop.py` si ferma.
 Non scriverlo mai di tua iniziativa. Nel livello S basta uno spot check.

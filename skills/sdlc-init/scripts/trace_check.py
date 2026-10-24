@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# sdlc-playbook: 0.11.0
+# sdlc-playbook: 0.11.1
 """Tracciabilità AC -> test: ogni acceptance criterion della spec deve comparire in almeno un test.
 
 Uso:
@@ -19,8 +19,9 @@ Le citazioni su righe con TODO, FIXME o XXX non contano: un promemoria non è un
 --junit FILE|DIR ...: report JUnit XML dei test eseguiti (una cartella vale per tutti i suoi *.xml). Ogni AC deve
 avere almeno un caso di test eseguito e passato, e nessuno fallito: citare l'AC non basta più. Un caso vale per un AC
 se lo cita in forma qualificata (nome o classname), oppure in forma breve quando appartiene a un file di test
-attribuito alla spec (attributo file, o un componente del classname uguale al nome del file) o il progetto ha una
-sola spec. I casi saltati non contano.
+attribuito alla spec o il progetto ha una sola spec. Il file di un caso è quello il cui percorso coincide più a lungo
+con l'attributo file o con il classname (tests.a.test_api -> tests/a/test_api.py; com.acme.ExportTest ->
+.../com/acme/ExportTest.java); a pari merito tra file di spec diverse il caso non conta. I casi saltati non contano.
 L'ID della spec si legge dal titolo "# SPEC-<id>: ..." (data + slug in minuscolo, o numero).
 Cartelle di test cercate di default: tests, test, __tests__, spec, src/test.
 Exit code: 0 tutti gli AC citati (e, con --junit, verificati); 1 AC senza test; 2 uso errato o report illeggibile.
@@ -34,6 +35,7 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import NamedTuple
 
+sys.dont_write_bytecode = True  # niente __pycache__ nel progetto: altrimenti conterebbe come file modificato
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import spec_lint  # noqa: E402
 
@@ -41,7 +43,7 @@ ESTENSIONI = {".py", ".js", ".jsx", ".ts", ".tsx", ".java", ".kt", ".cs", ".go",
               ".rs", ".feature", ".robot", ".cpp", ".c", ".swift"}
 CARTELLE = ("tests", "test", "__tests__", "spec", "src/test")
 SALTA = {"node_modules", ".git", ".venv", "venv", "__pycache__", "dist", "build", "target", "bin", "obj"}
-AC_REF = re.compile(r"(?<![A-Za-z0-9])AC[-_]?0*(\d+)(?!\d)")
+AC_REF = re.compile(r"(?:(?<=Test)|(?<![A-Za-z0-9]))AC[-_]?0*(\d+)(?!\d)")  # anche TestAC001 (Go)
 # ID della spec: data + slug in minuscolo (anche con "_" al posto di "-", per i nomi di funzione) o numero.
 ID_RIF = r"(\d{4}[-_]\d{2}[-_]\d{2}[-_][a-z0-9]+(?:[-_][a-z0-9]+)*|\d+)"
 SPEC_REF = re.compile(rf"(?<![A-Za-z0-9])SPEC[-_]?{ID_RIF}(?!\d)")
@@ -152,24 +154,45 @@ def casi_junit(report: list[Path]) -> list[tuple[str, str, str, str]]:
     return casi
 
 
+def componenti(percorso: str) -> list[str]:
+    return [c for c in re.split(r"[./:\\]+", percorso) if c]
+
+
+def coincidenza(file_test: str, file: str, classe: str) -> int:
+    """Quante parti del percorso del file di test coincidono con l'attributo file o con il classname del caso."""
+    parti = componenti(file_test.rsplit(".", 1)[0])
+    if file:
+        f = componenti(file.replace("\\", "/").rsplit(".", 1)[0])
+        n = next((k for k in range(min(len(f), len(parti)), 0, -1) if f[-k:] == parti[-k:]), 0)
+        if n:
+            return n
+    c = componenti(classe)
+    # il classname comincia con una coda del percorso (tests.a.test_api[.Classe], com.acme.ExportTest)
+    return next((len(parti) - i for i in range(len(parti)) if c[:len(parti) - i] == parti[i:]), 0)
+
+
+def file_del_caso(file: str, classe: str, validi: dict[str, bool]) -> bool:
+    """Il caso appartiene a un file valido per la spec: il più coincidente, senza pari merito con file di altre spec."""
+    punti = {f: coincidenza(f, file, classe) for f in validi}
+    migliore = max(punti.values(), default=0)
+    if not migliore:
+        return False
+    return all(validi[f] for f, n in punti.items() if n == migliore)
+
+
 def esecuzioni(spec_text: str, cartelle: list[Path], report: list[Path],
                spec_unica: bool | None = None) -> dict[str, dict[str, list[str]]]:
     """AC -> {"passato": [...], "fallito": [...], "saltato": [...]} dai casi del report attribuiti a questa spec."""
     _, acs = spec_lint.parse_spec(spec_text)
     spec = chiave_spec(spec_text)
     unica = spec_nel_progetto() <= 1 if spec_unica is None else spec_unica
-    valide = [f for f in file_di_test(cartelle)
-              if brevi_nel_file(f.read_text(encoding="utf-8", errors="ignore"), spec, unica) == "valide"]
-    stem = {f.stem for f in valide}
-    percorsi = {f.as_posix() for f in valide}
+    validi = {f.as_posix(): brevi_nel_file(f.read_text(encoding="utf-8", errors="ignore"), spec, unica) == "valide"
+              for f in file_di_test(cartelle)}
     out: dict[str, dict[str, list[str]]] = {ac: {"passato": [], "fallito": [], "saltato": []} for ac in acs}
     for nome, classe, file, esito in casi_junit(report):
         testo = f"{classe} {nome}"
         numeri = {int(m.group(2)) for m in QUALIFICATO.finditer(testo) if spec_lint.chiave_id(m.group(1)) == spec}
-        file = file.replace("\\", "/")
-        del_file = (unica or bool(set(re.split(r"[./:\\]+", classe)) & stem)
-                    or bool(file) and any(file.endswith(p) for p in percorsi))
-        if del_file:
+        if unica or file_del_caso(file, classe, validi):
             numeri |= {int(m.group(1)) for m in AC_REF.finditer(QUALIFICATO.sub(" ", testo))}
         for ac in acs:
             if int(ac[3:]) in numeri:
@@ -185,6 +208,9 @@ def main(argv: list[str]) -> int:
     warn_only = "--warn-only" in opts
     dirs = valori(opts, "--tests")
     junit = valori(opts, "--junit")
+    if "--junit" in opts and not junit:
+        print("[ERRORE] --junit senza report: indica il file o la cartella del report JUnit")
+        return 2
     cartelle = [Path(d) for d in dirs] if dirs else [Path(c) for c in CARTELLE if Path(c).is_dir()]
     cartelle = [c for c in cartelle if c.is_dir()]
     if not cartelle:

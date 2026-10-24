@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# sdlc-playbook: 0.11.0
+# sdlc-playbook: 0.11.1
 """Controlli deterministici su spec, piano e task del playbook.
 
 Uso:
@@ -23,7 +23,8 @@ Task: T-nn dal piano (verifica: e copre: obbligatori), T-Rnn dai problemi della 
 Livello (playbook §2): "- Livello: S | M | L" nella spec; senza il campo vale M (avviso). Il livello entra nell'hash:
 abbassarlo dopo l'approvazione fa decadere l'approvazione. Livello S: niente piano, T-DOC facoltativa.
 Test approvati (playbook §6): nei livelli M e L una task di test "atteso: rosso" chiusa porta "test approvati: <nome,
-data>", scritto dopo che l'umano ha riletto i test bloccati (Test-Lock); test_da_approvare() elenca quelle senza.
+aaaa-mm-gg, sha>", scritto dopo che l'umano ha riletto i test bloccati; sha è il commit Test-Lock approvato (diff_scope
+segnala ogni commit Test-Lock successivo per la stessa task). test_da_approvare() elenca le task senza.
 Exit code 0 = nessun errore (gli avvisi non bloccano). Solo stdlib + git (per --base), cross-platform.
 """
 from __future__ import annotations
@@ -44,8 +45,9 @@ TITOLO = re.compile(rf"^#\s+SPEC-({ID_DATA}|\d+)\s*:", re.M)
 REQ_DEF = re.compile(r"^\s*[-*]\s+(REQ-\d+)\b")
 AC_DEF = re.compile(r"^\s*[-*]\s+(AC-\d+)\s*\[([^\]]*)\]")
 PLACEHOLDER = re.compile(r"<[^<>\n]{1,80}>")
-TASK_TEST = re.compile(r"^\s*-\s+\[[xX]\]\s+(T-\d+)\b(.*atteso: rosso.*)$", re.M)
-APPROVATI = re.compile(r"test approvati:\s*([^—\n]*)")
+TASK_TEST = re.compile(r"^\s*-\s+\[[xX]\]\s+(T-\d+)\b(.*atteso:\s*rosso.*)$", re.M | re.I)
+# "test approvati: Anna Rossi, 2026-10-24, abc1234": nome, data e SHA (7-40 cifre esadecimali) del commit Test-Lock
+APPROVATI = re.compile(r"test approvati:\s*([^,—\n<>]*\w[^,—\n<>]*),\s*(\d{4}-\d{2}-\d{2}),\s*([0-9a-f]{7,40})\b", re.I)
 
 
 def leggi(path: str) -> str:
@@ -104,9 +106,15 @@ def problemi_id(testo: str, cartella: str | None) -> list[str]:
     return []
 
 
+def intestazione(testo: str) -> str:
+    """Testo prima della prima sezione "## ": stato, livello, approvazioni."""
+    m = re.search(r"^## ", testo, re.M)
+    return testo[:m.start()] if m else testo
+
+
 def livello_dichiarato(testo: str) -> str | None:
-    """Valore di "- Livello:" (S, M, L, o il testo trovato se non valido); None se manca o è un segnaposto."""
-    v = pulisci(campo(testo, "Livello"))
+    """Valore di "- Livello:" nell'intestazione (S, M, L, o il testo trovato se non valido); None se manca."""
+    v = pulisci(campo(intestazione(testo), "Livello"))
     if not v or PLACEHOLDER.search(v):
         return None
     return v.split()[0].upper()
@@ -294,14 +302,18 @@ def lint_tasks(spec: str, tasks: str) -> tuple[list[str], list[str]]:
     return err, []
 
 
-def test_da_approvare(tasks: str) -> list[str]:
-    """Task di test "atteso: rosso" chiuse senza "test approvati: <nome, data>" compilato."""
-    out = []
+def approvazioni_test(tasks: str) -> dict[str, str | None]:
+    """Task di test "atteso: rosso" chiuse -> SHA del commit Test-Lock approvato (None se non approvata)."""
+    out: dict[str, str | None] = {}
     for tid, resto in TASK_TEST.findall(tasks):
         m = APPROVATI.search(resto)
-        if not m or not m.group(1).strip() or PLACEHOLDER.search(m.group(1)):
-            out.append(tid)
+        out[tid] = m.group(3).lower() if m else None
     return out
+
+
+def test_da_approvare(tasks: str) -> list[str]:
+    """Task di test "atteso: rosso" chiuse senza "test approvati: <nome, aaaa-mm-gg, sha>" valido."""
+    return [tid for tid, sha in approvazioni_test(tasks).items() if sha is None]
 
 
 def tasks_su_piano(plan: str, tasks: str) -> tuple[list[str], list[str]]:

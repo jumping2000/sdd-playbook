@@ -137,7 +137,7 @@ Conclusione per piattaforma: **Linux** è la piattaforma su cui il plugin funzio
 che su un'installazione pulita non partono (B2). **Windows nativo**, indicato come supportato, non passa la propria
 suite.
 
-## Stato delle correzioni (0.5.0-0.11.0)
+## Stato delle correzioni (0.5.0-0.11.1)
 
 | Punto | Stato | Come |
 |---|---|---|
@@ -164,4 +164,5 @@ suite.
 | B10 | corretto in gran parte (0.11.0) | guard per segmenti e parole, tutti i casi della tabella B bloccati, fail-closed. Resta aggirabile da comandi costruiti apposta: il controllo vero sono i permessi nativi |
 | C (`sdlc-loop`, `sdlc-init`) | corretto (0.11.0) | `settings.loop.json` d'esempio; versione negli script copiati e procedura di aggiornamento |
 | CI su GitHub (Node 20) | corretto (0.11.0) | `checkout@v6` e `setup-python@v6` nella CI e nel template |
+| Review critica 0.9-0.11 (I1-I8) | corretto (0.11.1) | approvazioni dei test legate allo SHA `Test-Lock`; `AGENTS.md` e livello letti dal merge-base, rinomine contate; ADR nuovo per le dipendenze; attribuzione JUnit per percorso; file generati esclusi; `loop.py` usa `spec_lint`; permessi del loop senza scrittura sui controlli; controlli di processo nella CI delle PR. I7 (compatibilità con progetti 0.8.0) non applicabile: il plugin non è ancora in uso |
 | Prova end-to-end (D.8) | aperto | skill, hook e loop non ancora eseguiti da un agente reale su un progetto |

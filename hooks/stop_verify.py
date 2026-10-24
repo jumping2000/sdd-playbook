@@ -28,7 +28,7 @@ def fase_rossa(tasks: str) -> str | None:
     precedente = None
     for stato, tid, resto in TASK.findall(tasks):
         if stato == " ":
-            if precedente and "atteso: rosso" in precedente[1]:
+            if precedente and re.search(r"atteso:\s*rosso", precedente[1], re.I):
                 return precedente[0]
             return None
         precedente = (tid, resto)

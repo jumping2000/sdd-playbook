@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# sdlc-playbook: 0.11.0
+# sdlc-playbook: 0.11.1
 """Controllo di chiusura di una feature: spec, task, review, pagina d'area e tracciabilità allineate.
 
 Uso:
@@ -24,6 +24,7 @@ import re
 import sys
 from pathlib import Path
 
+sys.dont_write_bytecode = True  # niente __pycache__ nel progetto: altrimenti conterebbe come file modificato
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import spec_lint  # noqa: E402
 import trace_check  # noqa: E402
@@ -147,8 +148,15 @@ def main(argv: list[str]) -> int:
     area = argv[argv.index("--area") + 1] if "--area" in argv else None
     tests = [Path(t) for t in trace_check.valori(argv, "--tests")]
     junit = trace_check.valori(argv, "--junit")
-    args = [a for a in args if a != area and a not in junit and Path(a) not in tests]
-    feature = Path(args[0])
+    # la cartella della spec può stare anche dopo --tests o --junit: è quella che contiene spec.md
+    cartelle = [a for a in args if a != area and (Path(a) / "spec.md").is_file()]
+    resto = [a for a in args if a != area and a not in junit and Path(a) not in tests]
+    if not cartelle and not resto:
+        print(__doc__)
+        return 2
+    feature = Path(cartelle[0] if cartelle else resto[0])
+    tests = [x for x in tests if x != feature]
+    junit = [x for x in junit if Path(x) != feature]
     err = controlla(feature, area, tests, junit)
     for e in err:
         print(f"[ERRORE] {e}")

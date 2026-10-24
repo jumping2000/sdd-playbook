@@ -9,7 +9,7 @@ import sys
 import unittest
 import uuid
 
-from common import HOOKS, SPEC_OK, TmpDir, copia_script, esegui, git, repo_git, scrivi
+from common import HOOKS, SPEC_OK, TASKS_OK, TmpDir, copia_script, esegui, git, repo_git, scrivi
 
 PY = os.path.basename(sys.executable)
 SH = shutil.which("sh")
@@ -31,12 +31,12 @@ AGENTE_PROGRESSIVO = (
     "    t = open(p, encoding='utf-8').read()\n"
     "    open(p, 'w', encoding='utf-8').write(t.replace('[ ] T-01', '[x] T-01'))\n"
 )
-FASE_ROSSA = ("- [x] T-01 Test — verifica: `t` (atteso: rosso) — copre: AC-001 — test approvati: Anna, 2026-10-20\n"
+FASE_ROSSA = ("- [x] T-01 Test — verifica: `t` (atteso: rosso) — copre: AC-001 — test approvati: Anna, 2026-10-20, abc1234\n"
               "- [ ] T-02 Implementa\n")
 
 
 def progetto(d, tasks: str, branch="feature/x", agente=AGENTE_CHE_SPUNTA, verify_ok=True):
-    copia_script(d, ["loop"])
+    copia_script(d, ["loop", "spec_lint"])
     scrivi(d, "scripts/verify.py", f"import sys\nsys.exit({0 if verify_ok else 1})\n")
     scrivi(d, "docs/specs/001-x/tasks.md", tasks)
     scrivi(d, "docs/specs/001-x/PROMPT.md", "prompt di prova\n")
@@ -120,6 +120,7 @@ class TestLoop(unittest.TestCase):
         with TmpDir() as d:
             progetto(d, DUE)
             copia_script(d, ["loop", "spec_lint", "trace_check", "diff_scope"])
+            scrivi(d, "docs/specs/001-x/tasks.md", TASKS_OK)
             scrivi(d, "docs/specs/001-x/spec.md", SPEC_OK)
             scrivi(d, "tests/test_export.py", "def test_AC_001(): pass\n")
             r = loop(d, "--max", "3")

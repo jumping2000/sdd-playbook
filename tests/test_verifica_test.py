@@ -67,9 +67,9 @@ class TestJUnit(unittest.TestCase):
             report = d / "junit.xml"
             report.write_text(junit(("tests.test_due", "test_AC_001", "passato"),
                                     ("", "SPEC-001/AC-002 errore chiaro", "passato"),
-                                    ("com.acme.test_uno", "test_AC_001", "fallito")), encoding="utf-8")
+                                    ("tests.test_uno", "test_AC_001", "fallito")), encoding="utf-8")
             es = trace_check.esecuzioni(SPEC_OK, [d / "tests"], [report], spec_unica=False)
-            self.assertEqual(es["AC-001"]["fallito"], ["com.acme.test_uno::test_AC_001"])
+            self.assertEqual(es["AC-001"]["fallito"], ["tests.test_uno::test_AC_001"])
             self.assertEqual(es["AC-001"]["passato"], [])  # il caso di test_due è di SPEC-002
             self.assertEqual(es["AC-002"]["passato"], ["SPEC-001/AC-002 errore chiaro"])
             es2 = trace_check.esecuzioni(spec2, [d / "tests"], [report], spec_unica=False)
@@ -81,15 +81,15 @@ class TestApprovazioneDeiTest(unittest.TestCase):
 
     def test_test_da_approvare(self):
         self.assertEqual(spec_lint.test_da_approvare(self.CHIUSA), [])
-        senza = self.CHIUSA.replace(" — test approvati: Anna Rossi, 2026-10-19", "")
+        senza = self.CHIUSA.replace(" — test approvati: Anna Rossi, 2026-10-19, abc1234", "")
         self.assertEqual(spec_lint.test_da_approvare(senza), ["T-01"])
         self.assertEqual(spec_lint.test_da_approvare(senza.replace("— copre", "— test approvati: <nome> — copre")),
                          ["T-01"])
-        self.assertEqual(spec_lint.test_da_approvare(TASKS_OK.replace(" — test approvati: Anna Rossi, 2026-10-19", "")),
+        self.assertEqual(spec_lint.test_da_approvare(TASKS_OK.replace(" — test approvati: Anna Rossi, 2026-10-19, abc1234", "")),
                          [])  # task ancora aperta: niente da approvare
 
     def test_state_chiede_l_approvazione(self):
-        senza = self.CHIUSA.replace(" — test approvati: Anna Rossi, 2026-10-19", "")
+        senza = self.CHIUSA.replace(" — test approvati: Anna Rossi, 2026-10-19, abc1234", "")
         with TmpDir() as d:
             scrivi(d, "AGENTS.md")
             scrivi(d, "scripts/verify.py")
@@ -103,7 +103,7 @@ class TestApprovazioneDeiTest(unittest.TestCase):
             self.assertEqual(state.analizza(d)["prossimo"]["skill"], "sdlc-implement")
 
     def test_sync_check_e_livello_s(self):
-        senza = TASKS_OK.replace(" — test approvati: Anna Rossi, 2026-10-19", "").replace("[ ]", "[x]")
+        senza = TASKS_OK.replace(" — test approvati: Anna Rossi, 2026-10-19, abc1234", "").replace("[ ]", "[x]")
         with TmpDir() as d:
             copia_script(d)
             scrivi(d, "docs/specs/001-x/spec.md", SPEC_OK.replace("Stato: approved", "Stato: implemented"))
@@ -124,7 +124,7 @@ AGENTE_TEST_ROSSI = (
 
 class TestLoopApprovazione(unittest.TestCase):
     def progetto(self, d, tasks: str, spec: str | None = None):
-        copia_script(d, ["loop"])
+        copia_script(d, ["loop", "spec_lint"])
         scrivi(d, "scripts/verify.py", "import sys\nsys.exit(1)\n")
         scrivi(d, "docs/specs/001-x/tasks.md", tasks)
         scrivi(d, "docs/specs/001-x/PROMPT.md", "prompt\n")

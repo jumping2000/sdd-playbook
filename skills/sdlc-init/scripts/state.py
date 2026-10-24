@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# sdlc-playbook: 0.11.0
+# sdlc-playbook: 0.11.1
 """Stato del progetto secondo il playbook e prossima fase suggerita.
 
 Uso:  python scripts/state.py [--json] [--spec <id>] [radice]
@@ -21,6 +21,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+sys.dont_write_bytecode = True  # niente __pycache__ nel progetto: altrimenti conterebbe come file modificato
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import spec_lint  # noqa: E402
 

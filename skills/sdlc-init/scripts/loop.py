@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# sdlc-playbook: 0.11.0
+# sdlc-playbook: 0.11.1
 """Loop esterno: rilancia l'agente finché verify è verde e non restano task numerate aperte (T-nn e T-Rnn).
 
 Uso:
@@ -9,12 +9,14 @@ Uso:
 Legge PROMPT.md dalla cartella della spec e lo passa all'agente da stdin (evita i limiti di
 lunghezza della riga di comando su Windows). Si ferma quando:
   - verify è verde, non ci sono task T-nn o T-Rnn aperte e i controlli finali passano -> exit 0
-    (controlli finali: trace_check.py sulla spec, diff_scope.py sulla cartella e secrets_check.py, se presenti in scripts/;
+    (controlli finali: spec_lint.py su spec, piano e task, trace_check.py sulla spec, diff_scope.py sulla cartella e
+    secrets_check.py, se presenti in scripts/;
     le caselle le spunta l'agente, questi controlli no. Se diff_scope non può calcolare il diff è un avviso;
     con --junit, trace_check controlla anche che ogni AC abbia un test eseguito e passato nel report scritto da verify)
   - raggiunto il tetto --max di iterazioni                  -> exit 1
   - nessun progresso per --stall iterazioni consecutive     -> exit 1
-    (progresso = cambia tasks.md, l'HEAD di git o il contenuto dell'albero di lavoro)
+    (progresso = cambia tasks.md, l'HEAD di git o il contenuto dell'albero di lavoro; i file generati dagli strumenti,
+    come __pycache__/ e reports/ con il report JUnit, non contano)
   - una task di test "atteso: rosso" è chiusa senza "test approvati:" (livelli M e L) -> exit 1: l'umano rilegge i
     test bloccati, scrive l'approvazione sulla riga della task e rilancia il loop
 Ogni iterazione ha un tempo massimo (--timeout secondi): oltre, l'agente viene terminato e il loop prosegue.
@@ -37,17 +39,21 @@ import subprocess
 import sys
 from pathlib import Path
 
+sys.dont_write_bytecode = True  # niente __pycache__ nel progetto
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import spec_lint  # noqa: E402
+
 PROTETTI = {"main", "master"}
 OPZIONI_CON_VALORE = {"--max", "--stall", "--timeout", "--agent", "--junit"}
 TASK_APERTA = re.compile(r"^\s*-\s+\[ \]\s+T-R?\d+\b", re.M)  # T-nn dal piano e T-Rnn dalla review
 TASK = re.compile(r"^\s*-\s+\[([ xX])\]\s+(T-\d+)\b(.*)$", re.M)
-LIVELLO_S = re.compile(r"^\s*[-*]\s+Livello\s*:\s*S\b", re.M | re.I)
-APPROVATI = re.compile(r"test approvati:\s*[^\s<—]")  # come spec_lint.test_da_approvare, senza importarlo
+RUMORE = re.compile(r"(^|/)(__pycache__|\.pytest_cache|reports)/|\.py[co]$")  # file generati dagli strumenti
 
 
 def git(*args: str) -> str:
     try:
-        r = subprocess.run(["git", *args], capture_output=True, text=True, encoding="utf-8", errors="replace")
+        r = subprocess.run(["git", "-c", "core.quotePath=false", *args], capture_output=True, text=True,
+                           encoding="utf-8", errors="replace")
         return r.stdout.strip() if r.returncode == 0 else ""
     except OSError:
         return ""
@@ -62,29 +68,27 @@ def fase_rossa(feature: Path) -> str | None:
     precedente = None
     for stato, tid, resto in TASK.findall((feature / "tasks.md").read_text(encoding="utf-8")):
         if stato == " ":
-            return precedente[0] if precedente and "atteso: rosso" in precedente[1] else None
+            return precedente[0] if precedente and re.search(r"atteso:\s*rosso", precedente[1], re.I) else None
         precedente = (tid, resto)
     return None
 
 
 def test_da_approvare(feature: Path) -> list[str]:
-    """Task di test "atteso: rosso" chiuse senza "test approvati:" (non nel livello S)."""
+    """Task di test "atteso: rosso" chiuse senza "test approvati:" valido (non nel livello S)."""
     spec = feature / "spec.md"
-    if spec.is_file() and LIVELLO_S.search(spec.read_text(encoding="utf-8")):
+    if spec.is_file() and spec_lint.livello(spec.read_text(encoding="utf-8")) == "S":
         return []
-    return [tid for stato, tid, resto in TASK.findall((feature / "tasks.md").read_text(encoding="utf-8"))
-            if stato != " " and "atteso: rosso" in resto and not APPROVATI.search(resto)]
+    return spec_lint.test_da_approvare((feature / "tasks.md").read_text(encoding="utf-8"))
 
 
 def impronta(feature: Path) -> str:
-    """Hash di tasks.md, HEAD e contenuto delle modifiche (tracciate e non tracciate)."""
+    """Hash di tasks.md, HEAD e contenuto delle modifiche (tracciate e non tracciate), senza i file generati."""
     h = hashlib.sha256()
-    for parte in ((feature / "tasks.md").read_text(encoding="utf-8"), git("rev-parse", "HEAD"),
-                  git("status", "--porcelain"), git("diff", "HEAD")):
+    for parte in ((feature / "tasks.md").read_text(encoding="utf-8"), git("rev-parse", "HEAD"), git("diff", "HEAD")):
         h.update(parte.encode("utf-8"))
     for nome in git("ls-files", "--others", "--exclude-standard").splitlines():
         p = Path(nome)
-        if p.is_file():
+        if p.is_file() and not RUMORE.search(nome):
             h.update(nome.encode("utf-8"))
             h.update(p.read_bytes())
     return h.hexdigest()
@@ -97,15 +101,19 @@ def verify_verde() -> bool:
 def controlli_finali(feature: Path, junit: str | None = None) -> list[str]:
     """Controlli che non dipendono da ciò che dichiara l'agente. Restituisce i controlli falliti."""
     falliti = []
-    trace = [str(feature / "spec.md")] + (["--junit", junit] if junit else [])
-    controlli = [("trace_check", trace), ("diff_scope", [str(feature)]), ("secrets_check", [])]
+    spec = feature / "spec.md"
+    trace = [str(spec)] + (["--junit", junit] if junit else [])
+    lint = [str(spec), "--tasks", str(feature / "tasks.md")]
+    if (feature / "plan.md").is_file():
+        lint += ["--plan", str(feature / "plan.md")]
+    controlli = [("spec_lint", lint), ("trace_check", trace), ("diff_scope", [str(feature)]), ("secrets_check", [])]
     for nome, args in controlli:
         script = Path("scripts") / f"{nome}.py"
-        if not script.is_file() or (nome == "trace_check" and not (feature / "spec.md").is_file()):
+        if not script.is_file() or (nome in ("spec_lint", "trace_check") and not spec.is_file()):
             print(f"[WARN] controllo finale saltato: {nome} (script o spec mancante)", flush=True)
             continue
         codice = subprocess.run([sys.executable, str(script), *args]).returncode
-        if codice == 1 or (codice != 0 and nome == "trace_check"):
+        if codice == 1 or (codice != 0 and nome in ("spec_lint", "trace_check")):
             falliti.append(nome)
         elif codice != 0:
             print(f"[WARN] {nome} non ha potuto completare il controllo (exit {codice})", flush=True)
@@ -154,6 +162,8 @@ def main(argv: list[str]) -> int:
         print(f"[ERRORE] agente non trovato nel PATH: {agente[0]}")
         return 2
     rossa = fase_rossa(feature)
+    if junit and subprocess.run(["git", "check-ignore", "-q", junit], capture_output=True).returncode != 0:
+        print(f"[WARN] {junit} non è ignorato da git: aggiungi la sua cartella a .gitignore", flush=True)
     if (attesa := test_da_approvare(feature)):
         print(f"[ERRORE] i test bloccati di {', '.join(attesa)} aspettano l'approvazione umana: rileggili e scrivi "
               "'test approvati: <nome, data>' sulla riga della task, poi rilancia")

@@ -18,9 +18,11 @@ Le citazioni su righe con `TODO`, `FIXME` o `XXX` non contano: un promemoria non
 |---|---|
 | Python (pytest) | `# SPEC-2026-10-24-export-csv` in testa, poi `def test_AC_001_esporta_csv_valido(): ...` |
 | JavaScript / TypeScript | `it("SPEC-2026-10-24-export-csv/AC-001: esporta un CSV valido", () => { ... })` |
-| Java (JUnit) | `@DisplayName("SPEC-2026-10-24-export-csv/AC-001 esporta un CSV valido") @Test void esportaCsv() { ... }` |
+| Java (JUnit) | `// SPEC-2026-10-24-export-csv` in testa, poi `@Test void AC_001_esportaCsv() { ... }` (l'ID nel nome del metodo: `@DisplayName` non finisce nel report JUnit di Surefire) |
 | C# (xUnit) | `// SPEC-2026-10-24-export-csv` in testa, poi `[Fact] public void AC_001_EsportaCsvValido() { ... }` |
-| Go | `// SPEC-2026-10-24-export-csv` in testa, poi `func TestAC001_EsportaCsv(t *testing.T) { ... }` |
+| Go | `// SPEC-2026-10-24-export-csv` in testa, poi `func TestAC001_EsportaCsv(t *testing.T) { ... }`; con più spec e `--junit`, forma qualificata (`Test_SPEC_2026_10_24_export_csv_AC_001`): nel report il classname è il package, non il file |
 | Gherkin | `# SPEC-2026-10-24-export-csv/AC-001` sopra lo `Scenario:` |
+
+Con `--junit` il caso del report si attribuisce al file il cui percorso coincide di più con `file` o `classname` (`tests.a.test_api` ↔ `tests/a/test_api.py`): file omonimi in cartelle diverse non si confondono.
 
 Un test per più AC è ammesso (cita tutti gli ID). Un AC può avere più test: servono i casi di errore.

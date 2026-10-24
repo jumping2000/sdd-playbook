@@ -1,4 +1,7 @@
-# sdlc-playbook (versione 0.11.0)
+# sdlc-playbook (versione 0.11.1)
+
+> **Stato: in progettazione.** Il plugin non è ancora stato usato su un progetto reale: skill, hook e loop sono
+> provati solo con test automatici e agenti finti. Formati e contratti possono ancora cambiare senza compatibilità.
 
 Plugin per Claude Code e Codex che accompagna lo sviluppatore lungo tutto il ciclo di vita descritto nel
 [playbook](docs/playbook-ai-software-lifecycle.md): spec, piano, task, test, implementazione, review,

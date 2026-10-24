@@ -106,7 +106,7 @@ SPEC_OK = SPEC_OK.replace(APPROVATA, APPROVATA + f"- Hash: {_spec_lint.impronta(
 APPROVATO = "- Approvato da / data: Anna Rossi, 2026-10-19\n"
 PLAN_OK = PLAN_OK.replace(APPROVATO, APPROVATO + f"- Basato su spec: {_spec_lint.impronta(SPEC_OK)}\n"
                           f"- Hash: {_spec_lint.impronta(PLAN_OK)}\n")
-TASKS_OK = """- [ ] T-01 Test — verifica: `pytest -k AC_001` (atteso: rosso) — copre: AC-001, AC-002 — test approvati: Anna Rossi, 2026-10-19
+TASKS_OK = """- [ ] T-01 Test — verifica: `pytest -k AC_001` (atteso: rosso) — copre: AC-001, AC-002 — test approvati: Anna Rossi, 2026-10-19, abc1234
 - [ ] T-02 Implementa — verifica: `pytest` — copre: AC-001, AC-002
 - [ ] T-DOC Documentazione
 - [ ] T-SYNC Riconciliazione

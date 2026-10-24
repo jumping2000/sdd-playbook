@@ -26,7 +26,10 @@ Lo prepari e lo lanci l'utente, in un terminale e in un ambiente isolato.
 1. **Crea** `progress.md` da `references/progress.md.tmpl` e `PROMPT.md` da `references/PROMPT.md.tmpl`
    (sostituisci `<id>`) nella cartella della spec.
 2. **Permessi:** proponi `references/settings.loop.json` (allowlist per `verify`, script e commit; deny per push,
-   reset, cancellazioni, rete, `.env`), da adattare ai comandi reali del progetto e passare all'agente, per Claude Code
+   amend, reset, cancellazioni, rete, `.env`, e per la scrittura di `scripts/`, `AGENTS.md`, `.github/`, spec, piano e
+   review, che sono i controlli e le regole del loop). Aggiungi all'allowlist i comandi `verifica:` delle task
+   (per esempio `Bash(uv run pytest:*)`). Il deny sulla rete non vale per i processi lanciati dai test: la difesa
+   vera è un container senza rete. Il file va passato all'agente, per Claude Code
    con `--agent "claude -p --settings docs/specs/<id>/settings.loop.json"`. Verifica il flag sulla versione in uso.
 3. **Concorda con l'utente** il tetto `--max` (default 15), `--stall` (default 3, iterazioni senza progresso) e
    `--timeout` (default 1800 secondi per iterazione).

@@ -13,8 +13,33 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0  # storia completa: i controlli di processo confrontano il ramo con la base
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
       # <setup del toolchain del progetto: dipendenze, runtime, ecc.>
       - run: python scripts/verify.py
+      # Controlli di processo sulla PR (playbook §1.2): girano qui, con gli script e AGENTS.md di questo commit,
+      # che CODEOWNERS protegge. Per ogni spec toccata dalla PR: se spec o piano cambiano è una PR di design
+      # (lint senza --base); altrimenti è una PR di implementazione (spec e piano già su main, diff, test, segreti).
+      - name: Controlli di processo
+        if: github.event_name == 'pull_request' && runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -e
+          base="origin/${{ github.base_ref }}"
+          for d in $(git diff --name-only "$base"...HEAD -- docs/specs | cut -d/ -f3 | sort -u); do
+            s="docs/specs/$d"
+            [ -f "$s/spec.md" ] || continue
+            piano=(); [ -f "$s/plan.md" ] && piano=(--plan "$s/plan.md")
+            task=(); [ -f "$s/tasks.md" ] && task=(--tasks "$s/tasks.md")
+            if git diff --quiet "$base"...HEAD -- "$s/spec.md" "$s/plan.md"; then
+              python scripts/spec_lint.py "$s/spec.md" "${piano[@]}" "${task[@]}" --base "$base"
+              python scripts/diff_scope.py "$s" --base "$base"
+              python scripts/trace_check.py "$s/spec.md" --junit reports/junit.xml
+            else
+              python scripts/spec_lint.py "$s/spec.md" "${piano[@]}" "${task[@]}"
+            fi
+          done
+          python scripts/secrets_check.py --base "$base"

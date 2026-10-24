@@ -1,5 +1,32 @@
 # Changelog
 
+## 0.11.1
+Correzioni dalla review critica sulle versioni 0.9.0-0.11.0. Il plugin è ancora in progettazione e mai usato su un
+progetto: nessuna regola di compatibilità aggiunta per progetti esistenti.
+- **Test approvati legati allo SHA:** il formato è `test approvati: <nome, aaaa-mm-gg, sha>`; `diff_scope.py` segnala uno
+  SHA che non è il commit `Test-Lock` della task, o un nuovo commit `Test-Lock` dopo l'approvazione. Prima un secondo
+  commit `Test-Lock` poteva indebolire i test approvati senza che nessuno se ne accorgesse.
+- **Livello non aggirabile dal ramo:** `diff_scope.py` conta le rinomine con il percorso di partenza (`--no-renames`),
+  legge `AGENTS.md` e il livello della spec dal merge-base, interpreta le voci di `AGENTS.md` come percorsi (backtick o
+  prima parola) e segnala quelle che non lo sono. `loop.py` esegue anche `spec_lint.py` tra i controlli finali.
+- **Dipendenze:** serve un ADR **nuovo** in `docs/adr/` (README e indici non contano); un lockfile vale se il piano
+  elenca il suo manifest.
+- **JUnit:** il caso si attribuisce al file con il percorso più coincidente (`tests.a.test_api` ↔ `tests/a/test_api.py`),
+  non al solo nome; riconosciuta la convenzione Go `TestAC001_`; convenzione Java con l'ID nel nome del metodo;
+  `--junit` senza valore è un errore.
+- **File generati:** `__pycache__/`, `*.pyc` e `reports/` non contano né come progresso del loop né come file di
+  produzione; gli script non scrivono più bytecode nel progetto; `loop.py` avvisa se il report non è ignorato.
+- **`loop.py` usa `spec_lint`** per livello e approvazioni invece di regex duplicate (il livello nelle Revisioni non
+  conta più); "atteso: rosso" senza distinzione di maiuscole, anche nell'hook `Stop`.
+- **Permessi del loop:** `settings.loop.json` nega la scrittura di `scripts/`, `AGENTS.md`, `.github/`, spec, piano e
+  review, e `git commit --amend`; consente anche `python3`.
+- **CI generata:** step "Controlli di processo" sulle PR (`spec_lint --base`, `diff_scope`, `trace_check --junit`,
+  `secrets_check`), il controllo che l'agente non può aggirare.
+- Minori: percorsi non ASCII in `secrets_check.py`, `diff_scope.py` e `loop.py` (`core.quotePath=false`);
+  `.secrets-ignore` e `.env.*.example`; guard su `git reset ... --hard`, `git -C . reset --hard`, `git clean -d -f`,
+  `.env` dentro una parola, `find -delete`, senza falsi positivi su `git rm -r --cached` e `git check-ignore`, e
+  fail-closed su `tool_input` malformato; `sync_check.py` accetta la cartella della spec dopo le opzioni.
+
 ## 0.11.0
 Quinto e ultimo rilascio del piano sulle criticità di processo: sicurezza e manutenzione (A5, A7, B10, C).
 - Nuovo script `secrets_check.py`: chiavi private, token con formato noto (AWS, GitHub, GitLab, Slack, Stripe, Google,

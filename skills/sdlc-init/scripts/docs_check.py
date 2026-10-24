@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# sdlc-playbook: 0.11.0
+# sdlc-playbook: 0.11.1
 """Controlli sulla documentazione: link relativi validi ed esempi Python eseguibili.
 
 Uso:

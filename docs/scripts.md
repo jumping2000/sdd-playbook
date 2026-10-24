@@ -112,7 +112,9 @@ gli `*.xml`) ogni AC deve avere almeno un caso di test **eseguito e passato** e 
 contano. Un caso vale per un AC se lo cita in forma qualificata nel nome o nel `classname`, oppure in forma breve quando
 appartiene a un file di test attribuito alla spec (attributo `file`, o un componente del `classname` uguale al nome del
 file, come `tests.test_export` per `tests/test_export.py` o `com.acme.ExportTest` per `ExportTest.java`) o il progetto
-ha una sola spec. Report illeggibile: exit `2`. Il report lo scrive `verify` (vedi `references/stacks.md` di `sdlc-init`).
+ha una sola spec. Il file di un caso è quello il cui percorso coincide più a lungo con `file` o `classname`: file
+omonimi in cartelle diverse non si confondono, e a pari merito tra file di spec diverse il caso non conta. Report
+illeggibile o `--junit` senza valore: exit `2`. Il report lo scrive `verify` (vedi `references/stacks.md` di `sdlc-init`).
 
 ### bug_lint.py
 
@@ -131,7 +133,11 @@ python scripts/diff_scope.py docs/specs/001-x [--base main] [--strict]
 ```
 
 Calcola i file modificati dal merge-base con il ref di base (default: il primo esistente tra `main`, `master`,
-`origin/main`, `origin/master`), inclusi file non committati e non tracciati. Segnala:
+`origin/main`, `origin/master`), inclusi file non committati e non tracciati. Le rinomine contano con il percorso di
+partenza e quello di arrivo (`--no-renames`); i file generati (`__pycache__/`, `*.pyc`, `reports/`) non contano.
+`AGENTS.md` e il livello della spec si leggono **dal merge-base** quando esistono lì: il ramo non può allentarli (se il
+ramo modifica `AGENTS.md` c'è un avviso). Le voci di `AGENTS.md` valgono come percorsi (testo tra backtick o prima
+parola); quelle che non sembrano percorsi sono segnalate e ignorate. Segnala:
 - **errore** (exit 1): file nelle zone delle righe `- Non modificare:` di `AGENTS.md` (tutte, non solo la prima);
 - **errore** (exit 1): file di test bloccati modificati dopo il blocco. Un commit con il trailer `Test-Lock: T-nn` blocca i
   suoi file di test (cartelle `tests`, `test`, `__tests__`, `spec` o nomi come `test_*.py`, `*_test.go`, `*.test.ts`,
@@ -145,8 +151,11 @@ Calcola i file modificati dal merge-base con il ref di base (default: il primo e
   `requirements*.txt`, `go.mod`, `*.csproj`, i lockfile, ...) o più di 3 file di produzione (esclusi test, `docs/` e
   `*.md`) richiedono almeno M. Il livello dichiarato viene da `- Livello:` della spec (M se manca); nel livello S senza
   piano il confronto con il piano è saltato;
-- **errore** (exit 1): **dipendenze senza decisione**: un manifest o lockfile modificato che il piano non elenca, in un diff
-  che non aggiunge né modifica un ADR in `docs/adr/` (playbook §8: nuove dipendenze solo con ADR o nel piano approvato);
+- **errore** (exit 1): **dipendenze senza decisione**: un manifest o lockfile modificato che il piano non elenca (un
+  lockfile vale se il piano elenca il suo manifest nella stessa cartella), in un diff che non **aggiunge** un ADR in
+  `docs/adr/` (README e indici non contano). Playbook §8: nuove dipendenze solo con ADR o nel piano approvato;
+- **errore** (exit 1): **test approvati superati**: lo SHA di `test approvati: <nome, data, sha>` non è un commit
+  `Test-Lock` del ramo per quella task (rebase, amend), o dopo di esso c'è un altro commit `Test-Lock` per la stessa task;
 - **info**: percorsi del piano non toccati.
 
 Percorsi: esatti, cartelle (prefisso) o glob; il prefisso `./` si ignora, i punti iniziali (`.github/`) restano. Exit
@@ -198,7 +207,9 @@ Errore (exit 1): chiavi private (`-----BEGIN ... PRIVATE KEY-----`), token con f
 GitLab, Slack, Stripe live, Google, Anthropic, OpenAI) e file `.env` nel repository (non `.env.example`, `.sample`,
 `.template`). Avviso: password, secret, token o chiavi assegnati a una stringa letterale di almeno 8 caratteri, esclusi i
 segnaposto evidenti. Il valore trovato non viene mai stampato. Una riga con `secrets-check: ignore` non viene controllata
-(il falso positivo va motivato nella review). Salta file binari e oltre 1 MB. Exit `2` senza git o ref di base (usa
+(il falso positivo va motivato nella review); i file che non si possono annotare (fixture PEM, `.env.development`
+versionato per convenzione) vanno in `.secrets-ignore`, un glob per riga. `.env.local.example` e simili non contano.
+I percorsi non ASCII sono letti correttamente (`core.quotePath=false`). Salta file binari e oltre 1 MB. Exit `2` senza git o ref di base (usa
 `--base`, `--all` o percorsi). È una rete veloce, non una scansione della storia: per quella serve uno strumento dedicato
 in CI.
 
@@ -211,11 +222,13 @@ python scripts/loop.py docs/specs/001-x [--max 15] [--stall 3] [--timeout 1800] 
 
 Legge `PROMPT.md` dalla cartella della spec e lo passa all'agente da stdin. Dopo ogni iterazione esegue `verify`.
 Si ferma con exit `0` se `verify` è verde, non restano task `T-nn` né `T-Rnn` aperte (`T-DOC` e `T-SYNC` restano fuori) **e i
-controlli finali passano**: `trace_check.py` sulla spec, `diff_scope.py` sulla cartella e `secrets_check.py`, se presenti
-in `scripts/`. Le caselle le spunta l'agente; questi controlli no. Se `diff_scope` non può calcolare il diff (exit `2`, per esempio
+controlli finali passano**: `spec_lint.py` su spec, piano e task, `trace_check.py` sulla spec, `diff_scope.py` sulla
+cartella e `secrets_check.py`, se presenti in `scripts/`. Le caselle le spunta l'agente; questi controlli no. Se `diff_scope` non può calcolare il diff (exit `2`, per esempio
 senza ref di base) è un avviso; con
 exit `1` al tetto `--max` o dopo `--stall` iterazioni senza cambiamenti (tasks.md, HEAD di git, **contenuto** delle
-modifiche tracciate e non tracciate: un agente che lavora sempre sullo stesso file non è in stallo). Ogni iterazione dura al
+modifiche tracciate e non tracciate, esclusi i file generati come `__pycache__/` e `reports/`: un agente che lavora
+sempre sullo stesso file non è in stallo, un report che cambia a ogni `verify` non è progresso). Con `--junit` avvisa se
+il report non è ignorato da git. Ogni iterazione dura al
 massimo `--timeout` secondi: oltre, l'agente viene terminato e il loop prosegue; un codice di uscita diverso da zero viene
 riportato come avviso. Rifiuta di partire (exit `2`) su `main`/`master` (salvo `--allow-main` in ambienti isolati) e con
 `verify` già rosso, salvo fase rossa (l'ultima task `T-nn` chiusa è "atteso: rosso") o `--allow-red-baseline`.
@@ -224,7 +237,8 @@ riportato come avviso. Rifiuta di partire (exit `2`) su `main`/`master` (salvo `
 attesa non parte (exit `2`). Con `--junit` il controllo finale `trace_check.py` usa il report dei test eseguiti.
 `--dry-run` controlla le precondizioni senza lanciare l'agente e mostra se c'è una fase rossa. Non fa push. Permessi e
 modalità non interattiva dell'agente vanno configurati a parte: `skills/sdlc-loop/references/settings.loop.json` è un
-esempio di allowlist e deny-list per Claude Code (`--agent "claude -p --settings <file>"`, da verificare sulla versione).
+esempio di allowlist e deny-list per Claude Code (nega anche la scrittura di `scripts/`, `AGENTS.md`, `.github/`, spec,
+piano e review: i controlli e le regole del loop) (`--agent "claude -p --settings <file>"`, da verificare sulla versione).
 
 ---
 
@@ -255,13 +269,17 @@ Abilitazione: `SDLC_GUARD=1`. Analizza ogni comando di Bash e PowerShell per seg
 non con una sola espressione regolare. Blocca:
 - push forzati o distruttivi: `--force`, `-f` (anche dentro `-uf`), `--force-with-lease`, refspec con `+` (`+main`),
   `--delete`/`-d`, refspec `:branch`, `--mirror`;
-- `git reset --hard`, `git clean -f`;
+- `git reset --hard`, `git clean -f`, anche con opzioni globali (`git -C . reset --hard`) o in altro ordine
+  (`git reset HEAD~1 --hard`, `git clean -d -f`);
 - cancellazioni ricorsive: `rm` con `-r`/`-R`/`--recursive` in qualsiasi forma (`rm -r -f`, `rm --recursive --force`),
-  `Remove-Item -Recurse` (anche abbreviato), `rd /s`, `del /s|/f|/q`, `shutil.rmtree`;
+  `git rm -r` senza `--cached`, `find -delete`, `Remove-Item -Recurse` (anche abbreviato), `rd /s`, `del /s|/f|/q`,
+  `shutil.rmtree`;
 - download-ed-esegui (`curl|wget ... | sh`, `iwr ... | iex`);
-- qualsiasi riferimento a un file `.env` (anche `cp`, `Select-String`, `grep`; maiuscole e stream NTFS come `.env::$DATA`),
-  tranne `.env.example`, `.sample`, `.template` e l'aggiunta a `.gitignore`.
-Per gli strumenti Read e Grep blocca i file `.env` (anche `glob: .env*`). Con un JSON illeggibile **blocca** (fail-closed).
+- qualsiasi riferimento a un file `.env`, anche attaccato ad altro (`cat .env>x`, `cat <.env`, `open('.env')`, `cp`,
+  `Select-String`; maiuscole e stream NTFS come `.env::$DATA`), tranne `.env.example`, `.sample`, `.template` e i comandi
+  su `.gitignore` (aggiunta, `grep` nel file, `git check-ignore`).
+Per gli strumenti Read e Grep blocca i file `.env` (anche `glob: .env*`). Con un JSON illeggibile o un `tool_input` che non
+è un oggetto **blocca** (fail-closed).
 Esce con codice 2 e un messaggio. Resta una rete minima: un comando abbastanza contorto la aggira, per questo il
 controllo vero sono i permessi nativi dell'agente e l'isolamento.
 

@@ -31,13 +31,14 @@ per `.vscode/tasks.json` fai il merge dei task, senza sostituire il file.
    - `AGENTS.md` da `references/AGENTS.md.tmpl`, compilato con ciò che hai verificato (sotto le 100 righe); le
      `Aree sensibili` (livello L, playbook §2.1) le indica l'utente;
    - `CLAUDE.md` con la sola riga `@AGENTS.md` (niente symlink: su Windows richiedono privilegi);
-   - `.gitattributes` da `references/gitattributes.tmpl`; `reports/` in `.gitignore` (report JUnit dei test, vedi
-     `references/stacks.md`);
+   - `.gitattributes` da `references/gitattributes.tmpl`; `reports/` e `__pycache__/` in `.gitignore` (report JUnit
+     dei test, vedi `references/stacks.md`; altrimenti il loop li scambia per progresso);
    - `.vscode/tasks.json` da `references/vscode-tasks.json`;
    - `docs/constitution.md` da `references/constitution.md.tmpl`, e le cartelle `docs/specs/`, `docs/system/`,
      `docs/bugs/`, `docs/adr/` (con `.gitkeep`);
    - il workflow CI da `references/ci-github-actions.yml`, completando il setup del toolchain; togli
-     `windows-latest` se il team non sviluppa su Windows;
+     `windows-latest` se il team non sviluppa su Windows. Lo step "Controlli di processo" esegue sulle PR
+     `spec_lint`, `diff_scope`, `trace_check --junit` e `secrets_check`: è il controllo che l'agente non può aggirare;
    - `.github/CODEOWNERS` da `references/CODEOWNERS.tmpl` (chiedi chi approva; l'identità dell'agente non va
      elencata) e `.github/pull_request_template.md` da `references/pull_request_template.md`.
 6. **Esegui** `python scripts/verify.py` e riporta l'esito così com'è. Se è rosso perché mancano i test,
@@ -49,7 +50,8 @@ per `.vscode/tasks.json` fai il merge dei task, senza sostituire il file.
 Se l'utente chiede di aggiornare gli script: confronta la riga `# sdlc-playbook:` di ogni `scripts/<nome>.py` con quella
 della skill. Per ogni script più vecchio o mancante mostra la differenza e copialo dopo conferma, in un commit dedicato.
 `verify.py` non si sovrascrive: contiene gli `STEPS` del progetto, quindi riporta solo le righe nuove del template
-(per esempio lo step `secrets`) e lascia decidere all'utente. Poi esegui `verify` e `state.py`, e leggi il CHANGELOG del
+(per esempio lo step `secrets`) e lascia decidere all'utente. Aggiorna anche `.gitignore` (`reports/`, `__pycache__/`)
+e il workflow CI (step "Controlli di processo" del template). Poi esegui `verify` e `state.py`, e leggi il CHANGELOG del
 plugin per i cambi di formato (campi nuovi in spec, task e review).
 
 ## STOP

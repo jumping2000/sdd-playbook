@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# sdlc-playbook: 0.11.0
+# sdlc-playbook: 0.11.1
 """Scansione dei segreti nei file: chiavi e token con formato riconoscibile, file .env versionati.
 
 Uso:
@@ -10,13 +10,15 @@ Uso:
 - Errore (exit 1): chiavi private, token con prefisso noto (AWS, GitHub, GitLab, Slack, Stripe, Google, Anthropic,
   OpenAI), file .env versionati o modificati (non .env.example, .env.sample, .env.template).
 - Avviso: assegnazioni di password, secret, token o chiavi a una stringa letterale di almeno 8 caratteri.
-Una riga con "secrets-check: ignore" non viene controllata (falso positivo, motivato nella review). Il valore trovato
+Una riga con "secrets-check: ignore" non viene controllata (falso positivo, motivato nella review); i file che non si
+possono annotare (fixture PEM, .env.development versionato per convenzione) vanno in .secrets-ignore, un glob per riga. Il valore trovato
 non viene mai stampato. È una rete minima e veloce: per la storia completa del repository usa uno strumento dedicato
 (per esempio gitleaks) in CI. Exit code: 0 nessun segreto; 1 segreti trovati; 2 uso errato o git non utilizzabile.
 Solo stdlib + git, cross-platform.
 """
 from __future__ import annotations
 
+import fnmatch
 import re
 import subprocess
 import sys
@@ -37,7 +39,8 @@ GENERICO = re.compile(r"(?i)(?<![a-z])(password|passwd|pwd|secret|api[_-]?key|ac
                       r"client[_-]?secret)(?![a-z])[\"']?\s*[:=]\s*[\"']([^\"'\s]{8,})[\"']")
 SEGNAPOSTO = re.compile(r"(?i)^(<.*>|\$\{.*\}|\{\{.*\}\}|x{4,}|\*{4,}|changeme|change_me|example\w*|dummy\w*|"
                         r"placeholder|your[_-].*|test\w*|fake\w*|secret|password)$")
-ENV_FILE = re.compile(r"(?i)(^|/)\.env(\.(?!example$|sample$|template$)[\w.-]+)?$")
+ENV_FILE = re.compile(r"(?i)(^|/)\.env(\.[\w.-]+)?$")
+ESEMPIO = re.compile(r"(?i)\.(example|sample|template)$")  # .env.example, .env.local.example
 IGNORA = "secrets-check: ignore"
 SALTA = {".git", "node_modules", ".venv", "venv", "__pycache__", "dist", "build", "target", "bin", "obj"}
 MAX_BYTE = 1_000_000
@@ -45,7 +48,8 @@ MAX_BYTE = 1_000_000
 
 def git(*args: str) -> tuple[int, str]:
     try:
-        r = subprocess.run(["git", *args], capture_output=True, text=True, encoding="utf-8", errors="replace")
+        r = subprocess.run(["git", "-c", "core.quotePath=false", *args], capture_output=True, text=True,
+                           encoding="utf-8", errors="replace")  # quotePath: percorsi non ASCII così come sono
     except OSError:
         return 1, ""
     return r.returncode, r.stdout.strip()
@@ -82,7 +86,7 @@ def controlla_file(percorso: str) -> tuple[list[str], list[str]]:
     """(errori, avvisi) per un file, senza riportare il valore trovato."""
     err: list[str] = []
     avv: list[str] = []
-    if ENV_FILE.search(percorso.replace("\\", "/")):
+    if ENV_FILE.search(percorso.replace("\\", "/")) and not ESEMPIO.search(percorso):
         err.append(f"{percorso}: file .env nel repository (i segreti stanno fuori dal repo)")
     p = Path(percorso)
     if not p.is_file() or p.stat().st_size > MAX_BYTE:
@@ -102,6 +106,14 @@ def controlla_file(percorso: str) -> tuple[list[str], list[str]]:
     return err, avv
 
 
+def esclusioni() -> list[str]:
+    """Glob di .secrets-ignore (una riga ciascuno, # per i commenti)."""
+    p = Path(".secrets-ignore")
+    if not p.is_file():
+        return []
+    return [r.strip() for r in p.read_text(encoding="utf-8").splitlines() if r.strip() and not r.startswith("#")]
+
+
 def main(argv: list[str]) -> int:
     base = argv[argv.index("--base") + 1] if "--base" in argv and argv.index("--base") + 1 < len(argv) else None
     percorsi = [a for a in argv if not a.startswith("--") and a != base]
@@ -117,6 +129,8 @@ def main(argv: list[str]) -> int:
             return 2
     errori: list[str] = []
     avvisi: list[str] = []
+    esclusi = esclusioni()
+    file = [f for f in file if not any(fnmatch.fnmatch(f.replace("\\", "/"), g) for g in esclusi)]
     for f in file:
         e, a = controlla_file(f)
         errori += e
