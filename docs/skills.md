@@ -1,161 +1,169 @@
-# Riferimento delle skill
+# Skill reference
 
-Ogni skill è una cartella `skills/<nome>/` con un `SKILL.md` (frontmatter `name` e `description`, poi le istruzioni)
-e, se serve, `references/` con i template. Le istruzioni sono brevi di proposito (meno di 150 righe): i dettagli
-del processo stanno nel [playbook](playbook-ai-software-lifecycle.md), che ogni skill cita per sezione.
+*Versione italiana: [skills_IT.md](skills_IT.md)*
 
-**Convenzioni comuni**
-- Gli script si chiamano come `python scripts/<nome>.py` dalla radice del progetto: li copia `sdlc-init`.
-  Se un progetto è stato inizializzato con una versione precedente, copia lo script mancante da
-  `skills/sdlc-init/scripts/`.
-- Ogni skill che produce un documento da approvare termina con **STOP**: chiede l'approvazione con nome e data,
-  registra l'hash del contenuto approvato (`spec_lint.py --hash`) e non avvia la fase successiva. Spec, piano e task
-  vanno poi nella PR di design: il merge su `main`, che fa solo l'umano, è l'approvazione (playbook §1.2).
-- Le skill non committano senza autorizzazione dell'utente e mai su `main`/`master`.
-- Quando un requisito è ambiguo, si fermano e chiedono: non assumono.
+Each skill is a folder `skills/<name>/` with a `SKILL.md` (frontmatter `name` and `description`, then the instructions)
+and, when needed, `references/` with the templates. The instructions are deliberately short (under 150 lines): the
+process details live in the [playbook](playbook-ai-software-lifecycle.md), which every skill cites by section. The skill
+texts and templates are in Italian.
 
-**Ordine tipico:** `sdlc-init` → (`sdlc-map-codebase` → `sdlc-characterize`) → `sdlc-spec` → `sdlc-plan` →
-`sdlc-tasks` → `sdlc-implement` (o `sdlc-loop`) → `sdlc-review-diff` → `sdlc-docs` → `sdlc-sync`. Il livello della
-spec (playbook §2.1) lo accorcia o lo rafforza: S salta `sdlc-plan` e `review.md`, L aggiunge ADR e revisione umana
-del diff.
+**Common conventions**
+- Scripts are called as `python scripts/<name>.py` from the project root: `sdlc-init` copies them there.
+  If a project was initialized with an earlier version, copy the missing script from `skills/sdlc-init/scripts/`.
+- Every skill that produces a document to approve ends with a **STOP**: it asks for approval with name and date,
+  records the hash of the approved content (`spec_lint.py --hash`) and does not start the next phase. Spec, plan and
+  tasks then go into the design PR: the merge into `main`, which only the human performs, is the approval (playbook §1.2).
+- Skills never commit without the user's authorization and never on `main`/`master`.
+- When a requirement is ambiguous, they stop and ask: they do not assume.
 
-| Skill | Playbook | Produce | Controllo | Gate umano |
+**Typical order:** `sdlc-init` → (`sdlc-map-codebase` → `sdlc-characterize`) → `sdlc-spec` → `sdlc-plan` →
+`sdlc-tasks` → `sdlc-implement` (or `sdlc-loop`) → `sdlc-review-diff` → `sdlc-docs` → `sdlc-sync`. The spec level
+(playbook §2.1) shortens or strengthens it: S skips `sdlc-plan` and `review.md`, L adds an ADR and a human reading of
+the diff.
+
+| Skill | Playbook | Produces | Check | Human gate |
 |---|---|---|---|---|
-| `sdlc-next` | tutto | niente (sola lettura) | `state.py` | — |
-| `sdlc-init` | §1 | scripts, `AGENTS.md`, `docs/`, task VS Code, CI | `verify.py` | principi e stack |
-| `sdlc-map-codebase` | §5 | `docs/system/mappa.md` | `scan_repo.py`, `verify.py` | mappa a campione |
-| `sdlc-characterize` | §5 | test di caratterizzazione, pagina d'area | `verify.py` + prova di fallimento | spot check |
-| `sdlc-spec` | §3.3 | `spec.md` | `spec_lint.py` | approvazione della spec |
-| `sdlc-plan` | §3.4 | `plan.md` | `spec_lint.py --plan` | approvazione del piano |
-| `sdlc-tasks` | §3.5 | `tasks.md` | `spec_lint.py --tasks` | controllo rapido |
-| `sdlc-tests-from-ac` | §6 | test rossi dagli AC | `trace_check.py` | spot check |
-| `sdlc-implement` | §4 fase 6 | codice e commit | `verify.py` | review PR |
-| `sdlc-bugfix` | §6.1 | `docs/bugs/BUG-nnn.md`, test, fix | `bug_lint.py`, `verify.py` | atteso e "da NON cambiare" |
-| `sdlc-review-diff` | §4 fase 7 | `review.md` | `diff_scope.py`, `trace_check.py` | decisione sulla review |
-| `sdlc-docs` | §6 | documentazione aggiornata | `docs_check.py` | review |
-| `sdlc-sync` | §4 fase 9 | pagina d'area, spec `implemented` | `sync_check.py` | review, poi PR |
-| `sdlc-loop` | §7 | `PROMPT.md`, `progress.md`, comando | `loop.py --dry-run` | permessi, tetto, avvio |
+| `sdlc-next` | all | nothing (read-only) | `state.py` | — |
+| `sdlc-init` | §1 | scripts, `AGENTS.md`, `docs/`, VS Code task, CI | `verify.py` | principles and stack |
+| `sdlc-map-codebase` | §5 | `docs/system/mappa.md` | `scan_repo.py`, `verify.py` | map spot check |
+| `sdlc-characterize` | §5 | characterization tests, area page | `verify.py` + failure proof | spot check |
+| `sdlc-spec` | §3.3 | `spec.md` | `spec_lint.py` | spec approval |
+| `sdlc-plan` | §3.4 | `plan.md` | `spec_lint.py --plan` | plan approval |
+| `sdlc-tasks` | §3.5 | `tasks.md` | `spec_lint.py --tasks` | quick check |
+| `sdlc-tests-from-ac` | §6 | red tests from the ACs | `trace_check.py` | approval of the locked tests (M, L) |
+| `sdlc-implement` | §4, phase 6 | code and commits | `verify.py` | PR review |
+| `sdlc-bugfix` | §6.1 | `docs/bugs/BUG-nnn.md`, test, fix | `bug_lint.py`, `verify.py` | expected and "must NOT change" |
+| `sdlc-review-diff` | §4, phase 7 | `review.md` | `diff_scope.py`, `trace_check.py`, `secrets_check.py` | review decision |
+| `sdlc-docs` | §6 | updated documentation | `docs_check.py` | review |
+| `sdlc-sync` | §4, phase 9 | area page, spec `implemented` | `sync_check.py` | review, then PR |
+| `sdlc-loop` | §7 | `PROMPT.md`, `progress.md`, command | `loop.py --dry-run` | permissions, cap, launch |
 
 ---
 
 ### sdlc-next
 
-- **Quando:** non sai da dove ripartire, o vuoi sapere a che punto sei.
-- **Cosa fa:** esegue `state.py`, riporta infrastruttura, spec (stato, approvazioni, task, review e passo di ognuna),
-  bug non verificati e la riga `PROSSIMO` con il motivo; chiede se procedere. Con più spec attive e nessuna legata al
-  branch (`scegli`), chiede all'utente su quale lavorare e rilancia con `--spec <id>`.
-- **Non fa:** non modifica file, non avvia la fase successiva, non deduce lo stato dalla conversazione.
+- **When:** you do not know where to restart, or want to know where you are.
+- **What it does:** runs `state.py`, reports infrastructure, specs (level, state, approvals, tasks, review and the next
+  step of each), unverified bugs and the `PROSSIMO` (next) line with its reason; asks whether to proceed. With several
+  active specs and none tied to the branch (`scegli`), it asks the user which one to work on and reruns with `--spec <id>`.
+- **Does not:** modify files, start the next phase, or infer the state from the conversation.
 
 ### sdlc-init
 
-- **Quando:** una volta per progetto, prima di spec o codice.
-- **Cosa fa:** rileva sistema operativo, stack e se c'è già codice; chiede in un solo messaggio ciò che non
-  rileva (comandi reali, Windows sì/no, provider CI); copia gli 11 script in `scripts/` (ognuno con la versione del plugin in seconda riga, per gli aggiornamenti); adatta `STEPS` di
-  `verify.py` provando ogni comando; crea `AGENTS.md`, `CLAUDE.md` (`@AGENTS.md`), `.gitattributes`,
-  `.vscode/tasks.json`, `docs/constitution.md`, le cartelle `docs/*` e il workflow CI; esegue `verify` e `state`.
-- **Regole:** non sovrascrive mai file esistenti (mostra la differenza, fa il merge di `tasks.json`); non inventa
-  step o test; riporta `verify` rosso così com'è.
-- **Gate:** approvazione di `AGENTS.md`, constitution e step di `verify`.
-- **Limiti dichiarati:** la CI generata non è mai stata eseguita; gli hook non vengono attivati.
+- **When:** once per project, before specs or code.
+- **What it does:** detects operating system, stack and existing code; asks in a single message for what it cannot
+  detect (real commands, Windows yes/no, CI provider); copies the 11 scripts into `scripts/` (each with the plugin
+  version on line 2, for updates); adapts `STEPS` in `verify.py`, trying every command; creates `AGENTS.md`, `CLAUDE.md`
+  (`@AGENTS.md`), `.gitattributes`, `.gitignore` entries, `.vscode/tasks.json`, `docs/constitution.md`, the `docs/*`
+  folders, the CI workflow (with the PR "process checks" step), `CODEOWNERS` and the PR template; runs `verify` and
+  `state`. It also explains how to update an already initialized project.
+- **Rules:** never overwrites existing files (shows the difference, merges `tasks.json`); does not invent steps or
+  tests; reports a red `verify` as it is.
+- **Gate:** approval of `AGENTS.md`, constitution and `verify` steps.
+- **Declared limits:** the generated CI has never been run; the hooks are not enabled.
 
 ### sdlc-map-codebase
 
-- **Quando:** inizio di un lavoro su codice esistente (brownfield).
-- **Cosa fa:** `scan_repo.py` per l'inventario; baseline con `verify`; lettura del codice per compilare la mappa
-  (moduli, entry point, dipendenze, zone da non toccare, rischi); ogni comando della tabella è eseguito;
-  almeno 5 affermazioni verificate a campione nel codice; propone aggiornamenti di `AGENTS.md`.
-- **Scrive solo:** `docs/system/mappa.md` e, con conferma, `AGENTS.md`.
-- **Gate:** l'utente verifica la mappa a campione.
+- **When:** at the start of work on existing code (brownfield).
+- **What it does:** `scan_repo.py` for the inventory; baseline with `verify`; reads the code to fill in the map
+  (modules, entry points, dependencies, zones not to touch, risks); every command in the table is executed; at least 5
+  statements spot-checked in the code; proposes updates to `AGENTS.md`.
+- **Writes only:** `docs/system/mappa.md` and, after confirmation, `AGENTS.md`.
+- **Gate:** the user spot-checks the map.
 
 ### sdlc-characterize
 
-- **Quando:** prima di modificare un'area esistente.
-- **Cosa fa:** test che fissano il comportamento **attuale** (anche sbagliato, annotato come tale); devono passare
-  sul codice non modificato; prova che sanno fallire con una rottura deliberata e ripristino (`git restore`,
-  `git diff` vuoto); registra i test nella pagina d'area.
-- **Non fa:** non modifica il codice di produzione né corregge i difetti trovati.
-- **Precondizione:** `git status` pulito sui file dell'area.
+- **When:** before changing an existing area.
+- **What it does:** tests that pin the **current** behaviour (even if wrong, marked as such); they must pass on the
+  unmodified code; proves they can fail with a deliberate break and restore (`git restore`, empty `git diff`); records
+  the tests in the area page.
+- **Does not:** modify production code or fix the defects it finds.
+- **Precondition:** clean `git status` on the area's files.
 
 ### sdlc-spec
 
-- **Quando:** dall'idea a una specifica approvabile; anche per completare una bozza.
-- **Cosa fa:** legge `AGENTS.md`, constitution e (brownfield) mappa e pagina d'area; **pone** le domande aperte;
-  scrive `spec.md` con livello proposto (S, M, L con i criteri del playbook §2.1), requisiti verificabili, AC
-  Dato/quando/allora, non-scope obbligatorio, assunzioni marcate `[ASSUNZIONE]`; `spec_lint.py` deve passare; nel brownfield propone `sdlc-characterize` se l'area non ha test.
-- **Approvazione:** solo con conferma esplicita **e** nome dell'approvatore; poi `Stato: approved`.
+- **When:** from an idea to an approvable specification; also to complete a draft.
+- **What it does:** reads `AGENTS.md`, constitution and (brownfield) map and area page; **asks** the open questions;
+  writes `spec.md` with a proposed level (S, M, L with the criteria of playbook §2.1), verifiable requirements,
+  Given/when/then ACs, mandatory non-scope, assumptions marked `[ASSUNZIONE]`; `spec_lint.py` must pass; in brownfield it
+  proposes `sdlc-characterize` if the area has no tests.
+- **Approval:** only with explicit confirmation **and** the approver's name; then `Stato: approved` and the hash.
 
 ### sdlc-plan
 
-- **Precondizione:** spec `approved` e lint verde, livello M o L (nel livello S non c'è piano).
-- **Cosa fa:** in sola lettura; `plan.md` con almeno un'alternativa scartata, file in formato `- percorso: cosa
-  cambia`, tutti gli AC nella strategia di test, rischi, rilascio e rollback; `spec_lint.py --plan` deve passare.
-  Segnala i candidati ADR senza crearli.
+- **Precondition:** spec `approved` and lint green, level M or L (there is no plan at level S).
+- **What it does:** read-only; `plan.md` with at least one discarded alternative, files in the format
+  `- path: what changes` (including any dependency manifest), all ACs in the test strategy, risks, release and rollback;
+  `spec_lint.py --plan` must pass. Flags ADR candidates without creating them.
 
 ### sdlc-tasks
 
-- **Precondizione:** spec e piano approvati (livello S: solo la spec).
-- **Cosa fa:** `tasks.md` con una riga per task nel formato descritto al §3.5 del playbook (azione, `verifica:`, `copre:`), test prima del codice, ogni AC
-  coperto, `T-SYNC` sempre presente e `T-DOC` salvo nel livello S; `spec_lint.py --tasks` deve passare.
+- **Precondition:** spec and plan approved (level S: spec only).
+- **What it does:** `tasks.md` with one line per task in the format described in playbook §3.5 (action, `verifica:`,
+  `copre:`), tests before code, every AC covered, `T-SYNC` always present and `T-DOC` except at level S;
+  `spec_lint.py --tasks` must pass.
 
 ### sdlc-tests-from-ac
 
-- **Quando:** per le task che scrivono test (le richiama `sdlc-implement`) o a richiesta.
-- **Cosa fa:** test dagli AC e non dal codice, con l'ID nel nome (`references/convenzioni-test.md`), più i casi di
-  errore; scheletro minimo se serve; i test devono essere **rossi per il motivo giusto** (non per import o
-  sintassi), con il messaggio di fallimento riportato; `trace_check.py --warn-only`.
-- **Regola:** i test rossi si committano da soli, con il trailer `Test-Lock: T-nn` (lo scheletro, se c'è, in un commit
-  precedente). `diff_scope.py` segnala ogni modifica successiva a quei test. La CI del branch resta rossa fino alla task
-  di implementazione: è la "fase rossa", che l'hook `Stop` e `loop.py` riconoscono.
+- **When:** for the tasks that write tests (called by `sdlc-implement`) or on request.
+- **What it does:** tests from the ACs, not from the code, with the ID in the name (`references/convenzioni-test.md`),
+  plus the error cases; a minimal skeleton if needed; the tests must be **red for the right reason** (not import or
+  syntax errors), with the failure message reported; `trace_check.py --warn-only`.
+- **Rule:** red tests are committed alone, with the trailer `Test-Lock: T-nn` (the skeleton, if any, in an earlier
+  commit). `diff_scope.py` reports any later change to those tests. At levels M and L the user reads the locked tests and
+  only then the agent writes `test approvati: <name, date, sha>` on the task line; a new `Test-Lock` commit for the same
+  task voids the approval.
 
 ### sdlc-implement
 
-- **Precondizioni:** spec, piano e task validi e già uniti su `main` (`spec_lint.py ... --base main`); branch di
-  feature; `verify` eseguito prima di iniziare (baseline).
-- **Ciclo:** prima task `T-nn` aperta → implementa solo quella → comando di `verifica:` e `verify` completo →
-  verde: spunta, commit con trailer `Spec:` e `Agent:`; rosso: massimo 3 tentativi poi si ferma e chiede. Non modifica
-  i test bloccati da un commit `Test-Lock`.
-- **Fine:** quando restano solo `T-DOC` e `T-SYNC`, passa a `sdlc-review-diff`; non dichiara la feature conclusa.
+- **Preconditions:** spec, plan and tasks valid and already merged into `main` (`spec_lint.py ... --base main`); feature
+  branch; `verify` run before starting (baseline); at levels M and L the test task carries `test approvati:`.
+- **Cycle:** first open `T-nn` or `T-Rnn` task → implement only that → `verifica:` command and full `verify` → green:
+  tick, commit with `Spec:` and `Agent:` trailers; red: at most 3 attempts, then stop and ask. Never modifies tests
+  locked by a `Test-Lock` commit; stops if the change would exceed the spec level or needs an unplanned dependency.
+- **End:** when only `T-DOC` and `T-SYNC` remain, moves on to `sdlc-review-diff`; does not declare the feature done.
 
 ### sdlc-bugfix
 
-- **Quando:** un difetto da correggere (non per funzionalità nuove). Bug banali: test rosso, fix, `verify`, senza file.
-- **Cosa fa:** `docs/bugs/BUG-nnn-slug.md` con stati `aperto → diagnosticato → corretto → verificato`, controllato da
-  `bug_lint.py` a ogni transizione; riproduzione (se non si riproduce, si ferma), definizione di atteso e "da NON
-  cambiare", test rosso, diagnosi in sola lettura, fix minimo, test di non-regressione, chiusura.
-- **Gate:** l'utente conferma atteso e invariato (passo 2).
-- **Regole:** un bug, un branch, un commit; niente refactoring nello stesso commit; altri difetti trovati = nuovi bug.
+- **When:** a defect to fix (not for new features). Trivial bugs: red test, fix, `verify`, no file.
+- **What it does:** `docs/bugs/BUG-nnn-slug.md` with states `aperto → diagnosticato → corretto → verificato`, checked by
+  `bug_lint.py` at every transition; reproduction (if it does not reproduce, it stops), definition of expected and "must
+  NOT change" behaviour, red test, read-only diagnosis, minimal fix, non-regression test, closure.
+- **Gate:** the user confirms expected and unchanged behaviour (step 2).
+- **Rules:** one bug, one branch, one commit; no refactoring in the same commit; other defects found = new bugs.
 
 ### sdlc-review-diff
 
-- **Precondizioni:** nessuna task `T-nn` aperta, `verify` verde, lavoro committato. Nel livello S bastano i
-  controlli deterministici, riportati nella PR.
-- **Cosa fa:** `diff_scope.py` (anche livello sottostimato e dipendenze senza decisione), `trace_check.py` e
-  `secrets_check.py`; revisione indipendente (subagent `sdlc-reviewer` in Claude Code, senza Bash: riceve diff e output nel messaggio; altrimenti
-  sessione nuova con spec, piano, output degli script e diff); scrive `review.md` con esito, problemi con file e riga,
-  tentativi di confutazione.
-- **Gate:** la **decisione è dell'utente** ("Decisione di"; nel livello L anche "Revisione umana del diff", dopo che
-  l'utente ha riletto il diff); con `non conforme` ogni problema `alta`/`media` diventa una
-  task `T-Rnn` in `tasks.md`, eseguita da `sdlc-implement` o dal loop; chiuse le `T-R`, la review si ripete.
-- **Non fa:** non modifica codice.
+- **Preconditions:** no open `T-nn` task, `verify` green, work committed. At level S the deterministic checks are enough,
+  reported in the PR.
+- **What it does:** `diff_scope.py` (including underestimated level, dependencies without a decision and approvals
+  voided by new `Test-Lock` commits), `trace_check.py --junit` and `secrets_check.py`; independent review (Claude Code:
+  subagent `sdlc-reviewer`, without Bash, that receives diff and outputs in the message; otherwise a new session with
+  spec, plan, script outputs and diff); writes `review.md` with outcome, problems with file and line, refutation attempts.
+- **Gate:** the **decision belongs to the user** (`Decisione di`; at level L also `Revisione umana del diff`, after the
+  user has read the diff); with `non conforme` every `alta`/`media` problem becomes a `T-Rnn` task in `tasks.md`,
+  executed by `sdlc-implement` or the loop; once the `T-R` tasks are closed, the review is repeated.
+- **Does not:** modify code.
 
 ### sdlc-docs
 
-- **Precondizioni:** task `T-nn` chiuse, review valida e non `non conforme`.
-- **Cosa fa:** aggiorna README, documentazione API, note di migrazione da spec e codice reale; propone ADR (li crea dopo
-  conferma); esegue gli esempi (Python marcati `# docs-check: run` con `docs_check.py --run-examples`, altri a mano);
-  `docs_check.py` verifica i link; spunta `T-DOC`.
+- **Preconditions:** `T-nn` tasks closed, review valid and not `non conforme`.
+- **What it does:** updates README, API documentation and migration notes from the spec and the real code; proposes ADRs
+  (creates them after confirmation); runs the examples (Python blocks marked `# docs-check: run` with
+  `docs_check.py --run-examples`, others by hand); `docs_check.py` checks the links; ticks `T-DOC`.
 
 ### sdlc-sync
 
-- **Precondizioni:** review con "Decisione di" compilata (livello S: `diff_scope.py` e `trace_check.py` verdi),
-  `T-DOC` chiusa.
-- **Cosa fa:** confronta spec e comportamento reale: ogni scostamento è un bug (`sdlc-bugfix`) o un cambio di
-  requisito da approvare, mai nascosto; crea/aggiorna `docs/system/<area>.md` (facoltativa nel livello S); imposta `Stato: implemented`; spunta
-  `T-SYNC`; `sync_check.py` deve passare; propone lezioni per `AGENTS.md` e ADR.
+- **Preconditions:** review with `Decisione di` filled in (level S: `diff_scope.py` and `trace_check.py` green), `T-DOC`
+  closed.
+- **What it does:** compares spec and real behaviour: every gap is either a bug (`sdlc-bugfix`) or a requirement change to
+  approve, never hidden; creates/updates `docs/system/<area>.md` (optional at level S); sets `Stato: implemented`; ticks
+  `T-SYNC`; `sync_check.py --junit` must pass; proposes lessons for `AGENTS.md` and ADRs.
 
 ### sdlc-loop
 
-- **Quando:** molte task piccole e indipendenti. Per poche task o molto accoppiate è meglio `sdlc-implement`.
-- **Cosa fa:** prepara `PROMPT.md` e `progress.md`, propone i permessi d'esempio (`settings.loop.json`), concorda `--max`, `--stall` e `--timeout`, esegue `loop.py --dry-run`, mostra la
-  checklist di sicurezza e il comando.
-- **Non fa:** **non lancia il loop**: lo lancia l'utente in un terminale isolato, dopo l'approvazione esplicita.
+- **When:** many small, independent tasks. For few or tightly coupled tasks, `sdlc-implement` is better.
+- **What it does:** prepares `PROMPT.md` and `progress.md`, proposes the example permissions (`settings.loop.json`:
+  no writes to `scripts/`, `AGENTS.md`, `.github/`, spec, plan and review; no push, no network), agrees on `--max`,
+  `--stall` and `--timeout`, runs `loop.py --dry-run`, shows the safety checklist and the command.
+- **Does not:** **launch the loop**: the user launches it in an isolated terminal, after explicit approval.

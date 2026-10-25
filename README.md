@@ -1,112 +1,185 @@
-# sdlc-playbook (versione 0.11.1)
+# sdlc-playbook (version 0.12.0)
 
-> **Stato: in progettazione.** Il plugin non è ancora stato usato su un progetto reale: skill, hook e loop sono
-> provati solo con test automatici e agenti finti. Formati e contratti possono ancora cambiare senza compatibilità.
+*Versione italiana: [README_IT.md](README_IT.md)*
 
-Plugin per Claude Code e Codex che accompagna lo sviluppatore lungo tutto il ciclo di vita descritto nel
-[playbook](docs/playbook-ai-software-lifecycle.md): spec, piano, task, test, implementazione, review,
-documentazione, riconciliazione, bug fixing e loop autonomo, con gate umani espliciti e controlli deterministici.
+> **Status: in design.** The plugin has not yet been used on a real project: skills, hooks and loop are tested only with
+> automated tests and fake agents. Formats and contracts may still change without compatibility.
 
-**Idea di fondo:** le istruzioni all'agente (skill) dicono *cosa fare e dove fermarsi*; gli script verificano *che
-sia stato fatto davvero*. Un check che gira vale più di una regola in prosa.
+A plugin for Claude Code and Codex that guides the developer through the whole software lifecycle described in the
+[playbook](docs/playbook-ai-software-lifecycle.md): spec, plan, tasks, tests, implementation, review, documentation,
+reconciliation, bug fixing and autonomous loop, with explicit human gates and deterministic checks.
 
-## Cosa contiene
+**Core idea:** the instructions to the agent (skills) say *what to do and where to stop*; the scripts check *that it was
+really done*. A check that runs is worth more than a prose rule.
 
-| Parte | Contenuto | Dettaglio |
+**Start here:** [Quick guide](docs/quick-guide.md) — how to use it on a new or an existing project.
+
+## Goal
+
+Make software built with a coding agent **as trustworthy as software built by a disciplined team**, without asking the
+developer to reread every line. In practice the plugin aims to ensure that:
+
+1. the agent builds **what was decided**, written in an approved spec, and not what it guessed;
+2. "done" means **verified by a command** (tests, lint, types, traceability), not "looks done";
+3. the tests that define "done" are **written from the requirements and approved by a human** before the code;
+4. the agent **does not touch what it must not touch**, especially in existing code;
+5. the human decides at the **few points that matter**, with effort proportional to the risk of the change;
+6. specs and documentation **stay aligned** with the real behaviour after every feature;
+7. all of this works the same in **Claude Code and Codex**, on **native Windows and Linux**, and remains verifiable in CI
+   even without the plugin.
+
+## Rationale: why this set of skills
+
+Coding agents fail in recurring ways. Each skill and script exists to counter one of them:
+
+| Typical failure of a coding agent | Answer in the plugin | Where |
 |---|---|---|
-| 14 skill | `sdlc-next`, `sdlc-init`, `sdlc-map-codebase`, `sdlc-characterize`, `sdlc-spec`, `sdlc-plan`, `sdlc-tasks`, `sdlc-tests-from-ac`, `sdlc-implement`, `sdlc-bugfix`, `sdlc-review-diff`, `sdlc-docs`, `sdlc-sync`, `sdlc-loop` | [docs/skills.md](docs/skills.md) |
-| 11 script Python | `verify`, `state`, `spec_lint`, `trace_check`, `bug_lint`, `diff_scope`, `scan_repo`, `docs_check`, `sync_check`, `loop`, `secrets_check` | [docs/scripts.md](docs/scripts.md) |
-| 2 hook opzionali | `Stop` (verify obbligatorio) e `PreToolUse` (guard), solo Claude Code | [docs/scripts.md](docs/scripts.md#hook-opzionali-solo-claude-code) |
-| 1 subagent | `sdlc-reviewer`, revisore indipendente con soli strumenti di lettura, solo Claude Code | [docs/architettura.md](docs/architettura.md) |
-| Playbook | Il processo, con template e script identici a quelli del plugin | [docs/playbook-ai-software-lifecycle.md](docs/playbook-ai-software-lifecycle.md) |
+| It guesses requirements and fills gaps with assumptions | Spec with requirements, acceptance criteria and explicit non-scope; open questions asked, not answered by the agent; assumptions marked | `sdlc-spec`, `spec_lint.py` |
+| It declares "done" without evidence | One verification command as the definition of "done"; the `Stop` hook blocks a red stop; the loop ends only on objective checks | `verify.py`, `Stop` hook, `loop.py` |
+| It writes tests that confirm its own bugs | Tests from the ACs, red for the right reason, locked by a `Test-Lock` commit and approved by a human; traceability AC → executed test | `sdlc-tests-from-ac`, `trace_check.py --junit`, `diff_scope.py` |
+| It changes or "improves" things outside the scope | Approved plan with the files to touch; forbidden zones and sensitive areas in `AGENTS.md`; diff checked against plan and level | `sdlc-plan`, `diff_scope.py` |
+| It breaks existing behaviour in a legacy codebase | Map and baseline first, characterization tests that can fail, spec of the delta only | `sdlc-map-codebase`, `sdlc-characterize` |
+| It approves its own work (approvals are just text) | Hash of the approved content; the real approval is a merge into protected `main` by a separate identity; process checks in CI on the PR | `spec_lint.py --base`, CI template, `CODEOWNERS` |
+| Same heavy process for one line and for a migration | Levels S, M, L declared in the spec, part of its hash, checked against the real diff | playbook §2.1, `diff_scope.py` |
+| Review by the same session that wrote the code | Fresh-context reviewer, read-only by construction, that tries to refute; the human decides | `sdlc-review-diff`, `sdlc-reviewer` |
+| Specs that rot after delivery | Closing task that reconciles spec, area page and code | `sdlc-sync`, `sync_check.py` |
+| Bugs fixed "by intuition", breaking something else | Reproduction, behaviour that must NOT change, red test, minimal fix | `sdlc-bugfix`, `bug_lint.py` |
+| Long autonomous runs that drift, stall or leak | Outer loop with cap, stall detection, timeout, pause for test approval, example permissions, isolation | `sdlc-loop`, `loop.py`, `settings.loop.json` |
+| Secrets and unreviewed dependencies slipping in | Secret scan in `verify`; dependencies only in the approved plan or with an ADR | `secrets_check.py`, `diff_scope.py` |
+| Losing track of where the work is | One state machine read from files, not from the chat | `sdlc-next`, `state.py` |
 
-## Flusso
+**Design choices behind it**
+- **Skills for the process, scripts for the checks.** Skills are short instructions with a STOP at every approval point;
+  scripts are deterministic, standard-library Python, copied into the project so that CI and VS Code use them without
+  the plugin.
+- **The human approves, the platform enforces.** Every text field can be written by the agent; a merge into a protected
+  branch, done by a separate identity, cannot. That is why the approval is the merge of the design PR, and why the CI
+  template runs the process checks on PRs.
+- **Proportional, not uniform.** Levels S/M/L remove ceremony from small changes and add attention to risky ones.
+- **State in files.** Specs, plans, tasks and reviews are versioned files; the chat is not a source of truth.
+- **One content, two agents, two operating systems.** The Agent Skills format is shared by Claude Code and Codex; the
+  scripts avoid shell commands so that native Windows works like Linux.
+
+**What it deliberately does not do:** approve on behalf of the human, launch the loop from inside a session, configure
+the agent's permissions (it provides an example), cover release, infrastructure security and operations (playbook §8).
+
+## What it contains
+
+| Part | Content | Details |
+|---|---|---|
+| 14 skills | `sdlc-next`, `sdlc-init`, `sdlc-map-codebase`, `sdlc-characterize`, `sdlc-spec`, `sdlc-plan`, `sdlc-tasks`, `sdlc-tests-from-ac`, `sdlc-implement`, `sdlc-bugfix`, `sdlc-review-diff`, `sdlc-docs`, `sdlc-sync`, `sdlc-loop` | [docs/skills.md](docs/skills.md) |
+| 11 Python scripts | `verify`, `state`, `spec_lint`, `trace_check`, `bug_lint`, `diff_scope`, `scan_repo`, `docs_check`, `sync_check`, `loop`, `secrets_check` | [docs/scripts.md](docs/scripts.md) |
+| 2 optional hooks | `Stop` (verify mandatory) and `PreToolUse` (guard), Claude Code only | [docs/scripts.md](docs/scripts.md#optional-hooks-claude-code-only) |
+| 1 subagent | `sdlc-reviewer`, independent reviewer with read-only tools, Claude Code only | [docs/architecture.md](docs/architecture.md) |
+| Playbook | The process, with templates and scripts identical to the plugin's | [docs/playbook-ai-software-lifecycle.md](docs/playbook-ai-software-lifecycle.md) |
+
+## Flow
 
 ```
 sdlc-init → [sdlc-map-codebase → sdlc-characterize]* → sdlc-spec → sdlc-plan → sdlc-tasks
-          → sdlc-implement (o sdlc-loop) → sdlc-review-diff → sdlc-docs → sdlc-sync → PR
-sdlc-bugfix: per i difetti, in parallelo al flusso.   sdlc-next: in ogni momento.   * solo nel brownfield
+          → sdlc-implement (or sdlc-loop) → sdlc-review-diff → sdlc-docs → sdlc-sync → PR
+sdlc-bugfix: for defects, alongside the flow.   sdlc-next: at any time.   * brownfield only
 ```
 
-Il processo è proporzionato al rischio: la spec dichiara un **livello** S, M o L (playbook §2.1). S salta piano e
-`review.md`; L aggiunge ADR e revisione umana del diff; `diff_scope.py` segnala un diff che supera il livello dichiarato.
-I test scritti dagli AC si bloccano con un commit `Test-Lock` e, nei livelli M e L, li approva l'umano prima
-dell'implementazione; con il report JUnit di `verify`, `trace_check.py --junit` conta solo i test eseguiti e passati.
-Sicurezza di base: `secrets_check.py` come step di `verify`, dipendenze nuove solo nel piano o con un ADR
-(`diff_scope.py`), permessi d'esempio per il loop (`skills/sdlc-loop/references/settings.loop.json`).
+The process is proportional to risk: the spec declares a **level** S, M or L (playbook §2.1). S skips plan and
+`review.md`; L adds an ADR and the human reading of the diff; `diff_scope.py` reports a diff that exceeds the declared
+level. Tests written from the ACs are locked by a `Test-Lock` commit and, at levels M and L, approved by the human before
+implementation, with the SHA of the approved commit; with the JUnit report from `verify`, `trace_check.py --junit` counts
+only executed, passing tests. Basic security: `secrets_check.py` as a `verify` step, new dependencies only in the plan or
+with an ADR (`diff_scope.py`), example permissions for the loop (`skills/sdlc-loop/references/settings.loop.json`).
 
-Ogni skill che produce un documento da approvare termina con uno **STOP**: l'agente non avanza e non approva
-da solo. Le approvazioni (spec, piano, decisione sulla review) portano nome e data e sono controllate dagli script.
+Every skill that produces a document to approve ends with a **STOP**: the agent does not move on and does not approve by
+itself. Approvals (spec, plan, tests, review decision) carry name and date and are checked by the scripts.
 
-## Avvio rapido
+## Quick start
 
-1. Installa il plugin (sotto).
-2. Nel repository del progetto: chiedi all'agente di usare `sdlc-init`. Copia gli script in `scripts/`, crea
-   `AGENTS.md`, `docs/`, il task VS Code e la CI.
-3. `python scripts/state.py` (o la skill `sdlc-next`) dice a che punto sei e qual è il passo successivo.
-4. Prosegui con `sdlc-spec` (greenfield) oppure `sdlc-map-codebase` (codice esistente).
+1. Install the plugin (below).
+2. In the project repository, ask the agent to use `sdlc-init`. It copies the scripts into `scripts/` and creates
+   `AGENTS.md`, `docs/`, the VS Code task and the CI.
+3. `python scripts/state.py` (or the `sdlc-next` skill) tells you where you are and what the next step is.
+4. Continue with `sdlc-spec` (greenfield) or `sdlc-map-codebase` (existing code).
 
-Gli script restano **nel progetto**: la verifica in CI e da VS Code funziona anche senza il plugin. Ognuno porta la
-versione del plugin in seconda riga; per aggiornarli chiedi a `sdlc-init` di confrontarli (non tocca gli `STEPS` di
-`verify.py`).
+The full walkthrough, greenfield and brownfield, is in the [quick guide](docs/quick-guide.md).
 
-## Installazione
+The scripts stay **in the project**: verification in CI and from VS Code works even without the plugin. Each carries the
+plugin version on line 2; to update them, ask `sdlc-init` to compare them (it does not touch the `STEPS` of `verify.py`).
+
+## Documentation
+
+| Document | English | Italiano |
+|---|---|---|
+| Quick guide | [docs/quick-guide.md](docs/quick-guide.md) | [docs/quick-guide_IT.md](docs/quick-guide_IT.md) |
+| Playbook (the process) | [docs/playbook-ai-software-lifecycle.md](docs/playbook-ai-software-lifecycle.md) | [docs/playbook-ai-software-lifecycle_IT.md](docs/playbook-ai-software-lifecycle_IT.md) |
+| Skill reference | [docs/skills.md](docs/skills.md) | [docs/skills_IT.md](docs/skills_IT.md) |
+| Script and hook reference | [docs/scripts.md](docs/scripts.md) | [docs/scripts_IT.md](docs/scripts_IT.md) |
+| Architecture, contracts, limits | [docs/architecture.md](docs/architecture.md) | [docs/architecture_IT.md](docs/architecture_IT.md) |
+| Change history | [CHANGELOG.md](CHANGELOG.md) (Italian) | |
+| Critical review and fix status | [REVIEW.md](REVIEW.md) (Italian) | |
+
+**Language.** The documentation exists in English and Italian. Skills, templates and script messages are in Italian; the
+field names they use (`- Stato:`, `- Livello:`, `test approvati:`, `atteso: rosso`, ...) are file contracts read by the
+scripts and must not be translated.
+
+## Installation
 
 **Claude Code**
-- Prova locale: `claude --plugin-dir <percorso>/sdlc-playbook`
-- Marketplace: compila `owner` in `.claude-plugin/marketplace.json`, pubblica il repository, poi
-  `/plugin marketplace add <repo>` e `/plugin install sdlc-playbook@sdlc-playbook-marketplace`.
-- Le skill sono richiamabili con il prefisso del plugin; gli hook e il subagent si caricano con il plugin.
+- Local trial: `claude --plugin-dir <path>/sdlc-playbook`
+- Marketplace: fill in `owner` in `.claude-plugin/marketplace.json`, publish the repository, then
+  `/plugin marketplace add <repo>` and `/plugin install sdlc-playbook@sdlc-playbook-marketplace`.
+- Skills are invoked with the plugin prefix; hooks and subagent load with the plugin.
 
 **Codex**
-- Il manifest è `.codex-plugin/plugin.json`. Il file di marketplace per Codex non è incluso: il formato va
-  verificato sulla documentazione.
-- Alternativa documentata per le sole skill: copia le cartelle di `skills/` in `.agents/skills/` del repository
-  o della home. Le skill che citano `../sdlc-init/scripts/` e `../sdlc-sync/references/` richiedono che le
-  cartelle restino sorelle.
-- Hook e subagent non sono previsti per Codex: la review indipendente si fa in una sessione nuova (vedi `sdlc-review-diff`).
+- The manifest is `.codex-plugin/plugin.json`. A Codex marketplace file is not included: its format must be checked
+  against the documentation.
+- Documented alternative for the skills only: copy the folders of `skills/` into `.agents/skills/` of the repository or of
+  the home directory. Skills that cite `../sdlc-init/scripts/` and `../sdlc-sync/references/` require the folders to stay
+  siblings.
+- Hooks and subagent are not provided for Codex: the independent review happens in a new session (see `sdlc-review-diff`).
 
-## Configurazione
+## Configuration
 
-| Variabile | Effetto | Default |
+| Variable | Effect | Default |
 |---|---|---|
-| `SDLC_ENFORCE_VERIFY=1` | Abilita l'hook `Stop`: l'agente non può fermarsi con `verify` rosso | spento |
-| `SDLC_VERIFY_ARGS` | Argomenti di `verify.py` per l'hook `Stop` (es. `--fast`) | vuoto (verifica completa) |
-| `SDLC_STOP_MAX` | Quante volte di fila l'hook `Stop` blocca nella stessa sessione prima di lasciar fermare l'agente | 3 |
-| `SDLC_GUARD=1` | Abilita l'hook `PreToolUse`: blocca comandi e letture a rischio (fail-closed) | spento |
+| `SDLC_ENFORCE_VERIFY=1` | Enables the `Stop` hook: the agent cannot stop with `verify` red | off |
+| `SDLC_VERIFY_ARGS` | Arguments of `verify.py` for the `Stop` hook (e.g. `--fast`) | empty (full verification) |
+| `SDLC_STOP_MAX` | How many times in a row the `Stop` hook blocks in the same session before letting the agent stop | 3 |
+| `SDLC_GUARD=1` | Enables the `PreToolUse` hook: blocks risky commands and reads (fail-closed) | off |
 
-**Approvazioni.** Per un controllo che l'agente non può aggirare, dagli un'identità separata (nessun diritto di push,
-oppure un account bot o token senza diritti di merge) e proteggi `main` con PR, review dei code owner e CI obbligatorie.
-`sdlc-init` crea `.github/CODEOWNERS` e il template della PR; le regole del branch le imposti tu. Dettagli: playbook §1.2.
+**Approvals.** For a control the agent cannot bypass, give it a separate identity (no push rights, or a bot account or
+token without merge rights) and protect `main` with required PRs, code-owner review and CI. `sdlc-init` creates
+`.github/CODEOWNERS`, the PR template and the CI with process checks on PRs; you set the branch rules. Details:
+playbook §1.2.
 
-Gli hook partono da `hooks/run.sh`, che usa il primo tra `python3`, `python` e `py -3` e richiede `sh` (su Windows quello
-di Git for Windows). In fase rossa (ultima task chiusa "atteso: rosso") l'hook `Stop` non blocca.
+The hooks start from `hooks/run.sh`, which uses the first of `python3`, `python` and `py -3` and requires `sh` (on Windows,
+the one from Git for Windows). In the red phase (last closed task "atteso: rosso") the `Stop` hook does not block.
 
-## Modificare il plugin
+## Changing the plugin
 
-- Il playbook si modifica in `docs/playbook.src.md`; poi `python tools/build_playbook.py` rigenera il file. I blocchi
-  `{{FILE ...}}` incorporano script e template del plugin: così non possono divergere.
-- Test: `python -m unittest discover -s tests -v`. Includono i **test di coerenza** tra skill, script, playbook
-  e documentazione (riferimenti a §, nomi di skill e script, assenza di riferimenti a versioni nel playbook, link).
-- CI: `.github/workflows/ci.yml` esegue i test su Ubuntu e Windows.
+- The playbook is edited in `docs/playbook.src.md` (English) and `docs/playbook_IT.src.md` (Italian), with the same
+  section numbering; `python tools/build_playbook.py` regenerates both. The `{{FILE ...}}` blocks embed the plugin's
+  scripts and templates, so they cannot diverge.
+- Tests: `python -m unittest discover -s tests -v`. They include the **coherence tests** between skills, scripts,
+  playbooks and documentation in both languages (§ references, skill and script names, no version references in the
+  playbook, every document in two languages, links).
+- CI: `.github/workflows/ci.yml` runs the tests on Ubuntu and Windows.
 
-## Stato della verifica
+## Verification status
 
-| Cosa | Esito |
+| What | Result |
 |---|---|
-| Suite di test | Passa su Linux (comprende loop con agente finto, hook e launcher `run.sh`, script su repository git temporanei). Su Windows 11 verificata fino alla 0.8.0; dalla 0.9.0 la copre solo la matrice CI `windows-latest`, il cui esito va controllato |
-| `claude plugin validate .` | Passava sulla 0.4.0 (Claude Code 2.1.303, avvisi su `author`); **non rieseguito** sulla 0.5.0 con il nuovo `hooks.json` |
-| Esecuzione su Windows | Suite locale e CI `windows-latest` |
-| Manifest Codex | **Non validato** con uno strumento Codex |
-| Skill eseguite da un agente reale su un progetto | **Non fatto**: va provato su un greenfield e su un brownfield di esempio |
-| Hook in una sessione reale di Claude Code | **Non fatto**: provati solo come script con l'input JSON atteso; lo schema è accettato dal validatore |
-| `loop.py` con `claude -p` reale | **Non fatto**: provato con un agente finto |
-| Workflow CI generato da `sdlc-init` | **Non eseguito** |
+| Test suite | Passes on Linux (includes loop with fake agent, hooks and `run.sh` launcher, scripts on temporary git repositories). On Windows 11 verified up to 0.8.0; from 0.9.0 only the `windows-latest` CI matrix covers it, and its result must be checked |
+| `claude plugin validate .` | Passed on 0.4.0 (Claude Code 2.1.303, warnings on `author`); **not rerun** since 0.5.0 with the new `hooks.json` |
+| Codex manifest | **Not validated** with a Codex tool |
+| Skills run by a real agent on a project | **Not done**: to be tried on a sample greenfield and brownfield |
+| Hooks in a real Claude Code session | **Not done**: tested only as scripts with the expected JSON input |
+| `loop.py` with a real `claude -p` | **Not done**: tested with a fake agent |
+| CI workflow generated by `sdlc-init` | **Not run** (YAML validated, process-check step never executed on a real PR) |
 
-Dettagli e limiti noti: [docs/architettura.md](docs/architettura.md). Storia delle modifiche: [CHANGELOG.md](CHANGELOG.md).
+Details and known limits: [docs/architecture.md](docs/architecture.md). Change history: [CHANGELOG.md](CHANGELOG.md).
 
-## Da completare prima di distribuirlo
+## To complete before distribution
 
-- Compilare `owner` nel marketplace e aggiungere `author` in `plugin.json` (non sono stati inventati).
-- Provare le skill su un repository di esempio (greenfield e brownfield) e correggere ciò che un agente reale interpreta male.
-- Verificare su Codex: formato del marketplace, invocazione esplicita delle skill, eventuale supporto di subagent.
+- Fill in `owner` in the marketplace and add `author` in `plugin.json` (they were not invented).
+- Try the skills on a sample repository (greenfield and brownfield) and fix what a real agent misreads: the trial path is
+  at the end of the [quick guide](docs/quick-guide.md).
+- Verify on Codex: marketplace format, explicit skill invocation, possible subagent support.

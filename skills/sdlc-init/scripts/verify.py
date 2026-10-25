@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# sdlc-playbook: 0.11.1
+# sdlc-playbook: 0.12.0
 """Verifica unica del progetto: format, lint, type-check, test.
 
 Exit code 0 = tutto verde. Solo stdlib; gira uguale su Windows, Linux, macOS.

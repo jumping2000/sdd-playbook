@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# sdlc-playbook: 0.11.1
+# sdlc-playbook: 0.12.0
 """Inventario deterministico di una codebase esistente (punto di partenza per la mappa, brownfield).
 
 Uso:  python scripts/scan_repo.py [radice] [--json]

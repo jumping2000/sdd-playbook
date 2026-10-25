@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.12.0
+Documentazione completa in inglese e in italiano. Nessuna modifica al comportamento di skill e script.
+- `README.md` in inglese e `README_IT.md` in italiano, con obiettivo del plugin e razionale dell'insieme di skill (errore
+  tipico di un coding agent → risposta del plugin → dove).
+- Nuova guida rapida, `docs/quick-guide.md` e `docs/quick-guide_IT.md`: preparazione, greenfield, brownfield, ciclo per
+  feature, livelli, bug, loop, comandi più usati, problemi frequenti e percorso di prova.
+- Ogni documento di `docs/` in due lingue, con la convenzione del README (inglese senza suffisso, italiano `_IT`):
+  `architettura.md` → `architecture_IT.md` (nuovo `architecture.md`), `skills.md` → `skills_IT.md`, `scripts.md` →
+  `scripts_IT.md`, playbook generato da due sorgenti (`playbook.src.md`, `playbook_IT.src.md`) con la stessa numerazione
+  dei §.
+- `tools/build_playbook.py` genera i due playbook; i test di coerenza controllano entrambe le lingue (stessi §, ogni
+  skill e script documentati, ogni documento presente in due lingue, link validi).
+- Allineati i documenti italiani ai contenuti della 0.11.1 (controlli di processo in CI, approvazione dei test con SHA,
+  stato "in progettazione").
+
 ## 0.11.1
 Correzioni dalla review critica sulle versioni 0.9.0-0.11.0. Il plugin è ancora in progettazione e mai usato su un
 progetto: nessuna regola di compatibilità aggiunta per progetti esistenti.

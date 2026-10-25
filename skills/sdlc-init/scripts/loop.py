@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# sdlc-playbook: 0.11.1
+# sdlc-playbook: 0.12.0
 """Loop esterno: rilancia l'agente finché verify è verde e non restano task numerate aperte (T-nn e T-Rnn).
 
 Uso:

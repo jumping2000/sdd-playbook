@@ -12,13 +12,23 @@ from common import ROOT, SCRIPTS, carica, esegui, leggi
 spec_lint = carica("spec_lint")
 SKILLS = sorted(p.name for p in (ROOT / "skills").iterdir() if p.is_dir())
 SCRIPT_NOMI = sorted(p.stem for p in SCRIPTS.glob("*.py"))
-PLAYBOOK = leggi("docs/playbook-ai-software-lifecycle.md")
+PLAYBOOK = leggi("docs/playbook-ai-software-lifecycle_IT.md")  # le skill, in italiano, citano questo per §
+PLAYBOOK_EN = leggi("docs/playbook-ai-software-lifecycle.md")
+# Ogni documento esiste in inglese (senza suffisso) e in italiano (_IT).
+LINGUE = {"README": ("README.md", "README_IT.md"), "skills": ("docs/skills.md", "docs/skills_IT.md"),
+          "scripts": ("docs/scripts.md", "docs/scripts_IT.md"),
+          "architecture": ("docs/architecture.md", "docs/architecture_IT.md"),
+          "quick-guide": ("docs/quick-guide.md", "docs/quick-guide_IT.md")}
+
+
+def entrambe(nome: str) -> list[str]:
+    return [leggi(f) for f in LINGUE[nome]]
 NON_SKILL = {"sdlc-playbook", "sdlc-reviewer", "sdlc-playbook-marketplace"}
 
 
 def testi_md(escludi_playbook=False) -> dict[str, str]:
     out = {}
-    for p in [ROOT / "README.md", ROOT / "CHANGELOG.md", *sorted((ROOT / "docs").glob("*.md")),
+    for p in [ROOT / "README.md", ROOT / "README_IT.md", ROOT / "CHANGELOG.md", *sorted((ROOT / "docs").glob("*.md")),
               *sorted((ROOT / "skills").rglob("*.md")), ROOT / "agents" / "sdlc-reviewer.md"]:
         if escludi_playbook and p.name.startswith("playbook"):
             continue
@@ -66,8 +76,9 @@ class TestMetadati(unittest.TestCase):
         self.assertTrue((ROOT / codex["skills"]).is_dir())
         prima = re.search(r"^## (\d+\.\d+\.\d+)", leggi("CHANGELOG.md"), re.M).group(1)
         self.assertEqual(prima, claude["version"])
-        self.assertIn(f"versione {claude['version']}", leggi("README.md"))
-        self.assertIn(f"versione {claude['version']}", leggi("docs/architettura.md"))
+        for en, it in (LINGUE["README"], LINGUE["architecture"]):
+            self.assertIn(f"version {claude['version']}", leggi(en), en)
+            self.assertIn(f"versione {claude['version']}", leggi(it), it)
 
     def test_agente_hook_e_json(self):
         fm = re.match(r"^---\n(.*?)\n---\n", leggi("agents/sdlc-reviewer.md"), re.S).group(1)
@@ -85,7 +96,7 @@ class TestMetadati(unittest.TestCase):
 
 class TestRiferimenti(unittest.TestCase):
     def test_script_citati_esistono_e_flag_validi(self):
-        for rel, testo in {**testi_md(), "playbook": PLAYBOOK}.items():
+        for rel, testo in {**testi_md(), "playbook": PLAYBOOK, "playbook_en": PLAYBOOK_EN}.items():
             for nome in re.findall(r"scripts/(\w+)\.py", testo):
                 self.assertIn(nome, SCRIPT_NOMI, f"{rel}: script inesistente {nome}")
             for nome, coda in re.findall(r"python scripts/(\w+)\.py([^`\n]*)", testo):
@@ -96,20 +107,23 @@ class TestRiferimenti(unittest.TestCase):
                     self.assertIn(flag, sorgente, f"{rel}: {nome}.py non conosce {flag}")
 
     def test_script_documentati(self):
-        scripts_md, readme = leggi("docs/scripts.md"), leggi("README.md")
         for nome in SCRIPT_NOMI:
-            self.assertIn(f"### {nome}.py", scripts_md)
-            self.assertIn(f"`{nome}`", readme)
-            self.assertIn(f"`{nome}.py`", PLAYBOOK, f"playbook non cita {nome}.py")
-            self.assertIn(f"`{nome}.py`", leggi("docs/architettura.md") + scripts_md)
+            for scripts_md, readme, arch, playbook in zip(entrambe("scripts"), entrambe("README"),
+                                                          entrambe("architecture"), (PLAYBOOK_EN, PLAYBOOK)):
+                self.assertIn(f"### {nome}.py", scripts_md)
+                self.assertIn(f"`{nome}`", readme)
+                self.assertIn(f"`{nome}.py`", playbook, f"playbook non cita {nome}.py")
+                self.assertIn(f"`{nome}.py`", arch + scripts_md)
 
     def test_skill_documentate_e_citate_esistenti(self):
-        skills_md, readme = leggi("docs/skills.md"), leggi("README.md")
         for nome in SKILLS:
-            self.assertIn(f"### {nome}", skills_md)
-            self.assertIn(f"`{nome}`", readme)
-            self.assertIn(f"`{nome}`", PLAYBOOK, f"playbook non cita {nome}")
-        for rel, testo in {**testi_md(), "playbook": PLAYBOOK}.items():
+            for skills_md, readme, guida, playbook in zip(entrambe("skills"), entrambe("README"),
+                                                          entrambe("quick-guide"), (PLAYBOOK_EN, PLAYBOOK)):
+                self.assertIn(f"### {nome}", skills_md)
+                self.assertIn(f"`{nome}`", readme)
+                self.assertIn(f"`{nome}`", playbook, f"playbook non cita {nome}")
+                self.assertIn(f"`{nome}`", guida, f"guida rapida non cita {nome}")
+        for rel, testo in {**testi_md(), "playbook": PLAYBOOK, "playbook_en": PLAYBOOK_EN}.items():
             for citata in set(re.findall(r"\bsdlc-[a-z]+(?:-[a-z]+)*\b", testo)):
                 self.assertTrue(citata in SKILLS or citata in NON_SKILL, f"{rel}: skill inesistente {citata}")
         stato = (SCRIPTS / "state.py").read_text(encoding="utf-8")
@@ -118,10 +132,12 @@ class TestRiferimenti(unittest.TestCase):
 
     def test_paragrafi_e_fasi_del_playbook(self):
         titoli = set(re.findall(r"^#{2,3} (\d+(?:\.\d+)?)[. ]", PLAYBOOK, re.M))
+        titoli_en = set(re.findall(r"^#{2,3} (\d+(?:\.\d+)?)[. ]", PLAYBOOK_EN, re.M))
+        self.assertEqual(titoli, titoli_en, "i due playbook devono avere la stessa numerazione dei §")
         fasi = set(re.findall(r"^\| (\d+)\. ", PLAYBOOK.split("## 4.")[1].split("## 5.")[0], re.M))
         passi = set(re.findall(r"^(\d+)\. \*\*", PLAYBOOK.split("## 5.")[1].split("## 6.")[0], re.M))
         self.assertTrue({"1.1", "1.2", "3.8", "6.1", "7.3", "11"} <= titoli)
-        for rel, testo in {**testi_md(), "playbook": PLAYBOOK}.items():
+        for rel, testo in {**testi_md(), "playbook": PLAYBOOK, "playbook_en": PLAYBOOK_EN}.items():
             for n in re.findall(r"§\s?(\d+(?:\.\d+)?)", testo):
                 self.assertIn(n, titoli, f"{rel}: §{n} non esiste nel playbook")
             for n in re.findall(r"§4 \(fase (\d+)\)", testo):
@@ -133,10 +149,11 @@ class TestRiferimenti(unittest.TestCase):
 
     def test_variabili_ambiente_documentate(self):
         for var in ("SDLC_ENFORCE_VERIFY", "SDLC_VERIFY_ARGS", "SDLC_GUARD"):
-            self.assertIn(var, leggi("README.md"))
-            self.assertIn(var, leggi("docs/scripts.md"))
+            for testo in entrambe("README") + entrambe("scripts"):
+                self.assertIn(var, testo)
             self.assertIn(var, "".join(p.read_text(encoding="utf-8") for p in (ROOT / "hooks").glob("*.py")))
         self.assertIn("SDLC_GUARD", PLAYBOOK)
+        self.assertIn("SDLC_GUARD", PLAYBOOK_EN)
 
 
 class TestPlaybook(unittest.TestCase):
@@ -151,6 +168,14 @@ class TestPlaybook(unittest.TestCase):
                 continue
             self.assertIsNone(vietato.search(testo), f"{rel}: riferimento a versione {vietato.search(testo)}")
         self.assertTrue(PLAYBOOK.startswith("# Playbook: ciclo di vita software con coding agent\n"))
+        self.assertTrue(PLAYBOOK_EN.startswith("# Playbook: software lifecycle with coding agents\n"))
+
+    def test_ogni_documento_in_due_lingue(self):
+        for en, it in LINGUE.values():
+            self.assertTrue((ROOT / en).is_file(), en)
+            self.assertTrue((ROOT / it).is_file(), it)
+        for f in ("README.md", "README_IT.md"):  # ogni README rimanda all'altra lingua
+            self.assertIn("README_IT.md" if f == "README.md" else "README.md", leggi(f))
 
     def test_template_coerenti_con_gli_script(self):
         spec = leggi("skills/sdlc-spec/references/spec-template.md")
@@ -176,7 +201,8 @@ class TestPlaybook(unittest.TestCase):
 
 class TestDocumentazione(unittest.TestCase):
     def test_link_relativi_validi(self):
-        r = esegui([sys.executable, str(SCRIPTS / "docs_check.py"), "README.md", "docs", "CHANGELOG.md"], ROOT)
+        r = esegui([sys.executable, str(SCRIPTS / "docs_check.py"), "README.md", "README_IT.md", "docs", "CHANGELOG.md"],
+                   ROOT)
         self.assertEqual(r.returncode, 0, r.stdout)
 
 

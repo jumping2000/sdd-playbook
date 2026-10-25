@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# sdlc-playbook: 0.11.1
+# sdlc-playbook: 0.12.0
 """Stato del progetto secondo il playbook e prossima fase suggerita.
 
 Uso:  python scripts/state.py [--json] [--spec <id>] [radice]

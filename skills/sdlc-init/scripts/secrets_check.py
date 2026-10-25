@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# sdlc-playbook: 0.11.1
+# sdlc-playbook: 0.12.0
 """Scansione dei segreti nei file: chiavi e token con formato riconoscibile, file .env versionati.
 
 Uso:
