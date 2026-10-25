@@ -1,7 +1,8 @@
 Read docs/specs/<id>/{spec,plan,tasks,progress}.md and AGENTS.md.
 Take the first T-nn or T-Rnn task not completed (ignore T-DOC and T-SYNC). Implement only that one.
 "expected: red" task (tests from the ACs): write only the tests and check with the `verify:` command that they fail for the right reason; do not make them pass. If a skeleton is needed to run them, commit it first, separately. Commit only the test files with the trailer `Test-Lock: T-nn`, tick the task, update progress.md and stop: the human approves the tests, never write "tests approved:" yourself.
-Other tasks: run `python scripts/verify.py`. If it fails, fix and run it again. When green: commit on this branch, tick the task, update progress.md (what was done, what was learned, blockers).
+Other tasks: run `python scripts/verify.py`. If it fails, fix and run it again. When green: commit on this branch with the trailer `Task: T-nn`, tick the task, update progress.md (what was done, what was learned, blockers).
+Task review, if the spec is level L or progress.md says "- Task review: on": after the commit run `python scripts/review_package.py docs/specs/<id> T-nn` and give only the package path to the sdd-reviewer agent (task review mode). Fix its high and medium problems in the same task, with new commits `Task: T-nn`, at most 2 rounds. Write the verdict in the "Task reviews" section of progress.md (- T-nn: pass — <reviewer>, or - T-nn: fix needed — <problems>). If no reviewer is available, write "- T-nn: not reviewed (no reviewer available)" and stop.
 Do not modify the test files of a Test-Lock commit: if a test looks wrong to you, write it in progress.md and stop.
 Do not touch what is in the non-scope. If a requirement is ambiguous, write it in progress.md and stop.
 Every decision you take within the latitude of spec and plan (names, library calls, data structures, messages) goes in the "Rulings" section of progress.md: - T-nn: <what> — <why> — <what it costs if wrong>.

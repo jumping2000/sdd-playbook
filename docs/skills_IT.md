@@ -53,7 +53,7 @@ del diff.
 
 - **Quando:** una volta per progetto, prima di spec o codice.
 - **Cosa fa:** rileva sistema operativo, stack e se c'è già codice; chiede in un solo messaggio ciò che non
-  rileva (comandi reali, Windows sì/no, provider CI); copia gli 11 script in `scripts/` (ognuno con la versione del plugin in seconda riga, per gli aggiornamenti); adatta `STEPS` di
+  rileva (comandi reali, Windows sì/no, provider CI); copia i 12 script in `scripts/` (ognuno con la versione del plugin in seconda riga, per gli aggiornamenti); adatta `STEPS` di
   `verify.py` provando ogni comando; crea `AGENTS.md`, `CLAUDE.md` (`@AGENTS.md`), `.gitattributes`,
   `.vscode/tasks.json`, `docs/constitution.md`, le cartelle `docs/*` e il workflow CI; esegue `verify` e `state`.
 - **Regole:** non sovrascrive mai file esistenti (mostra la differenza, fa il merge di `tasks.json`); non inventa
@@ -126,6 +126,10 @@ del diff.
   i test bloccati da un commit `Test-Lock`.
 - **Decisioni:** ogni decisione presa nei margini di spec e piano va in `progress.md`, sezione "Rulings"
   (`- T-nn: cosa — perché — costo se sbagliata`); un requisito ambiguo non è una decisione, ferma il lavoro.
+- **Review per task:** nel livello L (facoltativa nel livello M con `- Task review: on`) ogni task è rivista da
+  `sdd-reviewer` sul suo pacchetto (`review_package.py <spec-dir> T-nn`) prima della successiva; i problemi alti e medi si
+  correggono nella stessa task (al massimo 2 giri); l'esito va in `## Task reviews` di `progress.md`. I commit portano
+  `Task: T-nn`.
 - **Rilievi della review (`T-Rnn`):** verificati sul codice prima di toccarlo; un rilievo sbagliato non si corregge ma si
   annota con le prove in "Disputed review findings".
 - **Fine:** quando restano solo `T-DOC` e `T-SYNC`, passa a `sdd-review-diff`; non dichiara la feature conclusa.
@@ -145,8 +149,9 @@ del diff.
 - **Precondizioni:** nessuna task `T-nn` aperta, `verify` verde, lavoro committato. Nel livello S bastano i
   controlli deterministici, riportati nella PR.
 - **Cosa fa:** `diff_scope.py` (anche livello sottostimato e dipendenze senza decisione), `trace_check.py` e
-  `secrets_check.py`; revisione indipendente (subagent `sdd-reviewer` in Claude Code, senza Bash: riceve diff e output nel messaggio; in GitHub
-  Copilot lo stesso agente come custom agent `.github/agents/sdd-reviewer.agent.md`; altrimenti sessione nuova con spec, piano, output degli script e diff); scrive `review.md` con esito, problemi con file e riga,
+  `secrets_check.py`; revisione indipendente (subagent `sdd-reviewer` in Claude Code, senza Bash: riceve nel messaggio il pacchetto del
+  branch di `review_package.py` e gli output; dopo le review per task si concentra su integrazione, non-scope e decisioni;
+  in GitHub Copilot lo stesso agente come custom agent `.github/agents/sdd-reviewer.agent.md`; altrimenti sessione nuova con spec, piano, output degli script e diff); scrive `review.md` con esito, problemi con file e riga,
   tentativi di confutazione.
 - **Gate:** la **decisione è dell'utente** ("Decided by"; nel livello L anche "Human diff review", dopo che
   l'utente ha riletto il diff); con `non-compliant` ogni problema `high`/`medium` diventa una

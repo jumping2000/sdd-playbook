@@ -1,6 +1,6 @@
-# SDD Playbook (versione 0.14.0)
+# SDD Playbook (versione 0.15.0)
 
-[![Version](https://img.shields.io/badge/version-0.14.0-blue)](CHANGELOG_IT.md)
+[![Version](https://img.shields.io/badge/version-0.15.0-blue)](CHANGELOG_IT.md)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![CI](https://github.com/jumping2000/sdd-playbook/actions/workflows/ci.yml/badge.svg)](https://github.com/jumping2000/sdd-playbook/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/python-3.8%2B-3776AB?logo=python&logoColor=white)](docs/scripts_IT.md)
@@ -84,7 +84,7 @@ permessi dell'agente (ne fornisce un esempio), non copre rilascio, sicurezza del
 | Parte | Contenuto | Dettaglio |
 |---|---|---|
 | 14 skill | `sdd-next`, `sdd-init`, `sdd-map-codebase`, `sdd-characterize`, `sdd-spec`, `sdd-plan`, `sdd-tasks`, `sdd-tests-from-ac`, `sdd-implement`, `sdd-bugfix`, `sdd-review-diff`, `sdd-docs`, `sdd-sync`, `sdd-loop` | [docs/skills_IT.md](docs/skills_IT.md) |
-| 11 script Python | `verify`, `state`, `spec_lint`, `trace_check`, `bug_lint`, `diff_scope`, `scan_repo`, `docs_check`, `sync_check`, `loop`, `secrets_check` | [docs/scripts_IT.md](docs/scripts_IT.md) |
+| 12 script Python | `verify`, `state`, `spec_lint`, `trace_check`, `bug_lint`, `diff_scope`, `scan_repo`, `docs_check`, `sync_check`, `loop`, `secrets_check`, `review_package` | [docs/scripts_IT.md](docs/scripts_IT.md) |
 | 2 hook opzionali | `Stop` (verify obbligatorio) e `PreToolUse` (guard), solo Claude Code | [docs/scripts_IT.md](docs/scripts_IT.md#hook-opzionali-solo-claude-code) |
 | 1 agente revisore | `sdd-reviewer`, revisore indipendente con soli strumenti di lettura: subagent di Claude Code e custom agent di GitHub Copilot | [docs/architecture_IT.md](docs/architecture_IT.md) |
 | Playbook | Il processo, con template e script identici a quelli del plugin | [docs/playbook-ai-software-lifecycle_IT.md](docs/playbook-ai-software-lifecycle_IT.md) |

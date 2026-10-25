@@ -7,6 +7,8 @@ import unittest
 from common import (AREA_OK, PLAN_OK, REVIEW_OK, SPEC_OK, TASKS_OK, TmpDir, copy_scripts, git, git_repo, load, run,
                     write)
 
+REVIEWED = "## Task reviews\n- T-01: pass\n- T-02: pass\n"
+
 spec_lint = load("spec_lint")
 diff_scope = load("diff_scope")
 state = load("state")
@@ -114,7 +116,7 @@ class TestDiffScopeLevels(unittest.TestCase):
 
 
 class TestStateLevels(unittest.TestCase):
-    def next(self, level: str, plan=False, tasks=None, review=None) -> dict:
+    def next(self, level: str, plan=False, tasks=None, review=None, progress=None) -> dict:
         with TmpDir() as r:
             write(r, "AGENTS.md")
             write(r, "scripts/verify.py")
@@ -126,6 +128,8 @@ class TestStateLevels(unittest.TestCase):
                 write(r, "docs/specs/001-x/tasks.md", tasks)
             if review is not None:
                 write(r, "docs/specs/001-x/review.md", review)
+            if progress is not None:
+                write(r, "docs/specs/001-x/progress.md", progress)
             return state.analyze(r)["next"]
 
     def test_level_s_skips_plan_and_review(self):
@@ -142,10 +146,10 @@ class TestStateLevels(unittest.TestCase):
 
     def test_level_l_requires_the_human_review(self):
         done = TASKS_OK.replace("[ ] T-01", "[x] T-01").replace("[ ] T-02", "[x] T-02")
-        p = self.next("L", plan=True, tasks=done, review=REVIEW_OK)
+        p = self.next("L", plan=True, tasks=done, review=REVIEW_OK, progress=REVIEWED)
         self.assertEqual((p["skill"], "human reading of the diff" in p["reason"]), ("sdd-review-diff", True))
         human = REVIEW_OK + "- Human diff review: Anna Smith, 2026-10-20\n"
-        self.assertEqual(self.next("L", plan=True, tasks=done, review=human)["skill"], "sdd-docs")
+        self.assertEqual(self.next("L", plan=True, tasks=done, review=human, progress=REVIEWED)["skill"], "sdd-docs")
         self.assertEqual(self.next("M", plan=True, tasks=done, review=REVIEW_OK)["skill"], "sdd-docs")
 
 
@@ -166,6 +170,7 @@ class TestSyncCheckLevels(unittest.TestCase):
     def test_l_requires_the_human_review(self):
         with TmpDir() as d:
             self.prepare(d, "L")
+            write(d, "docs/specs/001-x/progress.md", REVIEWED)
             write(d, "docs/specs/001-x/review.md", REVIEW_OK)
             write(d, "docs/system/export.md", AREA_OK)
             r = cli(d, "sync_check", "docs/specs/001-x")

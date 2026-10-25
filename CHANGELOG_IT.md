@@ -4,6 +4,24 @@
 
 Le voci precedenti alla 0.13.0 usano i nomi del loro tempo (`sdlc-*`, `SDLC_*`, campi in italiano).
 
+## 0.15.0
+Review per task, dal "subagent-driven development" di superpowers, senza un nuovo agente.
+- **Quando:** obbligatoria nel livello L; nel livello M se `progress.md` riporta `- Task review: on` (chiesto all'inizio
+  della feature); mai nel livello S.
+- **Come:** i commit di implementazione portano il trailer `Task: T-nn`. Dopo ogni task (anche dopo il commit `Test-Lock`
+  di una task di test, prima dell'approvazione umana) l'agente esegue il nuovo `review_package.py <spec-dir> T-nn`, che
+  scrive in un solo file la riga della task, gli AC coperti, interfacce e review focus del piano, le decisioni della task e
+  le patch dei suoi commit, e passa solo quel percorso a `sdd-reviewer` nella nuova **modalità task review**
+  (`Task verdict: pass | fix needed`). I problemi alti e medi si correggono nella stessa task, al massimo 2 giri; l'esito
+  va in `## Task reviews` di `progress.md`.
+- **Controlli:** `spec_lint.task_reviews_missing()`; `state.py` rimanda a `sdd-implement` finché una task `T-nn` chiusa
+  non ha `- T-nn: pass`; `sync_check.py` e i controlli finali di `loop.py` falliscono. Il prompt del loop esegue la
+  review per task e annota "not reviewed" se non c'è un revisore disponibile.
+- **Review finale:** `sdd-review-diff` passa al revisore il pacchetto dell'intero branch (`review_package.py <spec-dir>`)
+  e, dopo le review per task, si concentra su integrazione, non-scope, copertura complessiva e decisioni.
+- `sdd-init` copia 12 script; playbook §2.1, §4, §11, riferimenti di skill e script, architettura aggiornati; nuovo
+  `tests/test_task_review.py`.
+
 ## 0.14.0
 Pratiche prese dal plugin superpowers e adattate alla governance di SDD Playbook: spec e piani migliori, test migliori,
 decisioni rese visibili. Testo e template, più un nuovo controllo in `spec_lint.py`.

@@ -2,7 +2,7 @@
 
 *English version: [architecture.md](architecture.md)*
 
-Documento di progetto **come costruito** (versione 0.14.0): scelte, struttura, contratti tra i file e limiti.
+Documento di progetto **come costruito** (versione 0.15.0): scelte, struttura, contratti tra i file e limiti.
 
 ## Obiettivo e criterio di successo
 
@@ -27,6 +27,7 @@ Il plugin è fatto bene se:
 | Gate umani | Ogni skill che produce un documento da approvare termina con **STOP**; le approvazioni portano nome, data e hash del contenuto approvato (che decade se il contenuto cambia); l'approvazione vera è il merge della PR di design su `main` protetto, che l'agente non può fare con un'identità separata | Principio 5 del playbook; i campi testuali li può scrivere l'agente, il merge no |
 | Proporzionalità | Livelli **S/M/L** dichiarati nella spec (e nel suo hash), con criteri in parte controllati sul diff (`diff_scope.py`) | Lo stesso processo per una riga e per una migrazione genera cerimonia sulle prime e poca attenzione sulle seconde (REVIEW A6) |
 | Controllo esterno | La CI generata da `sdd-init` esegue sulle PR i controlli di processo (`spec_lint --base`, `diff_scope`, `trace_check --junit`, `secrets_check`) con script e `AGENTS.md` protetti da CODEOWNERS | Ogni input del ramo è modificabile dall'agente; la CI sulla PR gira fuori dalla sua portata |
+| Review indipendente | Per task nel livello L (facoltativa nel livello M, `- Task review: on`) e per feature, sempre con lo stesso `sdd-reviewer` in sola lettura; `review_package.py` mette in un solo file ciò che serve al revisore; le review per task superate sono controllate da `state.py`, `sync_check.py` e `loop.py` | Una sola review alla fine di un diff grande trova gli errori tardi e perde i dettagli (REVIEW, sezione C); una review per task li ferma prima che la task successiva ci costruisca sopra, senza aggiungere un secondo agente da mantenere |
 | Skill con effetti | `sdd-loop` prepara ma non lancia; i commit solo se autorizzati, mai su `main` | Limitare i danni di un agente autonomo |
 | Parti per singolo agente | Claude Code: subagent `sdd-reviewer` (solo strumenti di lettura) e hook opt-in. GitHub Copilot: lo stesso revisore come custom agent (`*.agent.md`, strumenti `read` e `search`), skill copiate in `.github/skills/` da `sdd-init` per il cloud agent e gli IDE. Codex: nessuna (review in sessione nuova) | Le skill restano uguali; cambia solo l'orchestrazione |
 | Coerenza documentale | Il playbook è **generato** dai file del plugin (`tools/build_playbook.py`), in inglese e in italiano; i test controllano i riferimenti incrociati in entrambe le lingue | Script, template e documentazione non possono divergere in silenzio |
@@ -41,7 +42,7 @@ sdd-playbook/
 ├── .codex-plugin/         plugin.json
 ├── plugin.json            manifest per la Copilot CLI (formato Agent Plugins)
 ├── skills/
-│   ├── sdd-init/         SKILL.md, scripts/ (11 script), references/ (template, CI, tasks.json, stack, copilot/)
+│   ├── sdd-init/         SKILL.md, scripts/ (12 script), references/ (template, CI, tasks.json, stack, copilot/)
 │   ├── sdd-map-codebase/ SKILL.md, references/map-template.md
 │   ├── sdd-characterize/ SKILL.md
 │   ├── sdd-spec/         SKILL.md, references/spec-template.md
@@ -109,7 +110,7 @@ Gli script leggono pochi campi con convenzioni fisse. I nomi dei campi sono in i
 | `spec.md` | titolo `# SPEC-<id>: ...` (data + slug uguale alla cartella, o numero); `- Level:` (`S`, `M`, `L`; M se manca; letto solo dall'intestazione; entra nell'hash); `- Status:` (`draft`, `approved`, `in-revision`, `implemented`, `superseded`); sezione `## Revisions` (obbligatoria con voce se `in-revision`); `- Approved by / date:`; `- Hash: sha256:...` del corpo (dalla prima sezione `## `); sezioni `## Problem and goal`, `Scope`, `Requirements`, `Acceptance criteria`, `Open questions`; riga `**Non-scope (explicit):**`; riga `**Anti-goals:**` (avviso se manca); `- REQ-nnn`; `- AC-nnn [REQ-nnn]`; marcatore `[ASSUMPTION]` | `spec_lint`, `state`, `trace_check`, `sync_check`, `diff_scope` |
 | `plan.md` | `- Approved by / date:`; `- Based on spec:` (hash della spec); `- Hash:` del corpo; sezione `## Components and files to create/modify` con righe `- path: ...` (percorso = prima parola o testo tra backtick); sezione `## Test strategy ...` con gli ID AC esatti e, se c'è, la colonna `Where`; sezione `## Review focus` (tabella con colonna `Where`, oppure `- none`) | `spec_lint`, `state`, `diff_scope` |
 | `tasks.md` | `- Based on plan:` (hash del piano); righe `- [ ] T-nn ...` con i campi `verify:` (comando tra backtick) e `covers:` (ID degli AC), senza segnaposto; righe `- [ ] T-Rnn ...` dai problemi della review (`verify:`, `covers:` facoltativo); `T-DOC`, `T-SYNC`; `— tests approved: <name, yyyy-mm-dd, sha>` sulle task di test chiuse (livelli M e L; sha = commit `Test-Lock` approvato); la marcatura `expected: red` (senza distinzione di maiuscole) sulle task di test definisce la **fase rossa** (ultima task `T-nn` chiusa con la marcatura, successiva aperta) | `spec_lint`, `state`, `loop`, `sync_check`, `diff_scope`, hook `Stop` |
-| commit git | trailer `Test-Lock: T-nn` sul commit dei test rossi: blocca i suoi file di test e ancora l'approvazione | `diff_scope` |
+| commit git | trailer `Test-Lock: T-nn` sul commit dei test rossi: blocca i suoi file di test e ancora l'approvazione; trailer `Task: T-nn` sui commit di implementazione | `diff_scope`, `review_package` |
 | file di test | `# SPEC-<id>` nel file più `AC-nnn`, oppure citazioni `SPEC-<id>/AC-nnn` (nei nomi di funzione `SPEC_<id con _>_AC_nnn`); righe `TODO`/`FIXME`/`XXX` ignorate | `trace_check`, `sync_check` |
 | cartelle `docs/specs/<id>/` | `<id>` = data + slug (`2026-10-24-export-csv`), uguale all'ID del titolo; i vecchi `NNN-slug` restano validi | `spec_lint`, `state` (associazione al branch) |
 | report JUnit XML (`reports/junit.xml`) | `testcase` con `name`, `classname`, `file` e figli `failure`, `error`, `skipped` | `trace_check --junit`, `sync_check --junit`, `loop --junit` |
@@ -118,7 +119,7 @@ Gli script leggono pochi campi con convenzioni fisse. I nomi dei campi sono in i
 | `docs/system/<area>.md` | `- Last aligned:`; `- Linked specs:`; sezioni `## Current behaviour`, `Constraints and delicate points`, `Characterization tests` | `sync_check` |
 | `docs/system/map.md` | solo la presenza | `state` |
 | `AGENTS.md` | righe `- Do not modify: a, b` e `- Sensitive areas: a, b` (richiedono il livello L), percorsi tra backtick o prima parola; lette dal merge-base | `diff_scope` |
-| `PROMPT.md`, `progress.md` | `PROMPT.md` letto per intero e passato da stdin; sezioni `## Rulings` e `## Disputed review findings` di `progress.md` lette dal revisore | `loop`, `sdd-reviewer` |
+| `PROMPT.md`, `progress.md` | `PROMPT.md` letto per intero e passato da stdin; in `progress.md`: `- Task review: on` (livello M), `## Task reviews` con `- T-nn: pass` per ogni task chiusa (livello L, o M se attiva), `## Rulings` e `## Disputed review findings` lette dal revisore | `loop`, `state`, `sync_check`, `review_package`, `sdd-reviewer` |
 | `scripts/verify.py` | lista `STEPS` | (modificata da `sdd-init`) |
 | `scripts/*.py` | seconda riga `# sdd-playbook: <versione>` | `sdd-init` (aggiornamento), test di coerenza |
 | manifest e lockfile (`package.json`, `pyproject.toml`, `*.csproj`, ...) | solo il nome del file | `diff_scope` (livello, dipendenze senza piano né ADR) |

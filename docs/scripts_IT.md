@@ -23,6 +23,7 @@ I formati dei file che gli script leggono sono descritti in [architecture_IT.md]
 | `sync_check.py` | sync | chiusura di una feature |
 | `secrets_check.py` | review-diff, loop, `verify` | segreti nei file |
 | `loop.py` | loop | loop autonomo esterno |
+| `review_package.py` | implement, review-diff, loop | pacchetto di review di una task o dell'intero branch |
 
 ---
 
@@ -54,8 +55,9 @@ chiuse) → `sdd-docs` (`T-DOC` aperta) → `sdd-sync`. Prima di tutto `sdd-init
 **Livelli** (playbook §2.1). Livello S: dopo la spec approvata `sdd-tasks` (senza piano), poi `sdd-implement`,
 `sdd-docs` se `T-DOC` è aperta e `sdd-sync`; `review.md` conta solo se c'è ed è `non-compliant`. Livelli M e L: una
 task di test "expected: red" chiusa senza `tests approved:` porta a `sdd-tests-from-ac` prima dell'implementazione.
-Livello L: dopo una review accettata serve anche `- Human diff review:` in `review.md`, altrimenti
-`sdd-review-diff`. Senza il campo `- Level:` la spec vale M.
+Livello L (o M con `- Task review: on` in `progress.md`): chiuse le task `T-nn`, ognuna deve avere `- T-nn: pass` nella
+sezione `## Task reviews` di `progress.md`, altrimenti `sdd-implement`. Livello L: dopo una review accettata serve anche
+`- Human diff review:` in `review.md`, altrimenti `sdd-review-diff`. Senza il campo `- Level:` la spec vale M.
 
 **Più spec attive.** `NEXT` riguarda la spec indicata con `--spec <id>` (nome della cartella o ID del titolo), quella
 il cui nome di cartella compare nel branch corrente (`feat/2026-10-24-export-csv`), o l'unica attiva. Altrimenti riporta
@@ -146,7 +148,7 @@ parola); quelle che non sembrano percorsi sono segnalate e ignorate. Segnala:
   `*Test.java`); una modifica successiva in un commit senza lo stesso trailer, o non committata, è una violazione. I file
   non di test di un commit `Test-Lock` (per esempio uno scheletro) non vengono bloccati e sono segnalati come avviso;
 - **avviso** (errore con `--strict`): file fuori dal piano (esclusi `docs/specs/<questa spec>/`, `docs/system/`,
-  `docs/bugs/`, `docs/adr/`). Il piano comprende le righe di "Componenti e file" (percorso = prima parola o testo tra
+  `docs/bugs/`, `docs/adr/`). Il piano comprende le righe di "Components and files" (percorso = prima parola o testo tra
   backtick, quindi `- src/a.py (new): ...` vale `src/a.py`) e la colonna "Where" della strategia di test e del review focus;
 - **errore** (exit 1): **livello sottostimato** (playbook §2.1). Un file nelle righe `- Sensitive areas:` di `AGENTS.md`
   richiede L; una modifica a un manifest o lockfile delle dipendenze (`package.json`, `pyproject.toml`,
@@ -194,7 +196,8 @@ richieste, "Last aligned" compilato e la spec tra le "Linked specs"; ogni AC sia
 questa spec**, con le regole di `trace_check.py` (se mancano test e ci sono citazioni ambigue, l'errore lo dice).
 Livello S: `review.md` e pagina d'area facoltative (se `review.md` c'è, si controlla). Livello L: `review.md` deve avere
 anche `- Human diff review:` compilato. Nei livelli M e L le task di test chiuse ("expected: red") riportano
-`tests approved:`. Con `--junit` gli AC devono essere verificati dal report dei test eseguiti, come in `trace_check.py`;
+`tests approved:`. Nel livello L, o M con `- Task review: on`, ogni task `T-nn` chiusa ha `- T-nn: pass` in
+`## Task reviews` di `progress.md`. Con `--junit` gli AC devono essere verificati dal report dei test eseguiti, come in `trace_check.py`;
 nel livello L il report è obbligatorio.
 
 ### secrets_check.py
@@ -225,7 +228,8 @@ python scripts/loop.py docs/specs/001-x [--max 15] [--stall 3] [--timeout 1800] 
 Legge `PROMPT.md` dalla cartella della spec e lo passa all'agente da stdin. Dopo ogni iterazione esegue `verify`.
 Si ferma con exit `0` se `verify` è verde, non restano task `T-nn` né `T-Rnn` aperte (`T-DOC` e `T-SYNC` restano fuori) **e i
 controlli finali passano**: `spec_lint.py` su spec, piano e task, `trace_check.py` sulla spec, `diff_scope.py` sulla
-cartella e `secrets_check.py`, se presenti in `scripts/`. Le caselle le spunta l'agente; questi controlli no. Se `diff_scope` non può calcolare il diff (exit `2`, per esempio
+cartella e `secrets_check.py`, se presenti in `scripts/`, più le review per task nel livello L (o M con
+`- Task review: on`). Le caselle le spunta l'agente; questi controlli no. Se `diff_scope` non può calcolare il diff (exit `2`, per esempio
 senza ref di base) è un avviso; con
 exit `1` al tetto `--max` o dopo `--stall` iterazioni senza cambiamenti (tasks.md, HEAD di git, **contenuto** delle
 modifiche tracciate e non tracciate, esclusi i file generati come `__pycache__/` e `reports/`: un agente che lavora
@@ -241,6 +245,22 @@ attesa non parte (exit `2`). Con `--junit` il controllo finale `trace_check.py` 
 modalità non interattiva dell'agente vanno configurati a parte: `skills/sdd-loop/references/settings.loop.json` è un
 esempio di allowlist e deny-list per Claude Code (nega anche la scrittura di `scripts/`, `AGENTS.md`, `.github/`, spec,
 piano e review: i controlli e le regole del loop) (`--agent "claude -p --settings <file>"`, da verificare sulla versione).
+
+### review_package.py
+
+```
+python scripts/review_package.py docs/specs/001-x T-03 [--base main] [--out FILE]
+python scripts/review_package.py docs/specs/001-x [--base main] [--out FILE]     # intero branch
+```
+
+Non è un controllo: prepara l'input del revisore indipendente, che non ha Bash. Con una task raccoglie i commit del
+branch il cui messaggio porta `Task: T-03` (commit di implementazione, vedi `sdd-implement`) o `Test-Lock: T-03` (test
+bloccati); senza task, tutti i commit dal merge-base. Scrive un unico file Markdown con la riga della task, il testo
+degli AC coperti (tutti per il branch), le sezioni `## Interfaces` e `## Review focus` del piano, le decisioni di
+`progress.md` (solo quelle della task), l'elenco dei commit, i file toccati e le patch con 10 righe di contesto; i file
+generati (`__pycache__/`, `reports/`) sono esclusi e le modifiche non committate non sono incluse. Output di default:
+`reports/review/<cartella della spec>/<task o branch>.md`. Exit `2` con un ID di task non valido, senza git o ref di
+base, o se nessun commit corrisponde.
 
 ---
 

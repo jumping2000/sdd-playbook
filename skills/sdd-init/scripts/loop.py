@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# sdd-playbook: 0.14.0
+# sdd-playbook: 0.15.0
 """Outer loop: reruns the agent until verify is green and no numbered task (T-nn and T-Rnn) is open.
 
 Usage:
@@ -9,8 +9,8 @@ Usage:
 Reads PROMPT.md from the spec folder and passes it to the agent on stdin (avoids command-line length limits on
 Windows). It stops when:
   - verify is green, no T-nn or T-Rnn task is open and the final checks pass -> exit 0
-    (final checks: spec_lint.py on spec, plan and tasks, trace_check.py on the spec, diff_scope.py on the folder and
-    secrets_check.py, when present in scripts/; the agent ticks the boxes, these checks do not depend on it. If
+    (final checks: spec_lint.py on spec, plan and tasks, trace_check.py on the spec, diff_scope.py on the folder,
+    secrets_check.py, when present in scripts/, and the task reviews at level L or with "- Task review: on"; the agent ticks the boxes, these checks do not depend on it. If
     diff_scope cannot compute the diff it is a warning; with --junit, trace_check also checks that every AC has an
     executed and passing test in the report written by verify)
   - the --max iteration cap is reached                        -> exit 1
@@ -117,6 +117,14 @@ def final_checks(feature: Path, junit: str | None = None) -> list[str]:
             failed.append(name)
         elif code != 0:
             print(f"[WARN] {name} could not complete the check (exit {code})", flush=True)
+    if spec.is_file() and (feature / "tasks.md").is_file():
+        progress = feature / "progress.md"
+        missing = spec_lint.task_reviews_missing(spec.read_text(encoding="utf-8"),
+                                                 (feature / "tasks.md").read_text(encoding="utf-8"),
+                                                 progress.read_text(encoding="utf-8") if progress.is_file() else "")
+        if missing:
+            print(f"[ERROR] task reviews missing in progress.md: {', '.join(missing)}", flush=True)
+            failed.append("task_reviews")
     return failed
 
 

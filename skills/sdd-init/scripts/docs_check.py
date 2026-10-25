@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# sdd-playbook: 0.14.0
+# sdd-playbook: 0.15.0
 """Documentation checks: valid relative links and runnable Python examples.
 
 Usage:

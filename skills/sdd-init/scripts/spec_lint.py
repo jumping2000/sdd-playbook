@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# sdd-playbook: 0.14.0
+# sdd-playbook: 0.15.0
 """Deterministic checks on the playbook's spec, plan and tasks.
 
 Usage:
@@ -29,6 +29,8 @@ is part of the hash: lowering it after approval voids the approval. Level S: no 
 Approved tests (playbook §6): at levels M and L a closed "expected: red" test task carries "tests approved: <name,
 yyyy-mm-dd, sha>", written after the human has read the locked tests; sha is the approved Test-Lock commit (diff_scope
 reports any later Test-Lock commit for the same task). tests_to_approve() lists the tasks without it.
+Task reviews (playbook §4): at level L, or at level M with "- Task review: on" in progress.md, every closed T-nn task
+needs "- T-nn: pass" in the "## Task reviews" section of progress.md; task_reviews_missing() lists the tasks without it.
 Exit code 0 = no errors (warnings do not block). Standard library + git (for --base) only, cross-platform.
 """
 from __future__ import annotations
@@ -339,6 +341,22 @@ def test_approvals(tasks: str) -> dict[str, str | None]:
 def tests_to_approve(tasks: str) -> list[str]:
     """Closed "expected: red" test tasks without a valid "tests approved: <name, yyyy-mm-dd, sha>"."""
     return [tid for tid, sha in test_approvals(tasks).items() if sha is None]
+
+
+def task_review_required(spec: str, progress: str) -> bool:
+    """Per-task review: mandatory at level L, chosen with "- Task review: on" in progress.md at level M."""
+    lvl = level(spec)
+    return lvl == "L" or (lvl == "M" and bool(re.search(r"^\s*[-*]\s*Task review:\s*on\b", progress, re.M | re.I)))
+
+
+def task_reviews_missing(spec: str, tasks: str, progress: str) -> list[str]:
+    """Closed T-nn tasks without "- T-nn: pass" in "## Task reviews" of progress.md, when the review is required."""
+    if not task_review_required(spec, progress):
+        return []
+    closed = re.findall(r"^\s*-\s+\[[xX]\]\s+(T-\d+)\b", tasks, re.M)
+    lines = next((lines for title, lines in sections(progress).items() if title.lower() == "task reviews"), [])
+    passed = {m.group(1) for line in lines if (m := re.match(r"^\s*[-*]\s+(T-\d+):\s*pass\b", line, re.I))}
+    return [t for t in closed if t not in passed]
 
 
 def tasks_on_plan(plan: str, tasks: str) -> tuple[list[str], list[str]]:

@@ -187,8 +187,8 @@ controlla che il diff reale non superi il livello dichiarato.
 | Livello | Quando | Documenti | Review |
 |---|---|---|---|
 | **S** | Tutti veri: al massimo 3 file di produzione (test, `docs/` e `*.md` esclusi), nessuna interfaccia pubblica o formato dati cambiato, nessuna area sensibile, nessuna dipendenza nuova o modificata | `spec.md` e `tasks.md` (senza piano; `T-DOC` facoltativa), test dagli AC | Controlli deterministici e review della PR; niente `review.md`, pagina d'area facoltativa |
-| **M** | Il caso normale: tutto ciò che non è S né L | Tutti quelli del §2 | `review.md` con revisore a contesto fresco e decisione umana |
-| **L** | Almeno uno: area sensibile (`- Sensitive areas:` in `AGENTS.md`: autenticazione, pagamenti, dati personali, migrazioni), interfaccia pubblica o formato dati cambiato in modo incompatibile, migrazione di dati | Come M, più un ADR per le decisioni prese | Come M, più la **revisione umana del diff** (`- Human diff review:` in `review.md`) |
+| **M** | Il caso normale: tutto ciò che non è S né L | Tutti quelli del §2 | `review.md` con revisore a contesto fresco e decisione umana; review per task facoltativa (`- Task review: on`) |
+| **L** | Almeno uno: area sensibile (`- Sensitive areas:` in `AGENTS.md`: autenticazione, pagamenti, dati personali, migrazioni), interfaccia pubblica o formato dati cambiato in modo incompatibile, migrazione di dati | Come M, più un ADR per le decisioni prese | Come M, più la **review per task** (obbligatoria) e la **revisione umana del diff** (`- Human diff review:` in `review.md`) |
 
 Criteri controllati da `diff_scope.py`: un file in un'area sensibile richiede L; una modifica a un manifest o lockfile
 delle dipendenze, o più di 3 file di produzione, richiedono almeno M. Interfacce pubbliche e formati dati non si
@@ -267,8 +267,8 @@ L'esito è uno tra `compliant`, `compliant with reservations`, `non-compliant`. 
 | 3. Piano | `plan.md` in sola lettura | `sdd-plan` | **Approvi il piano** |
 | 4. Task | `tasks.md` in passi piccoli, ognuno con comando di verifica | `sdd-tasks` | Controllo rapido |
 | 5. Test prima | Dagli AC, l'agente scrive i test; devono fallire per il motivo giusto; commit `Test-Lock` | `sdd-tests-from-ac` (via `sdd-implement`) | **Approvi i test bloccati** (`tests approved:`; nel livello S basta uno spot check) |
-| 6. Implementazione | Task per task, `verify` a ogni passo; commit a ogni task verde | `sdd-implement`, oppure `sdd-loop` (§7) | — |
-| 7. Review del diff | Contesto fresco, che prova a confutare; `review.md` | `sdd-review-diff` | **Decidi sulla review** |
+| 6. Implementazione | Task per task, `verify` a ogni passo; commit a ogni task verde (`Task: T-nn`); nel livello L (facoltativo nel livello M) un revisore a contesto fresco controlla ogni task sul suo pacchetto di review (`review_package.py`) prima della successiva | `sdd-implement`, oppure `sdd-loop` (§7) | — |
+| 7. Review del diff | Contesto fresco, che prova a confutare, sul pacchetto dell'intero branch; dopo le review per task si concentra su integrazione, non-scope e decisioni; `review.md` | `sdd-review-diff` | **Decidi sulla review** |
 | 8. Documentazione | T-DOC: esempi eseguiti, link validi | `sdd-docs` | Review |
 | 9. Riconciliazione | T-SYNC: spec e `docs/system/` allineate al comportamento reale; stato spec = `implemented` | `sdd-sync` | Review, poi PR |
 | 10. Replan | Tra una feature e l'altra aggiorna `constitution.md`/`AGENTS.md` con ciò che hai imparato | — | — |
@@ -467,10 +467,10 @@ a ogni punto di approvazione) e **script** (controlli deterministici copiati nel
 | Piano (§3.4) | `sdd-plan` | `spec_lint.py --plan` | **Approvazione del piano** |
 | Task (§3.5) | `sdd-tasks` | `spec_lint.py --tasks` | Controllo rapido |
 | Test dagli AC (§6) | `sdd-tests-from-ac` | `trace_check.py` | **Approvazione dei test bloccati** (M, L) |
-| Implementazione (§4, fase 6) | `sdd-implement` | `verify.py` | Review della PR |
+| Implementazione (§4, fase 6) | `sdd-implement` | `verify.py`, `review_package.py` | Review della PR |
 | Loop (§7) | `sdd-loop` | `loop.py` | **Permessi, tetto, avvio** |
 | Bug fixing (§6.1) | `sdd-bugfix` | `bug_lint.py`, `verify.py` | Atteso e "da NON cambiare" |
-| Review del diff (§4, fase 7) | `sdd-review-diff` | `diff_scope.py`, `trace_check.py`, `secrets_check.py` | **Decisione sulla review** |
+| Review del diff (§4, fase 7) | `sdd-review-diff` | `diff_scope.py`, `trace_check.py`, `secrets_check.py`, `review_package.py` | **Decisione sulla review** |
 | Documentazione (§6) | `sdd-docs` | `docs_check.py` | Review |
 | Riconciliazione (§4, fase 9) | `sdd-sync` | `sync_check.py` | Review, poi PR |
 
@@ -488,7 +488,8 @@ a ogni punto di approvazione) e **script** (controlli deterministici copiati nel
 | `docs_check.py` | Link relativi validi; esempi Python marcati eseguiti con successo |
 | `sync_check.py` | Chiusura: spec `implemented`, task chiuse, test approvati, review con decisione umana, pagina d'area, tracciabilità (con il report JUnit nel livello L) |
 | `secrets_check.py` | Chiavi e token con formato noto e file `.env` nei file del ramo (o in tutto il repository con `--all`) |
-| `loop.py` | Loop esterno con tetto, rilevamento dello stallo, timeout per iterazione, baseline, branch protetto, pausa per l'approvazione dei test e dry run |
+| `loop.py` | Loop esterno con tetto, rilevamento dello stallo, timeout per iterazione, baseline, branch protetto, pausa per l'approvazione dei test, review per task nel livello L e dry run |
+| `review_package.py` | Non è un controllo: scrive in un solo file ciò che serve a un revisore indipendente per una task (commit con `Task:`/`Test-Lock:`, AC coperti, interfacce e review focus del piano, decisioni, patch) o per l'intero branch |
 
 **Hook opzionali (solo Claude Code; non portati su Codex e GitHub Copilot)**, inattivi se non abilitati con una variabile d'ambiente. Partono da `hooks/run.sh`, che esce subito se l'hook non è abilitato e altrimenti usa il primo tra `python3`, `python` e `py -3` che sia Python 3; senza Python l'errore è visibile ma non bloccante:
 

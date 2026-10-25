@@ -23,8 +23,8 @@ without the plugin. Playbook §1, §1.1, §3.1, §3.2.
    the team uses (Claude Code, Codex, GitHub Copilot). Do not assume.
 3. **Copy the scripts** from the skill's `scripts/` to the project's `scripts/`: `verify.py`, `state.py`,
    `spec_lint.py`, `trace_check.py`, `bug_lint.py`, `diff_scope.py`, `docs_check.py`, `sync_check.py`, `scan_repo.py`,
-   `loop.py`, `secrets_check.py`. The other skills expect `python scripts/<name>.py`. Every script carries the plugin
-   version on line 2 (`# sdd-playbook: <version>`).
+   `loop.py`, `secrets_check.py`, `review_package.py`. The other skills expect `python scripts/<name>.py`. Every
+   script carries the plugin version on line 2 (`# sdd-playbook: <version>`).
 4. **Adapt `STEPS` in `scripts/verify.py`** to the real commands. Run every command by hand before registering it. Do
    not register steps the project does not have and do not invent tests: if there are none, say so.
 5. **Create** (only if missing):

@@ -81,7 +81,7 @@ repo/
 
 ```python
 #!/usr/bin/env python3
-# sdd-playbook: 0.14.0
+# sdd-playbook: 0.15.0
 """Single project verification: format, lint, type-check, tests, secrets.
 
 Exit code 0 = all green. Standard library only; runs the same on Windows, Linux, macOS.
@@ -328,8 +328,8 @@ controlla che il diff reale non superi il livello dichiarato.
 | Livello | Quando | Documenti | Review |
 |---|---|---|---|
 | **S** | Tutti veri: al massimo 3 file di produzione (test, `docs/` e `*.md` esclusi), nessuna interfaccia pubblica o formato dati cambiato, nessuna area sensibile, nessuna dipendenza nuova o modificata | `spec.md` e `tasks.md` (senza piano; `T-DOC` facoltativa), test dagli AC | Controlli deterministici e review della PR; niente `review.md`, pagina d'area facoltativa |
-| **M** | Il caso normale: tutto ciò che non è S né L | Tutti quelli del §2 | `review.md` con revisore a contesto fresco e decisione umana |
-| **L** | Almeno uno: area sensibile (`- Sensitive areas:` in `AGENTS.md`: autenticazione, pagamenti, dati personali, migrazioni), interfaccia pubblica o formato dati cambiato in modo incompatibile, migrazione di dati | Come M, più un ADR per le decisioni prese | Come M, più la **revisione umana del diff** (`- Human diff review:` in `review.md`) |
+| **M** | Il caso normale: tutto ciò che non è S né L | Tutti quelli del §2 | `review.md` con revisore a contesto fresco e decisione umana; review per task facoltativa (`- Task review: on`) |
+| **L** | Almeno uno: area sensibile (`- Sensitive areas:` in `AGENTS.md`: autenticazione, pagamenti, dati personali, migrazioni), interfaccia pubblica o formato dati cambiato in modo incompatibile, migrazione di dati | Come M, più un ADR per le decisioni prese | Come M, più la **review per task** (obbligatoria) e la **revisione umana del diff** (`- Human diff review:` in `review.md`) |
 
 Criteri controllati da `diff_scope.py`: un file in un'area sensibile richiede L; una modifica a un manifest o lockfile
 delle dipendenze, o più di 3 file di produzione, richiedono almeno M. Interfacce pubbliche e formati dati non si
@@ -639,8 +639,8 @@ L'esito è uno tra `compliant`, `compliant with reservations`, `non-compliant`. 
 | 3. Piano | `plan.md` in sola lettura | `sdd-plan` | **Approvi il piano** |
 | 4. Task | `tasks.md` in passi piccoli, ognuno con comando di verifica | `sdd-tasks` | Controllo rapido |
 | 5. Test prima | Dagli AC, l'agente scrive i test; devono fallire per il motivo giusto; commit `Test-Lock` | `sdd-tests-from-ac` (via `sdd-implement`) | **Approvi i test bloccati** (`tests approved:`; nel livello S basta uno spot check) |
-| 6. Implementazione | Task per task, `verify` a ogni passo; commit a ogni task verde | `sdd-implement`, oppure `sdd-loop` (§7) | — |
-| 7. Review del diff | Contesto fresco, che prova a confutare; `review.md` | `sdd-review-diff` | **Decidi sulla review** |
+| 6. Implementazione | Task per task, `verify` a ogni passo; commit a ogni task verde (`Task: T-nn`); nel livello L (facoltativo nel livello M) un revisore a contesto fresco controlla ogni task sul suo pacchetto di review (`review_package.py`) prima della successiva | `sdd-implement`, oppure `sdd-loop` (§7) | — |
+| 7. Review del diff | Contesto fresco, che prova a confutare, sul pacchetto dell'intero branch; dopo le review per task si concentra su integrazione, non-scope e decisioni; `review.md` | `sdd-review-diff` | **Decidi sulla review** |
 | 8. Documentazione | T-DOC: esempi eseguiti, link validi | `sdd-docs` | Review |
 | 9. Riconciliazione | T-SYNC: spec e `docs/system/` allineate al comportamento reale; stato spec = `implemented` | `sdd-sync` | Review, poi PR |
 | 10. Replan | Tra una feature e l'altra aggiorna `constitution.md`/`AGENTS.md` con ciò che hai imparato | — | — |
@@ -748,7 +748,7 @@ L'idea è il cosiddetto "Ralph loop": un ciclo esterno che riesegue l'agente fin
 
 ```python
 #!/usr/bin/env python3
-# sdd-playbook: 0.14.0
+# sdd-playbook: 0.15.0
 """Outer loop: reruns the agent until verify is green and no numbered task (T-nn and T-Rnn) is open.
 
 Usage:
@@ -758,8 +758,8 @@ Usage:
 Reads PROMPT.md from the spec folder and passes it to the agent on stdin (avoids command-line length limits on
 Windows). It stops when:
   - verify is green, no T-nn or T-Rnn task is open and the final checks pass -> exit 0
-    (final checks: spec_lint.py on spec, plan and tasks, trace_check.py on the spec, diff_scope.py on the folder and
-    secrets_check.py, when present in scripts/; the agent ticks the boxes, these checks do not depend on it. If
+    (final checks: spec_lint.py on spec, plan and tasks, trace_check.py on the spec, diff_scope.py on the folder,
+    secrets_check.py, when present in scripts/, and the task reviews at level L or with "- Task review: on"; the agent ticks the boxes, these checks do not depend on it. If
     diff_scope cannot compute the diff it is a warning; with --junit, trace_check also checks that every AC has an
     executed and passing test in the report written by verify)
   - the --max iteration cap is reached                        -> exit 1
@@ -866,6 +866,14 @@ def final_checks(feature: Path, junit: str | None = None) -> list[str]:
             failed.append(name)
         elif code != 0:
             print(f"[WARN] {name} could not complete the check (exit {code})", flush=True)
+    if spec.is_file() and (feature / "tasks.md").is_file():
+        progress = feature / "progress.md"
+        missing = spec_lint.task_reviews_missing(spec.read_text(encoding="utf-8"),
+                                                 (feature / "tasks.md").read_text(encoding="utf-8"),
+                                                 progress.read_text(encoding="utf-8") if progress.is_file() else "")
+        if missing:
+            print(f"[ERROR] task reviews missing in progress.md: {', '.join(missing)}", flush=True)
+            failed.append("task_reviews")
     return failed
 
 
@@ -973,7 +981,8 @@ Il prompt passa da stdin, così si evitano i limiti di lunghezza della riga di c
 Read docs/specs/<id>/{spec,plan,tasks,progress}.md and AGENTS.md.
 Take the first T-nn or T-Rnn task not completed (ignore T-DOC and T-SYNC). Implement only that one.
 "expected: red" task (tests from the ACs): write only the tests and check with the `verify:` command that they fail for the right reason; do not make them pass. If a skeleton is needed to run them, commit it first, separately. Commit only the test files with the trailer `Test-Lock: T-nn`, tick the task, update progress.md and stop: the human approves the tests, never write "tests approved:" yourself.
-Other tasks: run `python scripts/verify.py`. If it fails, fix and run it again. When green: commit on this branch, tick the task, update progress.md (what was done, what was learned, blockers).
+Other tasks: run `python scripts/verify.py`. If it fails, fix and run it again. When green: commit on this branch with the trailer `Task: T-nn`, tick the task, update progress.md (what was done, what was learned, blockers).
+Task review, if the spec is level L or progress.md says "- Task review: on": after the commit run `python scripts/review_package.py docs/specs/<id> T-nn` and give only the package path to the sdd-reviewer agent (task review mode). Fix its high and medium problems in the same task, with new commits `Task: T-nn`, at most 2 rounds. Write the verdict in the "Task reviews" section of progress.md (- T-nn: pass — <reviewer>, or - T-nn: fix needed — <problems>). If no reviewer is available, write "- T-nn: not reviewed (no reviewer available)" and stop.
 Do not modify the test files of a Test-Lock commit: if a test looks wrong to you, write it in progress.md and stop.
 Do not touch what is in the non-scope. If a requirement is ambiguous, write it in progress.md and stop.
 Every decision you take within the latitude of spec and plan (names, library calls, data structures, messages) goes in the "Rulings" section of progress.md: - T-nn: <what> — <why> — <what it costs if wrong>.
@@ -988,6 +997,8 @@ If all T-nn and T-Rnn tasks are completed, do nothing else.
 ```markdown
 # Progress SPEC-001
 
+- Task review: <on | off; always on at level L, never at level S>
+
 ## Done
 - <completed tasks, one line each>
 
@@ -996,6 +1007,10 @@ If all T-nn and T-Rnn tasks are completed, do nothing else.
 line: - T-nn: <what was decided> — <why> — <what it costs if wrong>. An ambiguous requirement is not a ruling: it is
 a question for the human, below. -->
 - none
+
+## Task reviews
+<!-- One line per closed T-nn task when the task review applies: - T-nn: pass — <reviewer>, or
+- T-nn: fix needed — <problems>. Only "pass" counts for state.py, sync_check.py and loop.py. -->
 
 ## Learned
 - <findings useful for the next iterations>
@@ -1089,10 +1104,10 @@ a ogni punto di approvazione) e **script** (controlli deterministici copiati nel
 | Piano (§3.4) | `sdd-plan` | `spec_lint.py --plan` | **Approvazione del piano** |
 | Task (§3.5) | `sdd-tasks` | `spec_lint.py --tasks` | Controllo rapido |
 | Test dagli AC (§6) | `sdd-tests-from-ac` | `trace_check.py` | **Approvazione dei test bloccati** (M, L) |
-| Implementazione (§4, fase 6) | `sdd-implement` | `verify.py` | Review della PR |
+| Implementazione (§4, fase 6) | `sdd-implement` | `verify.py`, `review_package.py` | Review della PR |
 | Loop (§7) | `sdd-loop` | `loop.py` | **Permessi, tetto, avvio** |
 | Bug fixing (§6.1) | `sdd-bugfix` | `bug_lint.py`, `verify.py` | Atteso e "da NON cambiare" |
-| Review del diff (§4, fase 7) | `sdd-review-diff` | `diff_scope.py`, `trace_check.py`, `secrets_check.py` | **Decisione sulla review** |
+| Review del diff (§4, fase 7) | `sdd-review-diff` | `diff_scope.py`, `trace_check.py`, `secrets_check.py`, `review_package.py` | **Decisione sulla review** |
 | Documentazione (§6) | `sdd-docs` | `docs_check.py` | Review |
 | Riconciliazione (§4, fase 9) | `sdd-sync` | `sync_check.py` | Review, poi PR |
 
@@ -1110,7 +1125,8 @@ a ogni punto di approvazione) e **script** (controlli deterministici copiati nel
 | `docs_check.py` | Link relativi validi; esempi Python marcati eseguiti con successo |
 | `sync_check.py` | Chiusura: spec `implemented`, task chiuse, test approvati, review con decisione umana, pagina d'area, tracciabilità (con il report JUnit nel livello L) |
 | `secrets_check.py` | Chiavi e token con formato noto e file `.env` nei file del ramo (o in tutto il repository con `--all`) |
-| `loop.py` | Loop esterno con tetto, rilevamento dello stallo, timeout per iterazione, baseline, branch protetto, pausa per l'approvazione dei test e dry run |
+| `loop.py` | Loop esterno con tetto, rilevamento dello stallo, timeout per iterazione, baseline, branch protetto, pausa per l'approvazione dei test, review per task nel livello L e dry run |
+| `review_package.py` | Non è un controllo: scrive in un solo file ciò che serve a un revisore indipendente per una task (commit con `Task:`/`Test-Lock:`, AC coperti, interfacce e review focus del piano, decisioni, patch) o per l'intero branch |
 
 **Hook opzionali (solo Claude Code; non portati su Codex e GitHub Copilot)**, inattivi se non abilitati con una variabile d'ambiente. Partono da `hooks/run.sh`, che esce subito se l'hook non è abilitato e altrimenti usa il primo tra `python3`, `python` e `py -3` che sia Python 3; senza Python l'errore è visibile ma non bloccante:
 

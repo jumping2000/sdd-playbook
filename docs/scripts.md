@@ -23,6 +23,7 @@ The file formats the scripts read are described in [architecture.md](architectur
 | `sync_check.py` | sync | closure of a feature |
 | `secrets_check.py` | review-diff, loop, `verify` | secrets in files |
 | `loop.py` | loop | external autonomous loop |
+| `review_package.py` | implement, review-diff, loop | review package for one task or the whole branch |
 
 ---
 
@@ -53,8 +54,10 @@ are closed) → `sdd-docs` (`T-DOC` open) → `sdd-sync`. First of all `sdd-init
 
 **Levels** (playbook §2.1). Level S: after the approved spec `sdd-tasks` (no plan), then `sdd-implement`, `sdd-docs`
 if `T-DOC` is open and `sdd-sync`; `review.md` counts only if present and `non-compliant`. Levels M and L: a closed
-"expected: red" test task without `tests approved:` leads to `sdd-tests-from-ac` before implementation. Level L: after
-an accepted review, `- Human diff review:` is also required in `review.md`, otherwise `sdd-review-diff`. Without
+"expected: red" test task without `tests approved:` leads to `sdd-tests-from-ac` before implementation. Level L (or M with
+`- Task review: on` in `progress.md`): once the `T-nn` tasks are closed, every one needs `- T-nn: pass` in the
+`## Task reviews` section of `progress.md`, otherwise `sdd-implement`. Level L: after an accepted review,
+`- Human diff review:` is also required in `review.md`, otherwise `sdd-review-diff`. Without
 the `- Level:` field the spec counts as M.
 
 **Several active specs.** `NEXT` refers to the spec given with `--spec <id>` (folder name or title ID), the one whose
@@ -151,7 +154,7 @@ look like paths are reported and ignored. It reports:
   `*Test.java`); a later change in a commit without the same trailer, or uncommitted, is a violation. Non-test files of a
   `Test-Lock` commit (e.g. a skeleton) are not locked and are reported as a warning;
 - **warning** (error with `--strict`): files outside the plan (excluding `docs/specs/<this spec>/`, `docs/system/`,
-  `docs/bugs/`, `docs/adr/`). The plan includes the lines of "Componenti e file" (path = first word or text in backticks,
+  `docs/bugs/`, `docs/adr/`). The plan includes the lines of "Components and files" (path = first word or text in backticks,
   so `- src/a.py (new): ...` means `src/a.py`) and the "Where" column of the test strategy and of the review focus;
 - **error** (exit 1): **underestimated level** (playbook §2.1). A file in the `- Sensitive areas:` lines of `AGENTS.md`
   requires L; a change to a dependency manifest or lockfile (`package.json`, `pyproject.toml`, `requirements*.txt`,
@@ -195,10 +198,11 @@ python scripts/sync_check.py docs/specs/001-x [--area docs/system/<area>.md] [--
 
 Checks that: the spec is valid with `Status: implemented`; no task is open; `review.md` has a valid outcome other than
 `non-compliant` and `Decided by` filled in; an area page exists (or the one given) with the required sections,
-"Ultimo allineamento" filled in and the spec among the "Specifiche collegate"; every AC is cited in a test **of this
+"Last aligned" filled in and the spec among the "Linked specs"; every AC is cited in a test **of this
 spec**, with the rules of `trace_check.py` (if tests are missing and there are ambiguous citations, the error says so).
 Level S: `review.md` and area page optional (if `review.md` exists, it is checked). Level L: `review.md` must also have
-`- Human diff review:` filled in. At levels M and L closed test tasks ("expected: red") carry `tests approved:`.
+`- Human diff review:` filled in. At levels M and L closed test tasks ("expected: red") carry `tests approved:`. At level
+L, or M with `- Task review: on`, every closed `T-nn` task has `- T-nn: pass` in `## Task reviews` of `progress.md`.
 With `--junit` ACs must be verified by the report of executed tests, as in `trace_check.py`; at level L the report is
 mandatory. The spec folder may also follow the options.
 
@@ -229,7 +233,8 @@ python scripts/loop.py docs/specs/001-x [--max 15] [--stall 3] [--timeout 1800] 
 Reads `PROMPT.md` from the spec folder and passes it to the agent on stdin. After every iteration it runs `verify`. It
 stops with exit `0` if `verify` is green, no `T-nn` or `T-Rnn` task is open (`T-DOC` and `T-SYNC` stay out) **and the
 final checks pass**: `spec_lint.py` on spec, plan and tasks, `trace_check.py` on the spec, `diff_scope.py` on the folder
-and `secrets_check.py`, when present in `scripts/`. The agent ticks the boxes; these checks do not depend on it. If
+and `secrets_check.py`, when present in `scripts/`, plus the task reviews at level L (or M with `- Task review: on`).
+The agent ticks the boxes; these checks do not depend on it. If
 `diff_scope` cannot compute the diff (exit `2`, e.g. no base ref) it is a warning. It stops with exit `1` at the `--max`
 cap or after `--stall` iterations without changes (tasks.md, git HEAD, **content** of tracked and untracked changes,
 excluding generated files such as `__pycache__/` and `reports/`: an agent working on the same file is not stalled, a
@@ -246,6 +251,22 @@ Agent permissions and non-interactive mode are configured separately: `skills/sd
 an example allowlist and deny-list for Claude Code (it also denies writes to `scripts/`, `AGENTS.md`, `.github/`, spec,
 plan and review: the loop's own checks and rules), passed with `--agent "claude -p --settings <file>"` (verify the flag on
 your version).
+
+### review_package.py
+
+```
+python scripts/review_package.py docs/specs/001-x T-03 [--base main] [--out FILE]
+python scripts/review_package.py docs/specs/001-x [--base main] [--out FILE]     # whole branch
+```
+
+Not a check: it prepares the input of the independent reviewer, who has no Bash. With a task it collects the branch
+commits whose message carries `Task: T-03` (implementation commits, see `sdd-implement`) or `Test-Lock: T-03` (locked
+tests); without a task, every commit since the merge-base. It writes one Markdown file with the task line, the text of
+the covered ACs (all of them for the branch), the plan's `## Interfaces` and `## Review focus`, the rulings of
+`progress.md` (only the task's), the commit list, the files touched and the patches with 10 lines of context; generated
+files (`__pycache__/`, `reports/`) are excluded and uncommitted changes are not included. Default output:
+`reports/review/<spec folder>/<task or branch>.md`. Exit `2` with an invalid task ID, without git or base ref, or when no
+commit matches.
 
 ---
 

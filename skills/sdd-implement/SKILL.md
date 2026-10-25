@@ -34,15 +34,23 @@ Playbook §4 (phase 6) and §6. Work only on numbered `T-nn` tasks: `T-DOC` and 
    never as the definition of done).
 4. **Red:** read the error, fix, retry. After **3 attempts** on the same task, stop: describe what you tried and ask
    for guidance (task too big or ambiguous spec).
-5. **Green:** tick the task in `tasks.md`. Commit with a clear message and the trailers `Spec: SPEC-<id>` and
-   `Agent: <name and version>`. If the user has not authorized commits, propose the message and do not commit. An
+5. **Green:** tick the task in `tasks.md`. Commit with a clear message and the trailers `Task: T-<nn>`,
+   `Spec: SPEC-<id>` and `Agent: <name and version>` (`review_package.py` finds the task's commits by `Task:`). If the user has not authorized commits, propose the message and do not commit. An
    "expected: red" test task is closed with the `Test-Lock` commit of the tests only (see `sdd-tests-from-ac`). In later
    tasks **do not modify the locked test files**: if a test looks wrong, stop and ask.
-6. Update `progress.md` in the spec folder (create it from `../sdd-loop/references/progress.md.tmpl` if it is
+6. **Task review** (playbook §4): mandatory at level L, at level M when `progress.md` says `- Task review: on` (ask the
+   user at the start of the feature; never at level S). Run `python scripts/review_package.py <spec-dir> T-<nn>` and give
+   **only the package path** to an independent reviewer: the `sdd-reviewer` agent in task review mode (Claude Code
+   subagent, Copilot custom agent) or a new session with the same instructions. `high` and `medium` problems are fixed in
+   the same task (new commits with `Task: T-<nn>`) and the package is reviewed again; after 2 rounds still failing, stop
+   and ask. Record the verdict in `progress.md`, section `## Task reviews`: `- T-<nn>: pass — <reviewer>` or
+   `- T-<nn>: fix needed — <problems>`. `state.py`, `sync_check.py` and `loop.py` require `pass` for every closed
+   `T-nn` task when the review applies.
+7. Update `progress.md` in the spec folder (create it from `../sdd-loop/references/progress.md.tmpl` if it is
    missing): done, learned, blockers, and the **rulings**: every decision you took within the latitude of spec and plan
    (names, library calls, data structures, messages), one per line as `- T-nn: <what> — <why> — <what it costs if
    wrong>`. The review checks them. An ambiguous requirement is not a ruling: stop and ask.
-7. Move to the next task only if the user asked to proceed in sequence; otherwise stop and report.
+8. Move to the next task only if the user asked to proceed in sequence; otherwise stop and report.
 
 ## Stop rules
 

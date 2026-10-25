@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# sdd-playbook: 0.14.0
+# sdd-playbook: 0.15.0
 """Closing check of a feature: spec, tasks, review, area page and traceability aligned.
 
 Usage:
@@ -7,7 +7,8 @@ Usage:
 
 Checks:
   1. spec valid and with Status = implemented
-  2. no open task in tasks.md
+  2. no open task in tasks.md; at level L (or M with "- Task review: on" in progress.md) every closed T-nn task has
+     "- T-nn: pass" in "## Task reviews" of progress.md
   3. review.md present with a valid Outcome other than "non-compliant", and the human decision filled in
   4. area page (--area, or the first one in docs/system/ that cites the spec) with the required sections,
      "Last aligned" filled in and the spec among the "Linked specs"
@@ -83,6 +84,11 @@ def check(feature: Path, area_arg: str | None, tests: list[Path], junit: list[st
         unapproved = spec_lint.tests_to_approve(tasks) if level != "S" else []
         if unapproved:
             err.append(f"locked tests without human approval ('tests approved:'): {', '.join(unapproved)}")
+        progress_p = feature / "progress.md"
+        progress = progress_p.read_text(encoding="utf-8") if progress_p.is_file() else ""
+        unreviewed = spec_lint.task_reviews_missing(spec, tasks, progress)
+        if unreviewed:
+            err.append("task reviews missing or not passed (progress.md, '## Task reviews'): " + ", ".join(unreviewed))
     else:
         err.append("tasks.md not found")
 

@@ -44,7 +44,10 @@ the test task is listed in `tasks.md`. Naming conventions: `references/test-conv
 
 ## STOP
 
-Show the AC → test list, the failure messages and the SHA of the `Test-Lock` commit. At levels M and L ask the user to
+Show the AC → test list, the failure messages and the SHA of the `Test-Lock` commit. When the task review applies
+(level L, or M with `- Task review: on`), run it first on the `Test-Lock` commit (`review_package.py <spec-dir> T-<nn>`,
+see `sdd-implement`): the reviewer checks that the tests derive from the ACs and avoid the anti-patterns, and its
+verdict goes to the user together with the tests. At levels M and L ask the user to
 **read the locked tests** (the diff of that commit), with the approval checklist of `references/test-conventions.md`:
 they define "done" for the implementation. Only after their explicit confirmation, with their name, append to the task line `— tests approved: <name, yyyy-mm-dd, sha>` with the
 short SHA of the `Test-Lock` commit the user read (a new `Test-Lock` commit for the same task voids the approval:

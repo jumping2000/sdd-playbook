@@ -78,8 +78,8 @@ then the review is repeated. `sdd-next` tells you so.
 | Level | When | What changes |
 |---|---|---|
 | **S** | All true: at most 3 production files, no sensitive area, no dependency, no public interface | No plan and no `review.md`; the review is the PR review |
-| **M** | The normal case | The full cycle |
-| **L** | Sensitive areas, public interfaces, data migrations | Plus an ADR for the decisions and your **reading of the diff** |
+| **M** | The normal case | The full cycle; optionally a review of every task (`- Task review: on` in `progress.md`) |
+| **L** | Sensitive areas, public interfaces, data migrations | Plus an ADR for the decisions, a review of every task and your **reading of the diff** |
 
 The level is approved with the spec and is part of its hash. If the real diff exceeds it, `diff_scope.py` reports an
 error. When in doubt, pick the higher level.

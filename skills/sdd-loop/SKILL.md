@@ -15,6 +15,10 @@ the user launches it, in a terminal and an isolated environment.
 - The loop ends successfully only if, besides a green `verify` and closed tasks, the final checks pass (`spec_lint.py`,
   `trace_check.py`, `diff_scope.py`, `secrets_check.py`); with `--junit <report>` (written by `verify`) `trace_check.py`
   also checks that every AC has a passing test.
+- Task review (level L, or M with `- Task review: on` in `progress.md`): `PROMPT.md` asks the agent to review every
+  task with `review_package.py` and the `sdd-reviewer` agent, and the loop does not end successfully while a closed
+  `T-nn` task lacks `- T-nn: pass` in `progress.md`. The agent launched by the loop must be able to use the reviewer
+  (Claude Code subagent, Copilot custom agent); otherwise it records "not reviewed" and the review is done by hand.
 - At levels M and L the loop stops (exit 1) after every "expected: red" test task: the user reads the locked tests,
   writes `tests approved:` on the task line and relaunches. It does not start if an approval is already pending.
 - You are on a **feature branch** (the loop refuses main/master) and `verify` is green on the baseline, or you are in
@@ -25,7 +29,8 @@ the user launches it, in a terminal and an isolated environment.
 ## Steps
 
 1. **Create** `progress.md` from `references/progress.md.tmpl` and `PROMPT.md` from `references/PROMPT.md.tmpl`
-   (replace `<id>`) in the spec folder.
+   (replace `<id>`) in the spec folder. At level M ask the user whether to turn on the task review
+   (`- Task review: on`); at level L it is always on.
 2. **Permissions:** propose `references/settings.loop.json` (allowlist for `verify`, scripts and commits; deny for
    push, amend, reset, deletes, network, `.env`, and for writing `scripts/`, `AGENTS.md`, `.github/`, spec, plan and
    review, which are the loop's checks and rules). Add the tasks' `verify:` commands to the allowlist (for example

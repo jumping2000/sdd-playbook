@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# sdd-playbook: 0.14.0
+# sdd-playbook: 0.15.0
 """Project state according to the playbook and suggested next phase.
 
 Usage: python scripts/state.py [--json] [--spec <id>] [root]
@@ -9,7 +9,8 @@ With several active specs each one has its own next step; the NEXT line refers t
 whose folder name appears in the current branch, or the only active one. Otherwise it asks to choose.
 Levels (playbook §2.1): a level-S spec skips plan and review.md; a level-L spec also requires the human reading of the
 diff ("- Human diff review:" in review.md). At levels M and L the locked tests of a closed "expected: red" task must be
-approved by the human ("tests approved:" on the task line) before moving on.
+approved by the human ("tests approved:" on the task line) before moving on. At level L (or M with "- Task review: on"
+in progress.md) every closed T-nn task needs a passed task review in progress.md before the final review.
 Standard library only (+ git for the branch name, if present), cross-platform.
 """
 from __future__ import annotations
@@ -68,7 +69,8 @@ def current_branch(root: Path) -> str:
 
 
 def analyze_spec(d: Path) -> dict:
-    spec, plan, tasks, review = (_read(d / n) for n in ("spec.md", "plan.md", "tasks.md", "review.md"))
+    spec, plan, tasks, review, progress = (_read(d / n) for n in ("spec.md", "plan.md", "tasks.md", "review.md",
+                                                                  "progress.md"))
     open_tasks = re.findall(r"^\s*-\s+\[ \]\s+(T-[A-Z0-9]+)", tasks, re.M)
     closed_tasks = re.findall(r"^\s*-\s+\[[xX]\]\s+(T-[A-Z0-9]+)", tasks, re.M)
     numbered = [t for t in open_tasks if re.fullmatch(r"T-R?\d+", t)]
@@ -98,6 +100,7 @@ def analyze_spec(d: Path) -> dict:
         "numbered_tasks_open": len(numbered),
         "next_task": numbered[0] if numbered else None,
         "tests_to_approve": spec_lint.tests_to_approve(tasks),
+        "task_reviews_missing": spec_lint.task_reviews_missing(spec, tasks, progress),
         "review_tasks": len([t for t in open_tasks + closed_tasks if t.startswith("T-R")]),
         "doc_open": "T-DOC" in open_tasks,
         "sync_open": "T-SYNC" in open_tasks,
@@ -136,6 +139,10 @@ def next_for_spec(s: dict) -> dict:
         return {"skill": "sdd-implement", "spec": i,
                 "reason": f"open tasks: {s['numbered_tasks_open']}, next {s['next_task']} "
                           "(for many independent tasks consider sdd-loop)"}
+    if s["task_reviews_missing"]:
+        return {"skill": "sdd-implement", "spec": i,
+                "reason": f"task reviews missing for {', '.join(s['task_reviews_missing'])} "
+                          "(review_package.py and the reviewer agent; '- T-nn: pass' in progress.md)"}
     if not s["review_valid"]:
         return {"skill": "sdd-review-diff", "spec": i, "reason": "T-nn tasks done: a valid review is missing (review.md)"}
     if s["review"] == "non-compliant":

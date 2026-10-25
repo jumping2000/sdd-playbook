@@ -24,13 +24,17 @@ Playbook §4 (phase 7), §5 (step 8) and §3.8. A context **independent** of the
      report written by `verify` (without a report it checks only the citations: say so in the report);
    - `python scripts/secrets_check.py`: no secrets in the branch files.
 2. **Independent review.**
-   - Claude Code: delegate to the `sdd-reviewer` subagent, passing in the message the spec folder, the full diff
-     (`git diff <merge-base>` plus the untracked files), the rulings of `progress.md` and the output of `verify` and of
-     step 1: the subagent has no Bash, so it cannot run commands or modify files. For errors less correlated with the implementer's, the user can
-     set a different model than the session's in the agent frontmatter (`model:`).
+   - Prepare the package of the whole branch with `python scripts/review_package.py <spec-dir>` (commits, patches,
+     ACs, interfaces, review focus, rulings); uncommitted changes are not in it, so commit first. When task reviews were
+     done (level L, or M with `- Task review: on`), the final review focuses on what they cannot see: the integration
+     between tasks, the non-scope, the overall AC coverage and the rulings; pass the "Task reviews" section too.
+   - Claude Code: delegate to the `sdd-reviewer` subagent, passing in the message the spec folder, the package path and
+     the output of `verify` and of step 1: the subagent has no Bash, so it cannot run commands or modify files. For
+     errors less correlated with the implementer's, the user can set a different model than the session's in the agent
+     frontmatter (`model:`).
    - GitHub Copilot: the same agent as a Copilot custom agent (`.github/agents/sdd-reviewer.agent.md`, copied by
      `sdd-init`), with only read and search tools.
-   - Other agents (Codex included): open a **new session** and give only spec, plan, step 1 output and the diff; do not
+   - Other agents (Codex included): open a **new session** and give only spec, plan, step 1 output and the package; do not
      bring the implementation conversation. Use the same instructions as the plugin's `agents/sdd-reviewer.md`.
    The reviewer tries to **refute** the result, not to confirm it.
 3. **Write** `review.md` in the spec folder from `references/review-template.md`: proposed outcome (`compliant`,

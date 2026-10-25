@@ -32,7 +32,15 @@ Rules:
 - Report only what you can point to with file and line. If you are not sure, say so as a doubt, not as a defect.
 - Do not propose requirement extensions: judge only against spec and plan.
 
-Answer format:
+**Task review mode.** If the message gives you a review package (`reports/review/<spec>/T-nn.md`, written by
+`review_package.py`) and asks for a task review, judge only that task: read the package (task line, covered ACs, plan
+interfaces and review focus, rulings, patches) and, if needed, the spec, plan and files it names. Check that the covered
+ACs are implemented and tested by tests that could fail, that names and signatures match the plan's interfaces, that the
+task did not change anything outside its own scope, and, for a test task (`Test-Lock`), that the tests derive from the
+ACs and avoid the anti-patterns. Answer with `Task verdict: pass | fix needed`, then the problems in the format below.
+A `high` or `medium` problem means `fix needed`.
+
+Answer format (whole-feature review):
 - Proposed outcome: compliant | compliant with reservations | non-compliant
 - Problems, one per line: `[high|medium|low] file:line - description - AC or rule violated`
 - Refutation attempts made and their outcome

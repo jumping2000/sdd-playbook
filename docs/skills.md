@@ -52,7 +52,7 @@ the diff.
 
 - **When:** once per project, before specs or code.
 - **What it does:** detects operating system, stack and existing code; asks in a single message for what it cannot
-  detect (real commands, Windows yes/no, CI provider); copies the 11 scripts into `scripts/` (each with the plugin
+  detect (real commands, Windows yes/no, CI provider); copies the 12 scripts into `scripts/` (each with the plugin
   version on line 2, for updates); adapts `STEPS` in `verify.py`, trying every command; creates `AGENTS.md`, `CLAUDE.md`
   (`@AGENTS.md`), `.gitattributes`, `.gitignore` entries, `.vscode/tasks.json`, `docs/constitution.md`, the `docs/*`
   folders, the CI workflow (with the PR "process checks" step), `CODEOWNERS` and the PR template; runs `verify` and
@@ -129,6 +129,9 @@ the diff.
   locked by a `Test-Lock` commit; stops if the change would exceed the spec level or needs an unplanned dependency.
 - **Rulings:** every decision taken within the latitude of spec and plan goes into `progress.md` (`- T-nn: what — why —
   cost if wrong`); an ambiguous requirement is not a ruling, it stops the work.
+- **Task review:** at level L (optional at M with `- Task review: on`) every task is reviewed by `sdd-reviewer` on its
+  package (`review_package.py <spec-dir> T-nn`) before the next one; high and medium problems are fixed in the same task
+  (at most 2 rounds); the verdict goes into `## Task reviews` of `progress.md`. Commits carry `Task: T-nn`.
 - **Review findings (`T-Rnn`):** verified on the code before any change; a wrong finding is not fixed but recorded with
   its evidence in "Disputed review findings".
 - **End:** when only `T-DOC` and `T-SYNC` remain, moves on to `sdd-review-diff`; does not declare the feature done.
@@ -149,7 +152,8 @@ the diff.
   reported in the PR.
 - **What it does:** `diff_scope.py` (including underestimated level, dependencies without a decision and approvals
   voided by new `Test-Lock` commits), `trace_check.py --junit` and `secrets_check.py`; independent review (Claude Code:
-  subagent `sdd-reviewer`, without Bash, that receives diff and outputs in the message; GitHub Copilot: the same agent as
+  subagent `sdd-reviewer`, without Bash, that receives the branch package of `review_package.py` and the outputs in the
+  message; after per-task reviews it focuses on integration, non-scope and rulings; GitHub Copilot: the same agent as
   the custom agent `.github/agents/sdd-reviewer.agent.md`; otherwise a new session with spec, plan, script outputs and
   diff); writes `review.md` with outcome, problems with file and line, refutation attempts.
 - **Gate:** the **decision belongs to the user** (`Decided by`; at level L also `Human diff review`, after the

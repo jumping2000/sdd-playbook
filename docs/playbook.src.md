@@ -187,8 +187,8 @@ real diff does not exceed the declared level.
 | Level | When | Documents | Review |
 |---|---|---|---|
 | **S** | All true: at most 3 production files (tests, `docs/` and `*.md` excluded), no public interface or data format changed, no sensitive area, no new or changed dependency | `spec.md` and `tasks.md` (no plan; `T-DOC` optional), tests from the ACs | Deterministic checks and the PR review; no `review.md`, area page optional |
-| **M** | The normal case: everything that is neither S nor L | All those in §2 | `review.md` with a fresh-context reviewer and human decision |
-| **L** | At least one: sensitive area (`- Sensitive areas:` in `AGENTS.md`: authentication, payments, personal data, migrations), public interface or data format changed incompatibly, data migration | As M, plus an ADR for the decisions taken | As M, plus the **human reading of the diff** (`- Human diff review:` in `review.md`) |
+| **M** | The normal case: everything that is neither S nor L | All those in §2 | `review.md` with a fresh-context reviewer and human decision; review per task optional (`- Task review: on`) |
+| **L** | At least one: sensitive area (`- Sensitive areas:` in `AGENTS.md`: authentication, payments, personal data, migrations), public interface or data format changed incompatibly, data migration | As M, plus an ADR for the decisions taken | As M, plus the **review per task** (mandatory) and the **human reading of the diff** (`- Human diff review:` in `review.md`) |
 
 Criteria checked by `diff_scope.py`: a file in a sensitive area requires L; a change to a dependency manifest or lockfile,
 or more than 3 production files, require at least M. Public interfaces and data formats cannot be recognized by a script:
@@ -267,8 +267,8 @@ The outcome is one of `compliant` (compliant), `compliant with reservations` (co
 | 3. Plan | `plan.md`, read-only | `sdd-plan` | **You approve the plan** |
 | 4. Tasks | `tasks.md` in small steps, each with a verification command | `sdd-tasks` | Quick check |
 | 5. Tests first | From the ACs, the agent writes the tests; they must fail for the right reason; `Test-Lock` commit | `sdd-tests-from-ac` (via `sdd-implement`) | **You approve the locked tests** (`tests approved:`; at level S a spot check is enough) |
-| 6. Implementation | Task by task, `verify` at every step; commit at every green task | `sdd-implement`, or `sdd-loop` (§7) | — |
-| 7. Diff review | Fresh context, trying to refute; `review.md` | `sdd-review-diff` | **You decide on the review** |
+| 6. Implementation | Task by task, `verify` at every step; commit at every green task (`Task: T-nn`); at level L (optional at M) a fresh reviewer checks every task on its review package (`review_package.py`) before the next one | `sdd-implement`, or `sdd-loop` (§7) | — |
+| 7. Diff review | Fresh context, trying to refute, on the package of the whole branch; after per-task reviews it focuses on integration, non-scope and rulings; `review.md` | `sdd-review-diff` | **You decide on the review** |
 | 8. Documentation | T-DOC: executed examples, valid links | `sdd-docs` | Review |
 | 9. Reconciliation | T-SYNC: spec and `docs/system/` aligned with the real behaviour; spec state = `implemented` | `sdd-sync` | Review, then PR |
 | 10. Replan | Between features, update `constitution.md`/`AGENTS.md` with what you learned | — | — |
@@ -467,10 +467,10 @@ works with Claude Code, Codex and GitHub Copilot (CLI and coding agent). Full gu
 | Plan (§3.4) | `sdd-plan` | `spec_lint.py --plan` | **Plan approval** |
 | Tasks (§3.5) | `sdd-tasks` | `spec_lint.py --tasks` | Quick check |
 | Tests from ACs (§6) | `sdd-tests-from-ac` | `trace_check.py` | **Approval of the locked tests** (M, L) |
-| Implementation (§4, phase 6) | `sdd-implement` | `verify.py` | PR review |
+| Implementation (§4, phase 6) | `sdd-implement` | `verify.py`, `review_package.py` | PR review |
 | Loop (§7) | `sdd-loop` | `loop.py` | **Permissions, cap, launch** |
 | Bug fixing (§6.1) | `sdd-bugfix` | `bug_lint.py`, `verify.py` | Expected and "must NOT change" |
-| Diff review (§4, phase 7) | `sdd-review-diff` | `diff_scope.py`, `trace_check.py`, `secrets_check.py` | **Review decision** |
+| Diff review (§4, phase 7) | `sdd-review-diff` | `diff_scope.py`, `trace_check.py`, `secrets_check.py`, `review_package.py` | **Review decision** |
 | Documentation (§6) | `sdd-docs` | `docs_check.py` | Review |
 | Reconciliation (§4, phase 9) | `sdd-sync` | `sync_check.py` | Review, then PR |
 
@@ -488,7 +488,8 @@ works with Claude Code, Codex and GitHub Copilot (CLI and coding agent). Full gu
 | `docs_check.py` | Valid relative links; marked Python examples executed successfully |
 | `sync_check.py` | Closure: spec `implemented`, tasks closed, tests approved, review with human decision, area page, traceability (with the JUnit report at level L) |
 | `secrets_check.py` | Keys and tokens with a known format and `.env` files in the branch files (or in the whole repository with `--all`) |
-| `loop.py` | Outer loop with cap, stall detection, timeout per iteration, baseline, protected branch, pause for test approval and dry run |
+| `loop.py` | Outer loop with cap, stall detection, timeout per iteration, baseline, protected branch, pause for test approval, task reviews at level L and dry run |
+| `review_package.py` | Not a check: writes in one file what an independent reviewer needs for a task (commits with `Task:`/`Test-Lock:`, covered ACs, plan interfaces and review focus, rulings, patches) or for the whole branch |
 
 **Optional hooks (Claude Code only; not ported to Codex and GitHub Copilot)**, inactive unless enabled with an environment variable. They start from `hooks/run.sh`, which exits immediately if the hook is not enabled and otherwise uses the first of `python3`, `python` and `py -3` that is Python 3; without Python the error is visible but non-blocking:
 
