@@ -35,6 +35,8 @@ Playbook §3.5 and §4 (phase 4).
      `spec_lint.py <spec> --plan <plan> --tasks <tasks>` and `state.py` ask to review the tasks.
    - `T-Rnn` tasks are not written here: `sdd-review-diff` adds them after a non-compliant review.
    - Every AC is covered by at least one task; no task touches what is in the non-scope.
+   - The tests of the plan's **Review focus** go into the test task of the component that owns the case (they cite no
+     AC: name them after the case).
    - Always include `T-DOC` (documentation, executed examples: `sdd-docs`; optional at level S) and `T-SYNC`
      (reconciliation of spec and `docs/system/`, then `Status: implemented`: `sdd-sync`). They have no `covers:`: they
      run after the review.

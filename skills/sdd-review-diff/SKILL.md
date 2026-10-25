@@ -25,8 +25,8 @@ Playbook §4 (phase 7), §5 (step 8) and §3.8. A context **independent** of the
    - `python scripts/secrets_check.py`: no secrets in the branch files.
 2. **Independent review.**
    - Claude Code: delegate to the `sdd-reviewer` subagent, passing in the message the spec folder, the full diff
-     (`git diff <merge-base>` plus the untracked files) and the output of `verify` and of step 1: the subagent has no
-     Bash, so it cannot run commands or modify files. For errors less correlated with the implementer's, the user can
+     (`git diff <merge-base>` plus the untracked files), the rulings of `progress.md` and the output of `verify` and of
+     step 1: the subagent has no Bash, so it cannot run commands or modify files. For errors less correlated with the implementer's, the user can
      set a different model than the session's in the agent frontmatter (`model:`).
    - GitHub Copilot: the same agent as a Copilot custom agent (`.github/agents/sdd-reviewer.agent.md`, copied by
      `sdd-init`), with only read and search tools.
@@ -35,7 +35,8 @@ Playbook §4 (phase 7), §5 (step 8) and §3.8. A context **independent** of the
    The reviewer tries to **refute** the result, not to confirm it.
 3. **Write** `review.md` in the spec folder from `references/review-template.md`: proposed outcome (`compliant`,
    `compliant with reservations`, `non-compliant`), problems with file and line, refutation attempts.
-4. If the outcome is `non-compliant`: turn every `high` or `medium` problem into a task in `tasks.md`, section
+4. The reviewer's findings are hypotheses: the user decides which ones become tasks. If the outcome is
+   `non-compliant`: turn every `high` or `medium` problem the user accepts into a task in `tasks.md`, section
    `## Fixes from review`, with continuing numbering (`- [ ] T-R01 <problem> — verify: \`<command>\``, `covers:` if it
    touches an AC). `spec_lint.py --tasks` checks them, `sdd-implement` and the loop execute them, `state.py` asks to
    repeat the review when they are all closed. The repeated review updates `review.md`.

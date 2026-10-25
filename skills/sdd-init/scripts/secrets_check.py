@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# sdd-playbook: 0.13.0
+# sdd-playbook: 0.14.0
 """Secret scan in files: keys and tokens with a recognizable format, versioned .env files.
 
 Usage:

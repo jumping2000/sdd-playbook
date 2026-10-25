@@ -15,6 +15,7 @@
 ## Scope
 - Included: <...>
 - **Non-scope (explicit):** <what must NOT be done or touched>
+- **Anti-goals:** <what would make this a failure even if it technically works>
 
 ## Use cases
 - UC-001 <name>: actor, preconditions, main flow, alternative/error flows

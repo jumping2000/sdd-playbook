@@ -13,28 +13,40 @@ human reading of the diff. You propose it with the criteria, the user decides.
 
 ## Steps
 
-1. **Read** `AGENTS.md` and `docs/constitution.md`. In brownfield also read `docs/system/map.md` and the
-   `docs/system/<area>.md` page of the area involved. If the area has no characterization tests, propose
-   `sdd-characterize` **before** writing the spec.
-2. **Clarify before writing.** List the open questions and assumptions to the user and **ask them**; do not answer them
-   yourself. A question about a decision that belongs to the user stays open until they answer.
-3. **Write** `docs/specs/<id>/spec.md` with `references/spec-template.md`. The `<id>` is today's date plus a short
+1. **Look before you ask.** Read `AGENTS.md` and `docs/constitution.md`, the material the user pointed to and the code
+   the request touches, until you can explain how the relevant parts work today. In brownfield also read
+   `docs/system/map.md` and the `docs/system/<area>.md` page of the area involved; if the area has no characterization
+   tests, propose `sdd-characterize` **before** writing the spec. Never ask what the project already answers.
+2. **Play the request back.** In a short message, restate in your own words what the user wants, for whom and why, and
+   what the change would touch; say plainly if you found a constraint, a conflict or a cheaper path. End with one
+   question.
+3. **Clarify, one question per message.** Ask the question whose answer would most change what gets built, and say why
+   you ask it. Use the user's words, not process jargon. Cover the ground without reading it out as a list: goal and
+   success criterion, users, non-scope, **anti-goals** (what would make it a failure even if it works), constraints,
+   error cases. Do not answer the questions yourself: a decision that belongs to the user stays open until they answer.
+   Stop asking when the remaining doubts would not change the requirements; they go into "Open questions".
+4. **Options, when the request admits really different outcomes for the user** (scope, behaviour, experience): present
+   2-3 options with their trade-offs in a message of their own and let the user choose. Technical alternatives belong
+   to the plan, not here.
+5. **Write** `docs/specs/<id>/spec.md` with `references/spec-template.md`. The `<id>` is today's date plus a short
    lower-case slug (`2026-10-24-export-csv`): it is the folder name and appears in the title
    (`# SPEC-2026-10-24-export-csv: Export CSV`), so two people or two branches do not pick the same ID. Rules:
    - every requirement is a verifiable sentence; every REQ has at least one AC in Given/when/then form, with an error
      case where it makes sense;
    - the **non-scope** is mandatory and concrete (what must not be done or touched); in brownfield describe only the
      delta;
+   - the **anti-goals** record what the user said would make the feature a failure; `spec_lint.py` warns if they are
+     missing;
    - every assumption is marked `[ASSUMPTION]`;
    - `- Level:` S, M or L with the criteria of playbook §2.1: S only if **all** true (at most 3 production files, no
      public interface or data format changed, no sensitive area of `AGENTS.md`, no dependency); L if it touches a
      sensitive area, a public interface or a data migration. When in doubt, the higher one. `diff_scope.py` will report
      a diff that exceeds the level;
    - `Status: draft`; the approval fields stay empty.
-4. **Check** with `python scripts/spec_lint.py docs/specs/<id>/spec.md` and fix until there are no errors (warnings
+6. **Check** with `python scripts/spec_lint.py docs/specs/<id>/spec.md` and fix until there are no errors (warnings
    must be read and reported).
-5. **Summarize** to the user: proposed level with the reason, list of REQs, assumptions, non-scope, remaining open
-   questions.
+7. **Summarize** to the user: proposed level with the reason, list of REQs, assumptions, non-scope, anti-goals,
+   remaining open questions.
 
 ## STOP
 

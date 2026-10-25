@@ -4,6 +4,29 @@
 
 Le voci precedenti alla 0.13.0 usano i nomi del loro tempo (`sdlc-*`, `SDLC_*`, campi in italiano).
 
+## 0.14.0
+Pratiche prese dal plugin superpowers e adattate alla governance di SDD Playbook: spec e piani migliori, test migliori,
+decisioni rese visibili. Testo e template, più un nuovo controllo in `spec_lint.py`.
+- **Spec (`sdd-spec`):** l'agente legge codice e materiale prima di chiedere, riformula la richiesta, fa una domanda per
+  messaggio (quella che cambierebbe di più ciò che si costruisce), propone 2-3 opzioni quando gli esiti per l'utente sono
+  davvero diversi; nuova riga `- **Anti-goals:**` nel template della spec (`spec_lint.py` avvisa se manca).
+- **Piano (`sdd-plan`):** interfacce tra i componenti (cosa produce / cosa consuma, nomi esatti); nuova sezione
+  `## Review focus` con al massimo 5 classi di input che nessun AC esercita, ognuna con il suo test
+  (`spec_lint.py --plan`: sezione obbligatoria, segnaposto come avviso prima dell'approvazione ed errore dopo; `- none` è
+  valido); autoverifica contro la spec (copertura, nomi coerenti, proporzione). `diff_scope.py` legge anche la colonna
+  "Where" del review focus come percorsi pianificati.
+- **Qualità dei test (`sdd-tests-from-ac`):** tabella degli anti-pattern e checklist di approvazione nelle convenzioni dei
+  test; l'agente revisore giudica i test con questi criteri.
+- **Decisioni (rulings):** le decisioni prese nei margini di spec e piano vanno in `progress.md` (`## Rulings`: cosa,
+  perché, costo se sbagliata); `sdd-implement` crea `progress.md` se manca; il revisore controlla che nessuna decisione
+  cambi un requisito.
+- **Ricevere una review:** i rilievi delle task `T-Rnn` si verificano prima sul codice; quelli sbagliati si annotano in
+  `## Disputed review findings` invece di essere "corretti"; l'utente decide quali rilievi diventano task.
+- **Debugging (`sdd-bugfix`):** nuovo `references/debugging.md` (risalita alla sorgente, un'ipotesi alla volta,
+  bisezione di storia, input e suite di test, test intermittenti, stop dopo tre correzioni fallite).
+- Playbook §3.3, §3.4, §6, §6.1, §7.2 aggiornati; nuovi test per anti-obiettivi, review focus e sezioni del prompt del
+  loop.
+
 ## 0.13.0
 Il plugin si chiama **SDD Playbook**, è interamente in inglese e supporta anche GitHub Copilot. Nessuna compatibilità con
 i nomi precedenti: il plugin è in progettazione e non è mai stato usato su un progetto.

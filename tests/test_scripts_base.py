@@ -48,6 +48,29 @@ class TestSpecLint(unittest.TestCase):
         _, warn = spec_lint.lint_plan(SPEC_OK, PLAN_OK.replace("Anna Smith, 2026-10-19", "<name>"))
         self.assertTrue(warn)
 
+    def test_anti_goals_warning(self):
+        self.assertFalse(any("Anti-goals" in w for w in spec_lint.lint_spec(SPEC_OK)[1]))
+        no_anti = SPEC_OK.replace("a CSV that spreadsheets open with broken columns", "<what would make it fail>")
+        err, warn = spec_lint.lint_spec(no_anti)
+        self.assertFalse(any("Anti-goals" in e for e in err))
+        self.assertTrue(any("Anti-goals" in w for w in warn))
+
+    def test_review_focus(self):
+        table = ("## Review focus\n| Case | Expected behaviour | Where |\n|---|---|---|\n"
+                 "| empty report | clear error | tests/test_export.py |\n")
+        self.assertEqual(spec_lint.review_focus_problems(PLAN_OK), [])
+        self.assertEqual(spec_lint.review_focus_problems(PLAN_OK.replace("## Review focus\n- none\n", table)), [])
+        missing = PLAN_OK.replace("## Review focus\n- none\n", "")
+        self.assertTrue(any("Review focus" in e for e in spec_lint.lint_plan(SPEC_OK, missing)[0]))
+        placeholder = PLAN_OK.replace("## Review focus\n- none\n", table.replace("empty report", "<input>"))
+        self.assertTrue(any("Review focus" in e for e in spec_lint.lint_plan(SPEC_OK, placeholder)[0]))  # approved
+        unsigned = placeholder.replace("Anna Smith, 2026-10-19", "<name, yyyy-mm-dd>")
+        err, warn = spec_lint.lint_plan(SPEC_OK, unsigned)
+        self.assertFalse(any("Review focus" in e for e in err))
+        self.assertTrue(any("Review focus" in w for w in warn))
+        empty = PLAN_OK.replace("## Review focus\n- none\n", "## Review focus\n")
+        self.assertTrue(spec_lint.review_focus_problems(empty))
+
     def test_plan_looks_for_exact_ids_in_the_test_strategy(self):
         cited_elsewhere = PLAN_OK.replace("| AC-002 | unit |\n", "") + "\n## Risks\n- AC-002 to evaluate\n"
         self.assertTrue(any("AC-002" in e for e in spec_lint.lint_plan(SPEC_OK, cited_elsewhere)[0]))

@@ -19,11 +19,14 @@ the test task is listed in `tasks.md`. Naming conventions: `references/test-conv
    the user.
 3. **Minimal skeleton** of the code under test, only if needed to run the tests (a signature raising a "not
    implemented" error): the goal is that the tests fail on behaviour, not on an import.
-4. **Run the task's tests:** they must be **red for the right reason**. Report the failure message of each one. A
+4. **Check the test quality** against "What makes a test worth locking" in `references/test-conventions.md`: assertions
+   on the observable outcome with exact values from the ACs, mocks only at the boundaries. Include the plan's Review
+   focus cases assigned to this task.
+5. **Run the task's tests:** they must be **red for the right reason**. Report the failure message of each one. A
    syntax, import or name error is not the right reason: fix the test.
-5. **Check traceability:** `python scripts/trace_check.py <spec> --warn-only` (the ACs of later tasks will still show
+6. **Check traceability:** `python scripts/trace_check.py <spec> --warn-only` (the ACs of later tasks will still show
    no tests).
-6. **Lock the tests with a commit.** If you wrote a skeleton, commit it first, separately. Then commit **only the test
+7. **Lock the tests with a commit.** If you wrote a skeleton, commit it first, separately. Then commit **only the test
    files** with the trailers `Test-Lock: T-<nn>`, `Spec: SPEC-<id>` and `Agent: <name and version>`, and tick the
    task. From now on `diff_scope.py` reports as an error any later change to those tests: the implementation must make
    them pass without touching them. The branch CI stays red until the implementation task: it is expected, and the
@@ -42,8 +45,8 @@ the test task is listed in `tasks.md`. Naming conventions: `references/test-conv
 ## STOP
 
 Show the AC → test list, the failure messages and the SHA of the `Test-Lock` commit. At levels M and L ask the user to
-**read the locked tests** (the diff of that commit): they define "done" for the implementation. Only after their
-explicit confirmation, with their name, append to the task line `— tests approved: <name, yyyy-mm-dd, sha>` with the
+**read the locked tests** (the diff of that commit), with the approval checklist of `references/test-conventions.md`:
+they define "done" for the implementation. Only after their explicit confirmation, with their name, append to the task line `— tests approved: <name, yyyy-mm-dd, sha>` with the
 short SHA of the `Test-Lock` commit the user read (a new `Test-Lock` commit for the same task voids the approval:
 `diff_scope.py`); until then `state.py` does not point to implementation and `loop.py` stops. Never write it on your
 own initiative. At level S a spot check is enough.

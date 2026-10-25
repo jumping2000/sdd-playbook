@@ -77,6 +77,7 @@ Export the report as CSV.
 ## Scope
 - Included: CSV export
 - **Non-scope (explicit):** no change to the PDF format
+- **Anti-goals:** a CSV that spreadsheets open with broken columns
 
 ## Requirements
 - REQ-001 (functional): the report can be exported as CSV
@@ -99,6 +100,9 @@ PLAN_OK = """# PLAN for SPEC-001
 ## Test strategy (mapped to ACs)
 | AC-001 | unit |
 | AC-002 | unit |
+
+## Review focus
+- none
 """
 _spec_lint = load("spec_lint")
 APPROVED_SPEC = "- Approved by / date: Anna Smith, 2026-10-19\n"

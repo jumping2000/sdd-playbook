@@ -81,8 +81,8 @@ protetto è l'approvazione che l'agente non può darsi da solo (playbook §1.2).
 
 | Modalità | Errori rilevati |
 |---|---|
-| spec | stato non valido (`draft`, `approved`, `in-revision`, `implemented`, `superseded`); livello diverso da S, M, L (avviso se manca: vale M); titolo senza ID `# SPEC-<id>:`, data non valida o ID diverso dal nome della cartella; `in-revision` senza una voce in `## Revisions`; sezioni mancanti; ID REQ/AC duplicati; REQ senza AC; AC che cita REQ inesistenti; non-scope assente o con segnaposto; se `approved`/`implemented`: approvatore mancante, hash mancante o non corrispondente, domande aperte (avviso se restano `[ASSUMPTION]`) |
-| `--plan` | sezione `## Test strategy` mancante; AC della spec assenti da quella sezione (ID esatto: `AC-001` non vale per `AC-0011`); piano approvato con hash non valido o basato su un'altra versione della spec; avviso se il piano non è approvato |
+| spec | stato non valido (`draft`, `approved`, `in-revision`, `implemented`, `superseded`); livello diverso da S, M, L (avviso se manca: vale M); titolo senza ID `# SPEC-<id>:`, data non valida o ID diverso dal nome della cartella; `in-revision` senza una voce in `## Revisions`; sezioni mancanti; ID REQ/AC duplicati; REQ senza AC; AC che cita REQ inesistenti; non-scope assente o con segnaposto (avviso se mancano gli anti-obiettivi, `Anti-goals`); se `approved`/`implemented`: approvatore mancante, hash mancante o non corrispondente, domande aperte (avviso se restano `[ASSUMPTION]`) |
+| `--plan` | sezione `## Test strategy` mancante; AC della spec assenti da quella sezione (ID esatto: `AC-001` non vale per `AC-0011`); sezione `## Review focus` mancante; review focus con segnaposto o vuoto (avviso prima dell'approvazione, errore dopo; `- none` è valido); piano approvato con hash non valido o basato su un'altra versione della spec; avviso se il piano non è approvato |
 | `--base` | spec o piano assenti su `<ref>` o diversi dalla versione su `<ref>` |
 | `--tasks` | nessuna task; task `T-nn` senza `verify:` o `covers:` o con segnaposto `<...>`; task `T-Rnn` senza `verify:` o con segnaposto (`covers:` facoltativo); ID duplicati; `T-SYNC` mancante, o `T-DOC` mancante salvo nel livello S; AC non coperto da nessuna task |
 | `--plan` e `--tasks` insieme | task con `- Based on plan:` diverso dall'hash del piano (avviso se il campo manca) |
@@ -147,7 +147,7 @@ parola); quelle che non sembrano percorsi sono segnalate e ignorate. Segnala:
   non di test di un commit `Test-Lock` (per esempio uno scheletro) non vengono bloccati e sono segnalati come avviso;
 - **avviso** (errore con `--strict`): file fuori dal piano (esclusi `docs/specs/<questa spec>/`, `docs/system/`,
   `docs/bugs/`, `docs/adr/`). Il piano comprende le righe di "Componenti e file" (percorso = prima parola o testo tra
-  backtick, quindi `- src/a.py (new): ...` vale `src/a.py`) e la colonna "Where" della strategia di test;
+  backtick, quindi `- src/a.py (new): ...` vale `src/a.py`) e la colonna "Where" della strategia di test e del review focus;
 - **errore** (exit 1): **livello sottostimato** (playbook §2.1). Un file nelle righe `- Sensitive areas:` di `AGENTS.md`
   richiede L; una modifica a un manifest o lockfile delle dipendenze (`package.json`, `pyproject.toml`,
   `requirements*.txt`, `go.mod`, `*.csproj`, i lockfile, ...) o più di 3 file di produzione (esclusi test, `docs/` e

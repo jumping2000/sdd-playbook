@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# sdd-playbook: 0.13.0
+# sdd-playbook: 0.14.0
 """Checks on a bug file (docs/bugs/BUG-nnn-*.md) according to the playbook.
 
 Usage: python scripts/bug_lint.py docs/bugs/BUG-001-example.md

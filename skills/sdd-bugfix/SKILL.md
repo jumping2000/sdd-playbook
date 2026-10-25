@@ -17,8 +17,9 @@ If the cause is obvious and the diff is one line, that is enough: red test, fix,
    confirms expected and unchanged behaviour. If the spec was silent or wrong, say so: it is also a spec bug.
 3. **Red test.** Write a test that fails for the bug's reason and give its path in "Fix and tests". Run it and show the
    failure.
-4. **Diagnosis** (`diagnosed`). Read-only until the cause is clear: logs, debugger, `git bisect`. Write the verified
-   root cause, not a hypothesis.
+4. **Diagnosis** (`diagnosed`). Read-only until the cause is clear, with the techniques of `references/debugging.md`:
+   trace the bad value back to its source, one hypothesis and one experiment at a time, bisect history, input or test
+   suite, make flaky failures reproducible. Write the verified root cause, not a hypothesis, and the refuted hypotheses.
 5. **Minimal fix** (`fixed`). Only what is needed. No refactoring in the same commit. Add the test on the unchanged
    behaviour and give its path.
 6. **Non-regression:** full `python scripts/verify.py` green and the bug's test green.
@@ -35,4 +36,5 @@ session with that file as its only context.
 
 - Do not fix other defects you come across: record them as new bugs.
 - Do not weaken existing tests to make the fix pass.
-- After 3 failed fix attempts, stop and report what you tried.
+- After 3 failed fix attempts, stop and report what you tried: the cause is probably in the design
+  (`references/debugging.md`, section 5).

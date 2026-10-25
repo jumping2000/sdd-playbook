@@ -23,16 +23,27 @@ Playbook §3.4 and §4 (phase 3).
      `- path: what changes`** (`diff_scope.py` uses them for the review) and the callers touched; in brownfield also
      migrations and backward compatibility;
    - the test strategy table must contain **all** the ACs of the spec;
+   - **Interfaces:** for every component the tasks build, what it produces (exact names and signatures) and what it
+     consumes; a task, or a loop iteration, sees only its own part and learns the neighbours' names from here;
+   - **Review focus:** the input classes or failure modes the spec implies but no AC exercises (empty input, very large
+     input, concurrency, encoding, permissions...), at most 5, most likely first, each with the test that pins it and
+     where. A spec's silence on an input is not permission to break on it. Write `- none` only after checking;
    - risks with the way to verify them; release and rollback;
    - do not introduce anything the spec does not require: if it is needed, it is a question for the user;
    - every manifest or lockfile to change (new dependencies) goes into "Components and files": `diff_scope.py` accepts
      a dependency change only if it is in the approved plan or comes with an ADR;
    - `- Based on spec:` with the value of `- Hash:` of the approved spec.
-3. **Check** with `python scripts/spec_lint.py <spec> --plan <plan>`: it must pass. The warning about the plan not being
+3. **Self-review** with the spec in front of you, and fix inline:
+   - coverage: every REQ and AC has a place in the plan;
+   - consistency: the same component, function and field names in every section;
+   - review focus: filled in, each case with a test;
+   - proportion: the plan records decisions, it does not transcribe the code. A plan longer than the code it describes
+     has written the code instead; a line that decides nothing ("handle errors", "TBD") is a gap.
+4. **Check** with `python scripts/spec_lint.py <spec> --plan <plan>`: it must pass. The warning about the plan not being
    approved is expected at this point.
-4. If the plan requires a new dependency or an architecture decision, flag it as an ADR candidate (`docs/adr/`); do not
+5. If the plan requires a new dependency or an architecture decision, flag it as an ADR candidate (`docs/adr/`); do not
    create it without confirmation. At level L an ADR is due for every decision taken.
-5. If you find that the change exceeds the spec level (more files, a sensitive area, a dependency), stop: the level is
+6. If you find that the change exceeds the spec level (more files, a sensitive area, a dependency), stop: the level is
    changed in the spec, with a new approval.
 
 ## STOP

@@ -192,6 +192,8 @@ class TestDiffScope(unittest.TestCase):
                 "| AC | Level | Where | Notes |\n|---|---|---|---|\n| AC-001 | unit | `tests/test_a.py::test_x` | n |\n"
                 "| AC-002 | e2e | manual | n |\n| AC-003 | unit | tests/<file> | n |\n")
         self.assertEqual(diff_scope.plan_paths(plan), ["src/a.py", "src/b c.py", "tests/test_a.py"])
+        focus = plan + "\n## Review focus\n| Case | Expected behaviour | Where |\n|---|---|---|\n| empty | error | `tests/test_e.py` |\n"
+        self.assertEqual(diff_scope.plan_paths(focus)[-1], "tests/test_e.py")
         agents = "- Do not modify: legacy/\n- Text\n- Do not modify: .github/; migrations/\n"
         self.assertEqual(diff_scope.forbidden_paths(agents), ["legacy/", ".github/", "migrations/"])
 

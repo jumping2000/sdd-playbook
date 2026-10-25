@@ -240,6 +240,14 @@ class TestPlaybook(unittest.TestCase):
         for s in ("compliant", "compliant with reservations", "non-compliant"):
             self.assertIn(s, review)
         plan = read("skills/sdd-plan/references/plan-template.md")
+        self.assertIn("## Review focus", plan)
+        self.assertIn("produces", plan)
+        self.assertIn("**Anti-goals:**", spec)
+        progress = read("skills/sdd-loop/references/progress.md.tmpl")
+        prompt = read("skills/sdd-loop/references/PROMPT.md.tmpl")
+        for section in ("Rulings", "Disputed review findings"):  # the loop prompt names the progress.md sections
+            self.assertIn(f"## {section}", progress)
+            self.assertIn(f'"{section}"', prompt)
         self.assertIn("## Components and files to create/modify", plan)
         self.assertIn("- Approved by / date:", plan)
 

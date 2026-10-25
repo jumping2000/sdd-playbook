@@ -82,8 +82,8 @@ to the working copy: merging the design PR into a protected branch is the approv
 
 | Mode | Errors detected |
 |---|---|
-| spec | invalid state (`draft`, `approved`, `in-revision`, `implemented`, `superseded`); level other than S, M, L (warning if missing: counts as M); title without ID `# SPEC-<id>:`, invalid date or ID different from the folder name; `in-revision` without an entry in `## Revisions`; missing sections; duplicate REQ/AC IDs; REQ without AC; AC citing a non-existent REQ; non-scope missing or a placeholder; if `approved`/`implemented`: missing approver, missing or mismatching hash, open questions (warning if `[ASSUMPTION]` remain) |
-| `--plan` | missing `## Test strategy` section; spec ACs missing from that section (exact ID: `AC-001` does not match `AC-0011`); approved plan with invalid hash or based on another version of the spec; warning if the plan is not approved |
+| spec | invalid state (`draft`, `approved`, `in-revision`, `implemented`, `superseded`); level other than S, M, L (warning if missing: counts as M); title without ID `# SPEC-<id>:`, invalid date or ID different from the folder name; `in-revision` without an entry in `## Revisions`; missing sections; duplicate REQ/AC IDs; REQ without AC; AC citing a non-existent REQ; non-scope missing or a placeholder (warning for missing anti-goals); if `approved`/`implemented`: missing approver, missing or mismatching hash, open questions (warning if `[ASSUMPTION]` remain) |
+| `--plan` | missing `## Test strategy` section; spec ACs missing from that section (exact ID: `AC-001` does not match `AC-0011`); missing `## Review focus` section; review focus with placeholders or empty (warning before approval, error once approved; `- none` is valid); approved plan with invalid hash or based on another version of the spec; warning if the plan is not approved |
 | `--base` | spec or plan missing on `<ref>` or different from the version on `<ref>` |
 | `--tasks` | no tasks; `T-nn` tasks without `verify:` or `covers:` or with `<...>` placeholders; `T-Rnn` tasks without `verify:` or with placeholders (`covers:` optional); duplicate IDs; missing `T-SYNC`, or missing `T-DOC` except at level S; AC not covered by any task |
 | `--plan` and `--tasks` together | tasks whose `- Based on plan:` differs from the plan hash (warning if the field is missing) |
@@ -152,7 +152,7 @@ look like paths are reported and ignored. It reports:
   `Test-Lock` commit (e.g. a skeleton) are not locked and are reported as a warning;
 - **warning** (error with `--strict`): files outside the plan (excluding `docs/specs/<this spec>/`, `docs/system/`,
   `docs/bugs/`, `docs/adr/`). The plan includes the lines of "Componenti e file" (path = first word or text in backticks,
-  so `- src/a.py (new): ...` means `src/a.py`) and the "Where" column of the test strategy;
+  so `- src/a.py (new): ...` means `src/a.py`) and the "Where" column of the test strategy and of the review focus;
 - **error** (exit 1): **underestimated level** (playbook §2.1). A file in the `- Sensitive areas:` lines of `AGENTS.md`
   requires L; a change to a dependency manifest or lockfile (`package.json`, `pyproject.toml`, `requirements*.txt`,
   `go.mod`, `*.csproj`, the lockfiles, ...) or more than 3 production files (tests, `docs/` and `*.md` excluded) require

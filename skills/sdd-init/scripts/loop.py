@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# sdd-playbook: 0.13.0
+# sdd-playbook: 0.14.0
 """Outer loop: reruns the agent until verify is green and no numbered task (T-nn and T-Rnn) is open.
 
 Usage:

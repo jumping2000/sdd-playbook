@@ -83,9 +83,11 @@ the diff.
 ### sdd-spec
 
 - **When:** from an idea to an approvable specification; also to complete a draft.
-- **What it does:** reads `AGENTS.md`, constitution and (brownfield) map and area page; **asks** the open questions;
-  writes `spec.md` with a proposed level (S, M, L with the criteria of playbook §2.1), verifiable requirements,
-  Given/when/then ACs, mandatory non-scope, assumptions marked `[ASSUMPTION]`; `spec_lint.py` must pass; in brownfield it
+- **What it does:** reads `AGENTS.md`, constitution, the code involved and (brownfield) map and area page before asking
+  anything; plays the request back in its own words; **asks** one question per message, the one that would most change
+  what gets built; offers 2-3 options when the request admits really different outcomes for the user; writes `spec.md`
+  with a proposed level (S, M, L with the criteria of playbook §2.1), verifiable requirements, Given/when/then ACs,
+  mandatory non-scope, anti-goals, assumptions marked `[ASSUMPTION]`; `spec_lint.py` must pass; in brownfield it
   proposes `sdd-characterize` if the area has no tests.
 - **Approval:** only with explicit confirmation **and** the approver's name; then `Status: approved` and the hash.
 
@@ -93,8 +95,10 @@ the diff.
 
 - **Precondition:** spec `approved` and lint green, level M or L (there is no plan at level S).
 - **What it does:** read-only; `plan.md` with at least one discarded alternative, files in the format
-  `- path: what changes` (including any dependency manifest), all ACs in the test strategy, risks, release and rollback;
-  `spec_lint.py --plan` must pass. Flags ADR candidates without creating them.
+  `- path: what changes` (including any dependency manifest), interfaces between components (produces / consumes), all
+  ACs in the test strategy, the **review focus** (input classes no AC exercises, each with its test), risks, release and
+  rollback; self-review against the spec (coverage, names, proportion); `spec_lint.py --plan` must pass. Flags ADR
+  candidates without creating them.
 
 ### sdd-tasks
 
@@ -107,8 +111,10 @@ the diff.
 
 - **When:** for the tasks that write tests (called by `sdd-implement`) or on request.
 - **What it does:** tests from the ACs, not from the code, with the ID in the name (`references/test-conventions.md`),
-  plus the error cases; a minimal skeleton if needed; the tests must be **red for the right reason** (not import or
-  syntax errors), with the failure message reported; `trace_check.py --warn-only`.
+  plus the error cases and the plan's review focus cases; checks the test quality against the anti-patterns of the
+  conventions (assertions on mocks, weak assertions, production methods only for tests); a minimal skeleton if needed;
+  the tests must be **red for the right reason** (not import or syntax errors), with the failure message reported;
+  `trace_check.py --warn-only`.
 - **Rule:** red tests are committed alone, with the trailer `Test-Lock: T-nn` (the skeleton, if any, in an earlier
   commit). `diff_scope.py` reports any later change to those tests. At levels M and L the user reads the locked tests and
   only then the agent writes `tests approved: <name, date, sha>` on the task line; a new `Test-Lock` commit for the same
@@ -121,6 +127,10 @@ the diff.
 - **Cycle:** first open `T-nn` or `T-Rnn` task → implement only that → `verify:` command and full `verify` → green:
   tick, commit with `Spec:` and `Agent:` trailers; red: at most 3 attempts, then stop and ask. Never modifies tests
   locked by a `Test-Lock` commit; stops if the change would exceed the spec level or needs an unplanned dependency.
+- **Rulings:** every decision taken within the latitude of spec and plan goes into `progress.md` (`- T-nn: what — why —
+  cost if wrong`); an ambiguous requirement is not a ruling, it stops the work.
+- **Review findings (`T-Rnn`):** verified on the code before any change; a wrong finding is not fixed but recorded with
+  its evidence in "Disputed review findings".
 - **End:** when only `T-DOC` and `T-SYNC` remain, moves on to `sdd-review-diff`; does not declare the feature done.
 
 ### sdd-bugfix
@@ -128,7 +138,8 @@ the diff.
 - **When:** a defect to fix (not for new features). Trivial bugs: red test, fix, `verify`, no file.
 - **What it does:** `docs/bugs/BUG-nnn-slug.md` with states `open → diagnosed → fixed → verified`, checked by
   `bug_lint.py` at every transition; reproduction (if it does not reproduce, it stops), definition of expected and "must
-  NOT change" behaviour, red test, read-only diagnosis, minimal fix, non-regression test, closure.
+  NOT change" behaviour, red test, read-only diagnosis with the techniques of `references/debugging.md` (trace back to
+  the source, one hypothesis at a time, bisect, flaky tests), minimal fix, non-regression test, closure.
 - **Gate:** the user confirms expected and unchanged behaviour (step 2).
 - **Rules:** one bug, one branch, one commit; no refactoring in the same commit; other defects found = new bugs.
 

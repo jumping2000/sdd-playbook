@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# sdd-playbook: 0.13.0
+# sdd-playbook: 0.14.0
 """Compare the changed files with the plan, the forbidden zones and the locked tests.
 
 Usage:
@@ -7,7 +7,7 @@ Usage:
 
 - Forbidden: paths listed in AGENTS.md on the "- Do not modify: a, b" lines -> error (exit 1).
 - Out of plan: changed files not listed in plan.md ("Components and files to create/modify" and the "Where" column of
-  the "Test strategy"), excluding docs/specs/<this spec>/, docs/system/, docs/bugs/, docs/adr/ -> warning (error with
+  the "Test strategy" and "Review focus" tables), excluding docs/specs/<this spec>/, docs/system/, docs/bugs/, docs/adr/ -> warning (error with
   --strict).
 - Locked tests: the test files of a commit with the trailer "Test-Lock: T-nn" (the red tests written from the ACs)
   cannot change in a later commit without the same trailer, nor in uncommitted changes -> error (exit 1). An intended
@@ -119,7 +119,7 @@ def plan_paths(plan: str) -> list[str]:
                     v = (m.group(1) or m.group(2)).strip()
                     if v and not PLACEHOLDER.search(v):
                         out.append(v)
-        elif title.startswith("Test strategy"):
+        elif title.startswith("Test strategy") or title.lower().startswith("review focus"):
             out += where_paths(lines)
     return list(dict.fromkeys(out))
 

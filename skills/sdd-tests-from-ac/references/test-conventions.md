@@ -27,3 +27,23 @@ With `--junit` a report case is attributed to the file whose path best matches `
 (`tests.a.test_api` ↔ `tests/a/test_api.py`): files with the same name in different folders are not confused.
 
 One test for several ACs is allowed (cite all the IDs). An AC may have several tests: the error cases are needed.
+
+# What makes a test worth locking
+
+`trace_check.py` proves that a test exists, cites the AC and passes; it cannot prove that the test would catch a wrong
+implementation. Before the `Test-Lock` commit, and when the human reads the locked tests, check these points.
+
+| Anti-pattern | Why it is a problem | Instead |
+|---|---|---|
+| The test checks the mock (`mock.assert_called`) and not the result | It passes with any implementation that calls the mock | Assert on the observable outcome the AC describes |
+| Mocks everywhere | The test exercises the mocks, not the code | Mock only the boundaries: network, clock, randomness, external services |
+| Method added to production code only for the tests | Production code grows an interface nobody else uses | Test through the public interface; move the helper into the tests |
+| Weak assertion (`assert result`, `is not None`, no assertion) | It passes on wrong values | Assert the exact value or error the AC fixes |
+| Assertion on internals (private fields, call order, log text) | It breaks on refactoring and misses behaviour | Assert what the user or caller can observe |
+| `sleep` to wait for something asynchronous | Slow and flaky | Wait for the condition, with a timeout |
+| Test that depends on the order or on shared state | It passes alone and fails in the suite (or the reverse) | Fresh state per test; no global fixtures that tests modify |
+| The expected value copied from the output of the code | It enshrines the bug | Derive the expected value from the AC |
+
+**Checklist for the human approval** (levels M and L): every AC of the task has a test that fails for the right
+reason; the error cases are there; the assertions fix exact values from the ACs; mocks only at the boundaries; the
+Review focus cases of the plan assigned to this task have their test.

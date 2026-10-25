@@ -82,17 +82,20 @@ del diff.
 ### sdd-spec
 
 - **Quando:** dall'idea a una specifica approvabile; anche per completare una bozza.
-- **Cosa fa:** legge `AGENTS.md`, constitution e (brownfield) mappa e pagina d'area; **pone** le domande aperte;
-  scrive `spec.md` con livello proposto (S, M, L con i criteri del playbook §2.1), requisiti verificabili, AC
-  Dato/quando/allora, non-scope obbligatorio, assunzioni marcate `[ASSUMPTION]`; `spec_lint.py` deve passare; nel brownfield propone `sdd-characterize` se l'area non ha test.
+- **Cosa fa:** legge `AGENTS.md`, constitution, il codice coinvolto e (brownfield) mappa e pagina d'area prima di
+  chiedere; riformula la richiesta con parole proprie; **pone** una domanda per messaggio, quella che cambierebbe di più
+  ciò che si costruisce; propone 2-3 opzioni quando la richiesta ammette esiti davvero diversi per l'utente; scrive
+  `spec.md` con livello proposto (S, M, L con i criteri del playbook §2.1), requisiti verificabili, AC
+  Dato/quando/allora, non-scope obbligatorio, anti-obiettivi (`Anti-goals`), assunzioni marcate `[ASSUMPTION]`; `spec_lint.py` deve passare; nel brownfield propone `sdd-characterize` se l'area non ha test.
 - **Approvazione:** solo con conferma esplicita **e** nome dell'approvatore; poi `Status: approved`.
 
 ### sdd-plan
 
 - **Precondizione:** spec `approved` e lint verde, livello M o L (nel livello S non c'è piano).
-- **Cosa fa:** in sola lettura; `plan.md` con almeno un'alternativa scartata, file in formato `- percorso: cosa
-  cambia`, tutti gli AC nella strategia di test, rischi, rilascio e rollback; `spec_lint.py --plan` deve passare.
-  Segnala i candidati ADR senza crearli.
+- **Cosa fa:** in sola lettura; `plan.md` con almeno un'alternativa scartata, file in formato `- path: what changes`,
+  interfacce tra i componenti (cosa produce / cosa consuma), tutti gli AC nella strategia di test, il **review focus**
+  (classi di input che nessun AC esercita, ognuna con il suo test), rischi, rilascio e rollback; autoverifica contro la
+  spec (copertura, nomi, proporzione); `spec_lint.py --plan` deve passare. Segnala i candidati ADR senza crearli.
 
 ### sdd-tasks
 
@@ -104,8 +107,10 @@ del diff.
 
 - **Quando:** per le task che scrivono test (le richiama `sdd-implement`) o a richiesta.
 - **Cosa fa:** test dagli AC e non dal codice, con l'ID nel nome (`references/test-conventions.md`), più i casi di
-  errore; scheletro minimo se serve; i test devono essere **rossi per il motivo giusto** (non per import o
-  sintassi), con il messaggio di fallimento riportato; `trace_check.py --warn-only`.
+  errore e i casi del review focus del piano; controlla la qualità dei test con gli anti-pattern delle convenzioni
+  (asserzioni sui mock, asserzioni deboli, metodi di produzione solo per i test); scheletro minimo se serve; i test
+  devono essere **rossi per il motivo giusto** (non per import o sintassi), con il messaggio di fallimento riportato;
+  `trace_check.py --warn-only`.
 - **Regola:** i test rossi si committano da soli, con il trailer `Test-Lock: T-nn` (lo scheletro, se c'è, in un commit
   precedente). `diff_scope.py` segnala ogni modifica successiva a quei test. La CI del branch resta rossa fino alla task
   di implementazione: è la "fase rossa", che l'hook `Stop` e `loop.py` riconoscono. Nei livelli M e L l'utente rilegge i
@@ -119,6 +124,10 @@ del diff.
 - **Ciclo:** prima task `T-nn` aperta → implementa solo quella → comando di `verify:` e `verify` completo →
   verde: spunta, commit con trailer `Spec:` e `Agent:`; rosso: massimo 3 tentativi poi si ferma e chiede. Non modifica
   i test bloccati da un commit `Test-Lock`.
+- **Decisioni:** ogni decisione presa nei margini di spec e piano va in `progress.md`, sezione "Rulings"
+  (`- T-nn: cosa — perché — costo se sbagliata`); un requisito ambiguo non è una decisione, ferma il lavoro.
+- **Rilievi della review (`T-Rnn`):** verificati sul codice prima di toccarlo; un rilievo sbagliato non si corregge ma si
+  annota con le prove in "Disputed review findings".
 - **Fine:** quando restano solo `T-DOC` e `T-SYNC`, passa a `sdd-review-diff`; non dichiara la feature conclusa.
 
 ### sdd-bugfix
@@ -126,7 +135,8 @@ del diff.
 - **Quando:** un difetto da correggere (non per funzionalità nuove). Bug banali: test rosso, fix, `verify`, senza file.
 - **Cosa fa:** `docs/bugs/BUG-nnn-slug.md` con stati `open → diagnosed → fixed → verified`, controllato da
   `bug_lint.py` a ogni transizione; riproduzione (se non si riproduce, si ferma), definizione di atteso e "da NON
-  cambiare", test rosso, diagnosi in sola lettura, fix minimo, test di non-regressione, chiusura.
+  cambiare", test rosso, diagnosi in sola lettura con le tecniche di `references/debugging.md` (risalita alla sorgente,
+  un'ipotesi alla volta, bisezione, test intermittenti), fix minimo, test di non-regressione, chiusura.
 - **Gate:** l'utente conferma atteso e invariato (passo 2).
 - **Regole:** un bug, un branch, un commit; niente refactoring nello stesso commit; altri difetti trovati = nuovi bug.
 

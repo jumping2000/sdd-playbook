@@ -214,6 +214,8 @@ Rule for trivial bugs (obvious cause, one-line diff): red test, fix, `verify`, n
 
 {{FILE skills/sdd-spec/references/spec-template.md markdown}}
 
+**How the spec is drawn out.** The agent first reads the code and the material the user pointed to, so it never asks what the project already answers; then it plays the request back in its own words and asks **one question per message**, the one whose answer would most change what gets built. When the request admits really different outcomes for the user, it presents 2-3 options and the user chooses. The **anti-goals** record what would make the feature a failure even if it technically works (`spec_lint.py` warns if they are missing). *(`sdd-spec`)*
+
 Minimum quality of a spec: it declares the level (§2.1), names the files/interfaces involved, declares the non-scope, ends with an end-to-end check that demonstrates the feature. The `approved` state requires approver and date filled in, no open questions and the **body hash** (`- Hash:`, computed with `spec_lint.py --hash` after approval): `spec_lint.py` reports if the content changed after the approval. The plan also records `- Based on spec:` with the hash of the spec it was approved on, and lapses if the spec changes.
 
 **Spec ID.** Creation date plus a short lower-case slug: `2026-10-24-export-csv`. It is the folder name and appears in the title (`# SPEC-2026-10-24-export-csv: Export CSV`); `spec_lint.py` checks that they match. With progressive numbers two people or two branches picked the same `SPEC-004`; with date and slug this does not happen, and folders stay in chronological order. Old `SPEC-NNN` IDs remain valid.
@@ -224,7 +226,9 @@ Minimum quality of a spec: it declares the level (§2.1), names the files/interf
 
 {{FILE skills/sdd-plan/references/plan-template.md markdown}}
 
-The files in the "Components and files" section go **one per line in the format `- path: what changes`** (the path is the first word, or the text in backticks); the paths in the "Where" column of the test strategy also count as planned: `diff_scope.py` uses them to detect out-of-plan changes. ACs are searched by exact ID only in the "Test strategy" section.
+The files in the "Components and files" section go **one per line in the format `- path: what changes`** (the path is the first word, or the text in backticks); the paths in the "Where" column of the test strategy and of the review focus also count as planned: `diff_scope.py` uses them to detect out-of-plan changes. ACs are searched by exact ID only in the "Test strategy" section.
+
+**Interfaces** records, for every component the tasks build, what it produces (exact names and signatures) and what it consumes: a task, or a loop iteration with fresh context, sees only its part and learns its neighbours' names from here. **Review focus** lists at most 5 input classes or failure modes the spec implies but no AC exercises (empty or huge input, encoding, concurrency, permissions), each with the test that pins it: the tests derived from the ACs cover only what the spec states, and a spec's silence on an input is not permission to break on it. `spec_lint.py --plan` requires the section (`- none` after checking). Before asking for approval the agent reviews the plan against the spec: coverage, consistent names, proportion (a plan longer than the code has transcribed it). *(`sdd-plan`)*
 
 ### 3.5 `tasks.md`
 
@@ -301,6 +305,7 @@ Differences from greenfield: more time reading/characterizing, smaller specs, a 
 - **Executed tests, not just cited ones:** `verify` writes a JUnit XML report (`reports/junit.xml`); with `--junit` `trace_check.py` requires for every AC at least one test case executed and passed, and none failed. A citation in a skipped or never-run test is no longer enough. Mandatory at level L (`sync_check.py --junit`), always recommended.
 - Levels: unit for logic, integration for boundaries, at least one e2e for the main flow.
 - Check that tests can fail: break the code on purpose (or run mutation testing) and check that something turns red.
+- **Test quality:** a test that cites the AC and passes can still prove nothing. Before locking, and when the human approves, check the anti-patterns: assertions on mocks instead of outcomes, mocks beyond the boundaries (network, clock, randomness), methods added to production only for tests, weak assertions, `sleep` instead of waiting for a condition, expected values copied from the code's output. The table and the approval checklist are in the test conventions of `sdd-tests-from-ac`.
 - If the team develops on Windows, at least the integration suite also runs on Windows in CI.
 
 **Documentation**
@@ -321,6 +326,8 @@ A bug is not a miniature feature: the mandatory sequence is **reproduce, pin wit
 | 5. Minimal fix | Only what is needed; no refactoring in the same commit; test on the unchanged behaviour | `fixed` | PR review |
 | 6. Non-regression | Full `verify` + test on the unchanged behaviour | `fixed` | — |
 | 7. Closure | Update ACs/`docs/system/` if the bug revealed a missing requirement; lesson in `AGENTS.md`/ADR | `verified` | — |
+
+**Diagnosis techniques** (`sdd-bugfix`, `references/debugging.md`): trace the bad value back to where it is created, not where it shows up; one hypothesis and one experiment at a time, writing down the refuted ones; bisect history (`git bisect run`), input or test suite (to find the test that pollutes another); make flaky failures reproducible first. After three failed fixes the problem is probably in the design: stop and report.
 
 Isolation: **one session, one branch and one commit per bug**. If the diagnosis spans many areas, a subagent or a fresh session does the diagnosis and delivers only `bugfix.md`; the fix starts in another session, with that file as its only context.
 
@@ -354,6 +361,8 @@ The idea is the so-called "Ralph loop": an outer cycle that reruns the agent unt
 - **Maximum time per iteration** (`--timeout`): a stuck agent is terminated and the loop continues; a non-zero exit code is reported.
 - **Baseline:** the loop starts only with a green `verify`, or in the red phase.
 - **State in files** (`progress.md`), not in the chat: long sessions drift and compaction loses details.
+- **Rulings recorded:** every decision the agent takes within the latitude of spec and plan (names, library calls, data structures, messages) goes into the "Rulings" section of `progress.md` with the reason and the cost if wrong; the review checks that none of them changes a requirement. An ambiguous requirement is not a ruling: the agent stops.
+- **Review findings are hypotheses:** on a `T-Rnn` task the agent first checks the finding on the code; if it is wrong it does not change the code and records the evidence in "Disputed review findings".
 - **One task per iteration**, with fresh context when possible.
 - **Feature branch:** the loop refuses to start on `main`/`master`.
 - **Isolation:** worktree or container, no access to production or secrets; the agent's native permissions with allowlist and deny-list (`settings.loop.json`, which also denies writes to the loop's checks and rules), never skipping permissions outside a disposable container.

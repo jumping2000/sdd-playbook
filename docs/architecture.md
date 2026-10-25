@@ -2,7 +2,7 @@
 
 *Versione italiana: [architecture_IT.md](architecture_IT.md)*
 
-Design document **as built** (version 0.13.0): choices, structure, contracts between files and limits.
+Design document **as built** (version 0.14.0): choices, structure, contracts between files and limits.
 
 ## Goal and success criterion
 
@@ -106,8 +106,8 @@ changes, the script that reads it must change too (the tests check this).
 
 | File | Fields and structures read | Script |
 |---|---|---|
-| `spec.md` | title `# SPEC-<id>: ...` (date + slug equal to the folder, or a number); `- Level:` (`S`, `M`, `L`; M if missing; read from the header only; part of the hash); `- Status:` (`draft`, `approved`, `in-revision`, `implemented`, `superseded`); section `## Revisions` (mandatory with an entry if `in-revision`); `- Approved by / date:`; `- Hash: sha256:...` of the body (from the first `## ` section); sections `## Problem and goal`, `Scope`, `Requirements`, `Acceptance criteria`, `Open questions`; line `**Non-scope (explicit):**`; `- REQ-nnn`; `- AC-nnn [REQ-nnn]`; marker `[ASSUMPTION]` | `spec_lint`, `state`, `trace_check`, `sync_check`, `diff_scope` |
-| `plan.md` | `- Approved by / date:`; `- Based on spec:` (hash of the spec); `- Hash:` of the body; section `## Components and files to create/modify` with lines `- path: ...` (path = first word or text in backticks); section `## Test strategy ...` with the exact AC IDs and, if present, the `Where` column | `spec_lint`, `state`, `diff_scope` |
+| `spec.md` | title `# SPEC-<id>: ...` (date + slug equal to the folder, or a number); `- Level:` (`S`, `M`, `L`; M if missing; read from the header only; part of the hash); `- Status:` (`draft`, `approved`, `in-revision`, `implemented`, `superseded`); section `## Revisions` (mandatory with an entry if `in-revision`); `- Approved by / date:`; `- Hash: sha256:...` of the body (from the first `## ` section); sections `## Problem and goal`, `Scope`, `Requirements`, `Acceptance criteria`, `Open questions`; line `**Non-scope (explicit):**`; line `**Anti-goals:**` (warning if missing); `- REQ-nnn`; `- AC-nnn [REQ-nnn]`; marker `[ASSUMPTION]` | `spec_lint`, `state`, `trace_check`, `sync_check`, `diff_scope` |
+| `plan.md` | `- Approved by / date:`; `- Based on spec:` (hash of the spec); `- Hash:` of the body; section `## Components and files to create/modify` with lines `- path: ...` (path = first word or text in backticks); section `## Test strategy ...` with the exact AC IDs and, if present, the `Where` column; section `## Review focus` (table with a `Where` column, or `- none`) | `spec_lint`, `state`, `diff_scope` |
 | `tasks.md` | `- Based on plan:` (hash of the plan); lines `- [ ] T-nn ...` with the fields `verify:` (command in backticks) and `covers:` (AC IDs), without placeholders; lines `- [ ] T-Rnn ...` from review problems (`verify:`, `covers:` optional); `T-DOC`, `T-SYNC`; `— tests approved: <name, yyyy-mm-dd, sha>` on closed test tasks (levels M and L; sha = approved `Test-Lock` commit); the marker `expected: red` (case-insensitive) on test tasks defines the **red phase** (last closed `T-nn` task with the marker, next one open) | `spec_lint`, `state`, `loop`, `sync_check`, `diff_scope`, `Stop` hook |
 | git commits | trailer `Test-Lock: T-nn` on the commit of the red tests: locks its test files and anchors the approval | `diff_scope` |
 | test files | `# SPEC-<id>` in the file plus `AC-nnn`, or citations `SPEC-<id>/AC-nnn` (in function names `SPEC_<id with _>_AC_nnn`); `TODO`/`FIXME`/`XXX` lines ignored | `trace_check`, `sync_check` |
@@ -118,7 +118,7 @@ changes, the script that reads it must change too (the tests check this).
 | `docs/system/<area>.md` | `- Last aligned:`; `- Linked specs:`; sections `## Current behaviour`, `Constraints and delicate points`, `Characterization tests` | `sync_check` |
 | `docs/system/map.md` | presence only | `state` |
 | `AGENTS.md` | lines `- Do not modify: a, b` and `- Sensitive areas: a, b` (require level L), paths in backticks or first word; read from the merge-base | `diff_scope` |
-| `PROMPT.md`, `progress.md` | `PROMPT.md` read in full and passed on stdin | `loop` |
+| `PROMPT.md`, `progress.md` | `PROMPT.md` read in full and passed on stdin; `progress.md` sections `## Rulings` and `## Disputed review findings` read by the reviewer | `loop`, `sdd-reviewer` |
 | `scripts/verify.py` | list `STEPS` | (adapted by `sdd-init`) |
 | `scripts/*.py` | line 2 `# sdd-playbook: <version>` | `sdd-init` (update), coherence tests |
 | manifests and lockfiles (`package.json`, `pyproject.toml`, `*.csproj`, ...) | file name only | `diff_scope` (level, dependencies without plan or ADR) |

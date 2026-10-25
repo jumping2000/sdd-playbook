@@ -1,6 +1,6 @@
-# SDD Playbook (versione 0.13.0)
+# SDD Playbook (versione 0.14.0)
 
-[![Version](https://img.shields.io/badge/version-0.13.0-blue)](CHANGELOG_IT.md)
+[![Version](https://img.shields.io/badge/version-0.14.0-blue)](CHANGELOG_IT.md)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![CI](https://github.com/jumping2000/sdd-playbook/actions/workflows/ci.yml/badge.svg)](https://github.com/jumping2000/sdd-playbook/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/python-3.8%2B-3776AB?logo=python&logoColor=white)](docs/scripts_IT.md)

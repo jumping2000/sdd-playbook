@@ -23,8 +23,11 @@ Playbook §4 (phase 6) and §6. Work only on numbered `T-nn` tasks: `T-DOC` and 
 
 ## Cycle (one task at a time)
 
-1. Take the **first open `T-nn` or `T-Rnn` task** (`- [ ]`). `T-Rnn` tasks come from review problems (`review.md`):
-   read the problem and the ACs it covers, if any. For `T-nn` tasks read the ACs in the spec.
+1. Take the **first open `T-nn` or `T-Rnn` task** (`- [ ]`). For `T-nn` tasks read the ACs in the spec and the plan's
+   interfaces for the component. `T-Rnn` tasks come from review problems (`review.md`): a finding is a hypothesis, not
+   an order. **Verify it on the code first**; if it is right, fix it (with a test when it changes behaviour); if it is
+   wrong, do not change the code: record the evidence (file:line) in `progress.md`, section "Disputed review findings",
+   and tell the user. No agreement for show, one finding at a time.
 2. If the task **writes tests from the ACs**, apply the `sdd-tests-from-ac` procedure (read it). Otherwise implement
    **only that task**: do not touch the non-scope and do no unrequested refactoring.
 3. Run the task's `verify:` command, then the full `python scripts/verify.py` (`--fast` is allowed only while working,
@@ -35,12 +38,15 @@ Playbook §4 (phase 6) and §6. Work only on numbered `T-nn` tasks: `T-DOC` and 
    `Agent: <name and version>`. If the user has not authorized commits, propose the message and do not commit. An
    "expected: red" test task is closed with the `Test-Lock` commit of the tests only (see `sdd-tests-from-ac`). In later
    tasks **do not modify the locked test files**: if a test looks wrong, stop and ask.
-6. If `progress.md` exists in the spec folder, update it: done, learned, blockers.
+6. Update `progress.md` in the spec folder (create it from `../sdd-loop/references/progress.md.tmpl` if it is
+   missing): done, learned, blockers, and the **rulings**: every decision you took within the latitude of spec and plan
+   (names, library calls, data structures, messages), one per line as `- T-nn: <what> — <why> — <what it costs if
+   wrong>`. The review checks them. An ambiguous requirement is not a ruling: stop and ask.
 7. Move to the next task only if the user asked to proceed in sequence; otherwise stop and report.
 
 ## Stop rules
 
-- Ambiguous or missing requirement: **stop and ask**, do not assume (write the question in `progress.md` if it exists).
+- Ambiguous or missing requirement: **stop and ask**, do not assume (write the question in `progress.md`).
 - Something in the non-scope needs to change: stop and ask.
 - A new or different dependency the plan does not list is needed: stop and ask (an ADR or an updated plan is needed;
   `diff_scope.py` reports a changed manifest without either as an error).

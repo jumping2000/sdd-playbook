@@ -2,7 +2,7 @@
 
 *English version: [architecture.md](architecture.md)*
 
-Documento di progetto **come costruito** (versione 0.13.0): scelte, struttura, contratti tra i file e limiti.
+Documento di progetto **come costruito** (versione 0.14.0): scelte, struttura, contratti tra i file e limiti.
 
 ## Obiettivo e criterio di successo
 
@@ -106,8 +106,8 @@ Gli script leggono pochi campi con convenzioni fisse. I nomi dei campi sono in i
 
 | File | Campi e strutture lette | Script |
 |---|---|---|
-| `spec.md` | titolo `# SPEC-<id>: ...` (data + slug uguale alla cartella, o numero); `- Level:` (`S`, `M`, `L`; M se manca; letto solo dall'intestazione; entra nell'hash); `- Status:` (`draft`, `approved`, `in-revision`, `implemented`, `superseded`); sezione `## Revisions` (obbligatoria con voce se `in-revision`); `- Approved by / date:`; `- Hash: sha256:...` del corpo (dalla prima sezione `## `); sezioni `## Problem and goal`, `Scope`, `Requirements`, `Acceptance criteria`, `Open questions`; riga `**Non-scope (explicit):**`; `- REQ-nnn`; `- AC-nnn [REQ-nnn]`; marcatore `[ASSUMPTION]` | `spec_lint`, `state`, `trace_check`, `sync_check`, `diff_scope` |
-| `plan.md` | `- Approved by / date:`; `- Based on spec:` (hash della spec); `- Hash:` del corpo; sezione `## Components and files to create/modify` con righe `- path: ...` (percorso = prima parola o testo tra backtick); sezione `## Test strategy ...` con gli ID AC esatti e, se c'è, la colonna `Where` | `spec_lint`, `state`, `diff_scope` |
+| `spec.md` | titolo `# SPEC-<id>: ...` (data + slug uguale alla cartella, o numero); `- Level:` (`S`, `M`, `L`; M se manca; letto solo dall'intestazione; entra nell'hash); `- Status:` (`draft`, `approved`, `in-revision`, `implemented`, `superseded`); sezione `## Revisions` (obbligatoria con voce se `in-revision`); `- Approved by / date:`; `- Hash: sha256:...` del corpo (dalla prima sezione `## `); sezioni `## Problem and goal`, `Scope`, `Requirements`, `Acceptance criteria`, `Open questions`; riga `**Non-scope (explicit):**`; riga `**Anti-goals:**` (avviso se manca); `- REQ-nnn`; `- AC-nnn [REQ-nnn]`; marcatore `[ASSUMPTION]` | `spec_lint`, `state`, `trace_check`, `sync_check`, `diff_scope` |
+| `plan.md` | `- Approved by / date:`; `- Based on spec:` (hash della spec); `- Hash:` del corpo; sezione `## Components and files to create/modify` con righe `- path: ...` (percorso = prima parola o testo tra backtick); sezione `## Test strategy ...` con gli ID AC esatti e, se c'è, la colonna `Where`; sezione `## Review focus` (tabella con colonna `Where`, oppure `- none`) | `spec_lint`, `state`, `diff_scope` |
 | `tasks.md` | `- Based on plan:` (hash del piano); righe `- [ ] T-nn ...` con i campi `verify:` (comando tra backtick) e `covers:` (ID degli AC), senza segnaposto; righe `- [ ] T-Rnn ...` dai problemi della review (`verify:`, `covers:` facoltativo); `T-DOC`, `T-SYNC`; `— tests approved: <name, yyyy-mm-dd, sha>` sulle task di test chiuse (livelli M e L; sha = commit `Test-Lock` approvato); la marcatura `expected: red` (senza distinzione di maiuscole) sulle task di test definisce la **fase rossa** (ultima task `T-nn` chiusa con la marcatura, successiva aperta) | `spec_lint`, `state`, `loop`, `sync_check`, `diff_scope`, hook `Stop` |
 | commit git | trailer `Test-Lock: T-nn` sul commit dei test rossi: blocca i suoi file di test e ancora l'approvazione | `diff_scope` |
 | file di test | `# SPEC-<id>` nel file più `AC-nnn`, oppure citazioni `SPEC-<id>/AC-nnn` (nei nomi di funzione `SPEC_<id con _>_AC_nnn`); righe `TODO`/`FIXME`/`XXX` ignorate | `trace_check`, `sync_check` |
@@ -118,7 +118,7 @@ Gli script leggono pochi campi con convenzioni fisse. I nomi dei campi sono in i
 | `docs/system/<area>.md` | `- Last aligned:`; `- Linked specs:`; sezioni `## Current behaviour`, `Constraints and delicate points`, `Characterization tests` | `sync_check` |
 | `docs/system/map.md` | solo la presenza | `state` |
 | `AGENTS.md` | righe `- Do not modify: a, b` e `- Sensitive areas: a, b` (richiedono il livello L), percorsi tra backtick o prima parola; lette dal merge-base | `diff_scope` |
-| `PROMPT.md`, `progress.md` | `PROMPT.md` letto per intero e passato da stdin | `loop` |
+| `PROMPT.md`, `progress.md` | `PROMPT.md` letto per intero e passato da stdin; sezioni `## Rulings` e `## Disputed review findings` di `progress.md` lette dal revisore | `loop`, `sdd-reviewer` |
 | `scripts/verify.py` | lista `STEPS` | (modificata da `sdd-init`) |
 | `scripts/*.py` | seconda riga `# sdd-playbook: <versione>` | `sdd-init` (aggiornamento), test di coerenza |
 | manifest e lockfile (`package.json`, `pyproject.toml`, `*.csproj`, ...) | solo il nome del file | `diff_scope` (livello, dipendenze senza piano né ADR) |

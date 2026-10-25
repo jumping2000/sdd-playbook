@@ -4,6 +4,26 @@
 
 Entries before 0.13.0 use the names of their time (`sdlc-*`, `SDLC_*`, Italian field names).
 
+## 0.14.0
+Practices taken from the superpowers plugin, adapted to the governance of SDD Playbook: better specs and plans, better
+tests, decisions made visible. Prose and templates, plus one new check in `spec_lint.py`.
+- **Spec (`sdd-spec`):** the agent reads code and material before asking, plays the request back, asks one question per
+  message (the one that would most change what gets built), offers 2-3 options when the outcomes for the user really
+  differ; new `- **Anti-goals:**` line in the spec template (`spec_lint.py` warns if missing).
+- **Plan (`sdd-plan`):** interfaces between components (produces / consumes, exact names); new `## Review focus` section
+  with at most 5 input classes no AC exercises, each with its test (`spec_lint.py --plan`: section required, placeholders
+  are a warning before approval and an error after; `- none` is valid); self-review against the spec (coverage,
+  consistent names, proportion). `diff_scope.py` also reads the "Where" column of the review focus as planned paths.
+- **Test quality (`sdd-tests-from-ac`):** anti-pattern table and approval checklist in the test conventions; the
+  reviewer agent judges the tests with them.
+- **Rulings:** decisions taken within the latitude of spec and plan go into `progress.md` (`## Rulings`: what, why, cost
+  if wrong); `sdd-implement` creates `progress.md` when missing; the reviewer checks that no ruling changes a requirement.
+- **Receiving a review:** `T-Rnn` findings are verified on the code first; wrong ones are recorded in
+  `## Disputed review findings` instead of being "fixed"; the user decides which findings become tasks.
+- **Debugging (`sdd-bugfix`):** new `references/debugging.md` (trace back to the source, one hypothesis at a time,
+  bisect history, input and test suite, flaky tests, stop after three failed fixes).
+- Playbook §3.3, §3.4, §6, §6.1, §7.2 updated; new tests for anti-goals, review focus and the loop prompt sections.
+
 ## 0.13.0
 The plugin is called **SDD Playbook**, is entirely in English and also supports GitHub Copilot. No compatibility with the
 previous names: the plugin is in design and has never been used on a project.

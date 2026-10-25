@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# sdd-playbook: 0.13.0
+# sdd-playbook: 0.14.0
 """Deterministic checks on the playbook's spec, plan and tasks.
 
 Usage:
@@ -19,6 +19,10 @@ Approval (playbook §1.2):
 IDs and states (playbook §3.3): title "# SPEC-yyyy-mm-dd-slug: ..." with the ID equal to the folder name (the old
 "# SPEC-NNN: ..." is still valid). State in-revision: an approved spec being changed, with an entry in "## Revisions";
 it goes back to approved only with a new approval and a new hash.
+Spec content: requirements with ACs, a filled-in non-scope (error) and anti-goals (warning if missing).
+Plan content: every AC in the test strategy; a "## Review focus" section listing the input classes or failure modes the
+spec implies but no AC exercises, each with the test that pins it, or "- none" (placeholders: warning before approval,
+error once the plan is approved).
 Tasks: T-nn from the plan (verify: and covers: mandatory), T-Rnn from review problems (covers: optional).
 Level (playbook §2.1): "- Level: S | M | L" in the spec header; without the field it counts as M (warning). The level
 is part of the hash: lowering it after approval voids the approval. Level S: no plan, T-DOC optional.
@@ -234,10 +238,13 @@ def lint_spec(text: str, folder: str | None = None) -> tuple[list[str], list[str
                 err.append(f"{ac} cites {ref}, which does not exist")
 
     scope = "\n".join(sec.get("Scope", []))
-    m = re.search(r"Non-scope[^:\n]*:\**\s*(.*)", scope, re.I)
+    m = re.search(r"Non-scope[^:\n]*:\**[ \t]*(.*)", scope, re.I)
     nonscope = m.group(1).strip() if m else ""
     if not m or not nonscope or PLACEHOLDER.fullmatch(nonscope):
         err.append("Non-scope missing or not filled in")
+    m = re.search(r"Anti-goals[^:\n]*:\**[ \t]*(.*)", scope, re.I)
+    if not m or not m.group(1).strip() or PLACEHOLDER.fullmatch(m.group(1).strip()):
+        warn.append("Anti-goals missing or not filled in (what would make the feature a failure even if it works)")
 
     if state in ("approved", "implemented"):
         approved = clean(field(text, "Approved by / date"))
@@ -254,6 +261,19 @@ def lint_spec(text: str, folder: str | None = None) -> tuple[list[str], list[str
     return err, warn
 
 
+def review_focus_problems(plan: str) -> list[str]:
+    """Problems of the "## Review focus" section: filled-in table rows or "- none", without placeholders."""
+    lines = next((lines for title, lines in sections(plan).items() if title.lower().startswith("review focus")), None)
+    if lines is None:
+        return ["Section '## Review focus' missing from the plan (uncovered input classes with their test, or '- none')"]
+    rows = [line for line in lines if line.strip().startswith("|") and not re.fullmatch(r"[|\s:-]+", line.strip())]
+    pending = [row for row in rows[1:] if PLACEHOLDER.search(row)]
+    none = any(NONE_ITEM.match(line.strip()) for line in lines)
+    if pending or (len(rows) < 2 and not none):
+        return ["Review focus not filled in: list the uncovered input classes with their test, or write '- none'"]
+    return []
+
+
 def lint_plan(spec: str, plan: str) -> tuple[list[str], list[str]]:
     _, acs = parse_spec(spec)
     strategy = next((lines for title, lines in sections(plan).items() if title.startswith("Test strategy")), None)
@@ -263,10 +283,15 @@ def lint_plan(spec: str, plan: str) -> tuple[list[str], list[str]]:
         in_plan = set(re.findall(r"\bAC-\d+\b", "\n".join(strategy)))
         err = [f"{ac} does not appear in the plan (test strategy)" for ac in acs if ac not in in_plan]
     warn = []
+    focus = review_focus_problems(plan)
     if plan_signed(plan):
         err += plan_approval_problems(spec, plan)
+        err += focus
     else:
         warn.append("Plan not approved yet ('Approved by / date' empty)")
+        missing = [f for f in focus if "missing" in f]
+        err += missing
+        warn += [f for f in focus if f not in missing]
     return err, warn
 
 
