@@ -4,14 +4,14 @@
       {
         "matcher": "Bash|PowerShell|Read|Grep",
         "hooks": [
-          { "type": "command", "command": "sh \"${CLAUDE_PLUGIN_ROOT}/hooks/run.sh\" pretool_guard.py SDLC_GUARD" }
+          { "type": "command", "command": "sh \"${CLAUDE_PLUGIN_ROOT}/hooks/run.sh\" pretool_guard.py SDD_GUARD" }
         ]
       }
     ],
     "Stop": [
       {
         "hooks": [
-          { "type": "command", "command": "sh \"${CLAUDE_PLUGIN_ROOT}/hooks/run.sh\" stop_verify.py SDLC_ENFORCE_VERIFY" }
+          { "type": "command", "command": "sh \"${CLAUDE_PLUGIN_ROOT}/hooks/run.sh\" stop_verify.py SDD_ENFORCE_VERIFY" }
         ]
       }
     ]

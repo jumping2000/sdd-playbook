@@ -1,4 +1,4 @@
-"""Fixture e utilità condivise dai test. Solo stdlib."""
+"""Fixtures and helpers shared by the tests. Standard library only."""
 from __future__ import annotations
 
 import importlib.util
@@ -9,30 +9,30 @@ import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-SCRIPTS = ROOT / "skills" / "sdlc-init" / "scripts"
+SCRIPTS = ROOT / "skills" / "sdd-init" / "scripts"
 HOOKS = ROOT / "hooks"
 
 
-def carica(nome: str):
+def load(name: str):
     sys.path.insert(0, str(SCRIPTS))
-    spec = importlib.util.spec_from_file_location(nome, SCRIPTS / f"{nome}.py")
+    spec = importlib.util.spec_from_file_location(name, SCRIPTS / f"{name}.py")
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     return mod
 
 
-def leggi(rel: str) -> str:
+def read(rel: str) -> str:
     return (ROOT / rel).read_text(encoding="utf-8")
 
 
-def scrivi(root: Path, rel: str, testo: str = "x") -> Path:
+def write(root: Path, rel: str, text: str = "x") -> Path:
     p = root / rel
     p.parent.mkdir(parents=True, exist_ok=True)
-    p.write_text(testo, encoding="utf-8")
+    p.write_text(text, encoding="utf-8")
     return p
 
 
-def esegui(args: list[str], cwd: Path, stdin: str | None = None, env: dict | None = None):
+def run(args: list[str], cwd: Path, stdin: str | None = None, env: dict | None = None):
     return subprocess.run(args, cwd=cwd, input=stdin, capture_output=True, text=True, encoding="utf-8",
                           env={**os.environ, **(env or {})})
 
@@ -44,15 +44,15 @@ def git(cwd: Path, *args: str) -> str:
     return r.stdout.strip()
 
 
-def repo_git(root: Path, branch: str = "main") -> None:
+def git_repo(root: Path, branch: str = "main") -> None:
     git(root, "init", "-q")
     git(root, "symbolic-ref", "HEAD", f"refs/heads/{branch}")
 
 
-def copia_script(dest: Path, nomi: list[str] | None = None) -> None:
+def copy_scripts(dest: Path, names: list[str] | None = None) -> None:
     (dest / "scripts").mkdir(parents=True, exist_ok=True)
     for f in SCRIPTS.glob("*.py"):
-        if nomi is None or f.stem in nomi:
+        if names is None or f.stem in names:
             (dest / "scripts" / f.name).write_text(f.read_text(encoding="utf-8"), encoding="utf-8")
 
 
@@ -65,101 +65,100 @@ class TmpDir:
         self._t.cleanup()
 
 
-SPEC_OK = """# SPEC-001: Esempio
+SPEC_OK = """# SPEC-001: Example
 
-- Stato: approved
-- Proprietario: Anna
-- Approvata da / data: Anna Rossi, 2026-10-19
+- Status: approved
+- Owner: Anna
+- Approved by / date: Anna Smith, 2026-10-19
 
-## Problema e obiettivo
-Esportare il report in CSV.
+## Problem and goal
+Export the report as CSV.
 
 ## Scope
-- Incluso: export CSV
-- **Non-scope (esplicito):** nessuna modifica al formato PDF
+- Included: CSV export
+- **Non-scope (explicit):** no change to the PDF format
 
-## Requisiti
-- REQ-001 (funzionale): il report si esporta in CSV
+## Requirements
+- REQ-001 (functional): the report can be exported as CSV
 
 ## Acceptance criteria
-- AC-001 [REQ-001]: Dato un report, quando esporto, allora ottengo un CSV valido
-- AC-002 [REQ-001, errore]: Dato un report vuoto, quando esporto, allora ricevo un errore chiaro
+- AC-001 [REQ-001]: Given a report, when I export it, then I get a valid CSV
+- AC-002 [REQ-001, error]: Given an empty report, when I export it, then I get a clear error
 
-## Domande aperte
-- nessuna
+## Open questions
+- none
 """
-PLAN_OK = """# PLAN per SPEC-001
+PLAN_OK = """# PLAN for SPEC-001
 
-- Approvato da / data: Anna Rossi, 2026-10-19
+- Approved by / date: Anna Smith, 2026-10-19
 
-## Componenti e file da creare/modificare
-- src/export.py: nuova funzione di export
-- `tests/`: nuovi test
+## Components and files to create/modify
+- src/export.py: new export function
+- `tests/`: new tests
 
-## Strategia di test (mappata sugli AC)
+## Test strategy (mapped to ACs)
 | AC-001 | unit |
 | AC-002 | unit |
 """
-_spec_lint = carica("spec_lint")
-APPROVATA = "- Approvata da / data: Anna Rossi, 2026-10-19\n"
-SPEC_OK = SPEC_OK.replace(APPROVATA, APPROVATA + f"- Hash: {_spec_lint.impronta(SPEC_OK)}\n")
-APPROVATO = "- Approvato da / data: Anna Rossi, 2026-10-19\n"
-PLAN_OK = PLAN_OK.replace(APPROVATO, APPROVATO + f"- Basato su spec: {_spec_lint.impronta(SPEC_OK)}\n"
-                          f"- Hash: {_spec_lint.impronta(PLAN_OK)}\n")
-TASKS_OK = """- [ ] T-01 Test — verifica: `pytest -k AC_001` (atteso: rosso) — copre: AC-001, AC-002 — test approvati: Anna Rossi, 2026-10-19, abc1234
-- [ ] T-02 Implementa — verifica: `pytest` — copre: AC-001, AC-002
-- [ ] T-DOC Documentazione
-- [ ] T-SYNC Riconciliazione
+_spec_lint = load("spec_lint")
+APPROVED_SPEC = "- Approved by / date: Anna Smith, 2026-10-19\n"
+SPEC_OK = SPEC_OK.replace(APPROVED_SPEC, APPROVED_SPEC + f"- Hash: {_spec_lint.fingerprint(SPEC_OK)}\n")
+PLAN_OK = PLAN_OK.replace(APPROVED_SPEC, APPROVED_SPEC + f"- Based on spec: {_spec_lint.fingerprint(SPEC_OK)}\n"
+                          f"- Hash: {_spec_lint.fingerprint(PLAN_OK)}\n")
+TASKS_OK = """- [ ] T-01 Test — verify: `pytest -k AC_001` (expected: red) — covers: AC-001, AC-002 — tests approved: Anna Smith, 2026-10-19, abc1234
+- [ ] T-02 Implement — verify: `pytest` — covers: AC-001, AC-002
+- [ ] T-DOC Documentation
+- [ ] T-SYNC Reconciliation
 """
-REVIEW_OK = """# Review di SPEC-001
+REVIEW_OK = """# Review of SPEC-001
 
-- Esito: conforme
-- Data: 2026-10-19
-- Base del diff: main
+- Outcome: compliant
+- Date: 2026-10-19
+- Diff base: main
 
-## Decisione umana
-- Decisione di: Anna Rossi, 2026-10-19
+## Human decision
+- Decided by: Anna Smith, 2026-10-19
 """
 AREA_OK = """# Area: export
 
-- Ultimo allineamento: 2026-10-19
-- Specifiche collegate: SPEC-001
+- Last aligned: 2026-10-19
+- Linked specs: SPEC-001
 
-## Comportamento attuale
-Esporta in CSV.
+## Current behaviour
+Exports to CSV.
 
-## Vincoli e punti delicati
-- nessuno
+## Constraints and delicate points
+- none
 
-## Test di caratterizzazione
-- tests/test_char.py: formato CSV attuale
+## Characterization tests
+- tests/test_char.py: current CSV format
 """
-BUG_OK = """# BUG-001: Export rotto
+BUG_OK = """# BUG-001: Broken export
 
-- Stato: verificato
-- Gravità / impatto: media
-- Spec o area interessata: SPEC-001
+- Status: verified
+- Severity / impact: medium
+- Affected spec or area: SPEC-001
 
-## Riproduzione
-Esporta un report con una virgola nel nome.
+## Reproduction
+Export a report with a comma in the name.
 
-## Comportamento attuale vs atteso
-- Attuale: il CSV è malformato
-- Atteso: il campo è racchiuso tra virgolette
+## Actual vs expected behaviour
+- Actual: the CSV is malformed
+- Expected: the field is enclosed in quotes
 
-## Comportamento da NON cambiare
-- Il separatore resta la virgola
+## Behaviour that must NOT change
+- The separator stays the comma
 
-## Causa radice
-Manca l'escaping nel writer.
+## Root cause
+Escaping is missing in the writer.
 
-## Fix e test
-- Test rosso che riproduce il bug: `tests/test_export.py::test_virgola`
-- Fix minimo: usa csv.writer in src/export.py
-- Test di non-regressione sul comportamento invariato: `tests/test_export.py::test_separatore`
+## Fix and tests
+- Red test reproducing the bug: `tests/test_export.py::test_comma`
+- Minimal fix: use csv.writer in src/export.py
+- Non-regression test on the unchanged behaviour: `tests/test_export.py::test_separator`
 
-## Chiusura
-- [x] verify verde
-- [x] spec aggiornata
-- [x] lezione registrata
+## Closure
+- [x] verify green
+- [x] spec updated
+- [x] lesson recorded
 """

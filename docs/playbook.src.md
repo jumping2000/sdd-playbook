@@ -1,14 +1,14 @@
-# Playbook: software lifecycle with coding agents
+# SDD Playbook: software lifecycle with coding agents
 
 *Versione italiana: [playbook-ai-software-lifecycle_IT.md](playbook-ai-software-lifecycle_IT.md)*
 
-Valid for greenfield and brownfield. Reference agents: Claude Code, Codex, or any agent that reads `AGENTS.md`.
+Valid for greenfield and brownfield. Reference agents: Claude Code, Codex, GitHub Copilot, or any agent that reads `AGENTS.md`.
 Supported development environments: Linux, macOS, **native Windows (VS Code, PowerShell)** and WSL.
 
-This document describes the process. The **`sdlc-playbook`** plugin automates its steps with skills and scripts (§11);
+This document describes the process. The **SDD Playbook** plugin (`sdd-playbook`) automates its steps with skills and scripts (§11);
 the scripts and templates shown here are **identical** to the plugin's, because the document is generated from them
-(`tools/build_playbook.py`). Templates and script messages are in Italian: field names such as `- Stato:` or
-`atteso: rosso` are part of the contracts read by the scripts and must stay as they are.
+(`tools/build_playbook.py`). Skills, templates and script messages are in English: field names such as `- Status:` or
+`expected: red` are part of the contracts read by the scripts and must stay as they are.
 
 > **Status of this document.** It is a synthesis of emerging practices (spec-driven development, `AGENTS.md`, verification loops), not a standard. No set of documents is "mandatory" by any norm: the documents marked *Yes* below are the minimum I recommend. Tools change version often: always check the official sources listed at the end.
 
@@ -65,7 +65,7 @@ repo/
 │   │       ├── review.md     # outcome of the diff review
 │   │       ├── PROMPT.md     # only if you use the loop (§7)
 │   │       └── progress.md   # only if you use the loop (§7)
-│   ├── system/               # mappa.md and one page per functional area
+│   ├── system/               # map.md and one page per functional area
 │   ├── bugs/                 # one file per non-trivial bug (§6.1)
 │   └── adr/                  # architecture decisions
 └── tests/
@@ -79,7 +79,7 @@ repo/
 
 **`scripts/verify.py`** (adapt the `STEPS` list; try every command by hand before registering it)
 
-{{FILE skills/sdlc-init/scripts/verify.py python}}
+{{FILE skills/sdd-init/scripts/verify.py python}}
 
 Design notes:
 - The command is a **list**, without a shell: no quoting problems between PowerShell, cmd and Git Bash.
@@ -89,13 +89,13 @@ Design notes:
 
 **VS Code integration: `.vscode/tasks.json`**
 
-{{FILE skills/sdlc-init/references/vscode-tasks.json json}}
+{{FILE skills/sdd-init/references/vscode-tasks.json json}}
 
 Usage: `Ctrl+Shift+P` → *Tasks: Run Test Task* runs `verify`. `"type": "process"` avoids the shell and therefore terminal differences; the `windows` override uses the `py` launcher when `python` is not on the PATH.
 
 **`.gitattributes`**
 
-{{FILE skills/sdlc-init/references/gitattributes.tmpl}}
+{{FILE skills/sdd-init/references/gitattributes.tmpl}}
 
 **Optional alias for Unix (`Makefile`)**
 
@@ -106,15 +106,15 @@ verify:
 
 **CI (GitHub Actions)**
 
-{{FILE skills/sdlc-init/references/ci-github-actions.yml yaml}}
+{{FILE skills/sdd-init/references/ci-github-actions.yml yaml}}
 
 **Where `verify` runs, and who runs it**
 
 | Context | Command | Note |
 |---|---|---|
 | You, in VS Code | `verify` task (or integrated terminal) | Works in PowerShell, cmd, Git Bash, WSL |
-| Agent (Claude Code, Codex) | `python scripts/verify.py`, stated in `AGENTS.md` | According to the Claude Code documentation consulted in October 2026, on native Windows it uses Git Bash if present, otherwise PowerShell: the script is shell-independent |
-| Agent hook (optional) | The plugin's `Stop` hook with `SDLC_ENFORCE_VERIFY=1` (§11) | Never the only check |
+| Agent (Claude Code, Codex, GitHub Copilot) | `python scripts/verify.py`, stated in `AGENTS.md` | According to the Claude Code documentation consulted in October 2026, on native Windows it uses Git Bash if present, otherwise PowerShell: the script is shell-independent |
+| Agent hook (optional) | The plugin's `Stop` hook with `SDD_ENFORCE_VERIFY=1` (§11) | Never the only check |
 | CI | `python scripts/verify.py`, on `ubuntu-latest` and `windows-latest`; process checks on PRs | The check the agent cannot bypass |
 
 **Typical Windows pitfalls**
@@ -133,7 +133,7 @@ verify:
 
 | Level | What to do |
 |---|---|
-| Permissions | The agent's native permissions: command allowlist **and** explicit deny-list (recursive deletes, `git push`, download-and-execute, reading `.env`). For the loop the plugin provides an example (`settings.loop.json` in `sdlc-loop`) |
+| Permissions | The agent's native permissions: command allowlist **and** explicit deny-list (recursive deletes, `git push`, download-and-execute, reading `.env`). For the loop the plugin provides an example (`settings.loop.json` in `sdd-loop`) |
 | Environment | Container, worktree or isolated machine for autonomous loops; no access to production or secrets |
 | Technical gates | Protected branch, mandatory PR, mandatory CI with the process checks. Optional (Claude Code, plugin §11): `Stop` hook that prevents declaring completion without a green `verify`, `PreToolUse` hook that blocks risky commands. They are a safety net, not a sandbox |
 | Traceability | Commits with trailers `Spec: SPEC-2026-10-24-feature-name` and `Agent: <name/version>`; PR template with link to the spec, `verify` output, list of covered ACs |
@@ -175,12 +175,12 @@ code → **implementation PR**, where the approver reads the `Test-Lock` commits
 | ADR | Decisions with rationale | Recommended | Markdown |
 | `progress.md`, `PROMPT.md` | Memory and instructions between iterations | Loop only | Markdown |
 | `bugfix.md` | Diagnosis and non-regression of a bug | For non-trivial bugs | Markdown |
-| `docs/system/mappa.md` | Codebase map | **Yes** in brownfield | Markdown |
+| `docs/system/map.md` | Codebase map | **Yes** in brownfield | Markdown |
 | `docs/system/<area>.md` | Current behaviour per area, reconciled after every feature | Recommended (mandatory in brownfield) | Short Markdown |
 
 ### 2.1 Levels S, M, L
 
-Not every change deserves the same process. The spec declares the level (`- Livello: S | M | L`) and it is approved with
+Not every change deserves the same process. The spec declares the level (`- Level: S | M | L`) and it is approved with
 the rest: the level is part of the hash, so lowering it after approval voids the approval. `diff_scope.py` checks that the
 real diff does not exceed the declared level.
 
@@ -188,7 +188,7 @@ real diff does not exceed the declared level.
 |---|---|---|---|
 | **S** | All true: at most 3 production files (tests, `docs/` and `*.md` excluded), no public interface or data format changed, no sensitive area, no new or changed dependency | `spec.md` and `tasks.md` (no plan; `T-DOC` optional), tests from the ACs | Deterministic checks and the PR review; no `review.md`, area page optional |
 | **M** | The normal case: everything that is neither S nor L | All those in §2 | `review.md` with a fresh-context reviewer and human decision |
-| **L** | At least one: sensitive area (`- Aree sensibili:` in `AGENTS.md`: authentication, payments, personal data, migrations), public interface or data format changed incompatibly, data migration | As M, plus an ADR for the decisions taken | As M, plus the **human reading of the diff** (`- Revisione umana del diff:` in `review.md`) |
+| **L** | At least one: sensitive area (`- Sensitive areas:` in `AGENTS.md`: authentication, payments, personal data, migrations), public interface or data format changed incompatibly, data migration | As M, plus an ADR for the decisions taken | As M, plus the **human reading of the diff** (`- Human diff review:` in `review.md`) |
 
 Criteria checked by `diff_scope.py`: a file in a sensitive area requires L; a change to a dependency manifest or lockfile,
 or more than 3 production files, require at least M. Public interfaces and data formats cannot be recognized by a script:
@@ -204,53 +204,53 @@ Rule for trivial bugs (obvious cause, one-line diff): red test, fix, `verify`, n
 
 ### 3.1 `AGENTS.md` (keep it under ~100 lines)
 
-{{FILE skills/sdlc-init/references/AGENTS.md.tmpl markdown}}
+{{FILE skills/sdd-init/references/AGENTS.md.tmpl markdown}}
 
 ### 3.2 `constitution.md`
 
-{{FILE skills/sdlc-init/references/constitution.md.tmpl markdown}}
+{{FILE skills/sdd-init/references/constitution.md.tmpl markdown}}
 
 ### 3.3 `spec.md`
 
-{{FILE skills/sdlc-spec/references/spec-template.md markdown}}
+{{FILE skills/sdd-spec/references/spec-template.md markdown}}
 
-Minimum quality of a spec: it declares the level (§2.1), names the files/interfaces involved, declares the non-scope, ends with an end-to-end check that demonstrates the feature. The `approved` state requires approver and date filled in, no open questions and the **body hash** (`- Hash:`, computed with `spec_lint.py --hash` after approval): `spec_lint.py` reports if the content changed after the approval. The plan also records `- Basato su spec:` with the hash of the spec it was approved on, and lapses if the spec changes.
+Minimum quality of a spec: it declares the level (§2.1), names the files/interfaces involved, declares the non-scope, ends with an end-to-end check that demonstrates the feature. The `approved` state requires approver and date filled in, no open questions and the **body hash** (`- Hash:`, computed with `spec_lint.py --hash` after approval): `spec_lint.py` reports if the content changed after the approval. The plan also records `- Based on spec:` with the hash of the spec it was approved on, and lapses if the spec changes.
 
 **Spec ID.** Creation date plus a short lower-case slug: `2026-10-24-export-csv`. It is the folder name and appears in the title (`# SPEC-2026-10-24-export-csv: Export CSV`); `spec_lint.py` checks that they match. With progressive numbers two people or two branches picked the same `SPEC-004`; with date and slug this does not happen, and folders stay in chronological order. Old `SPEC-NNN` IDs remain valid.
 
-**Changing an approved spec.** `Stato: in-revisione` and an entry in `## Revisioni` (date, what changes, why); after the changes, a new approval with a new hash. The hash chain does the rest: the plan records the spec hash and lapses, the tasks (`- Basato su piano:`) record the plan hash and must be reviewed if the plan changes. States: `draft` → `approved` ⇄ `in-revisione` → `implemented` (or `superseded`).
+**Changing an approved spec.** `Status: in-revision` and an entry in `## Revisions` (date, what changes, why); after the changes, a new approval with a new hash. The hash chain does the rest: the plan records the spec hash and lapses, the tasks (`- Based on plan:`) record the plan hash and must be reviewed if the plan changes. States: `draft` → `approved` ⇄ `in-revision` → `implemented` (or `superseded`).
 
 ### 3.4 `plan.md`
 
-{{FILE skills/sdlc-plan/references/plan-template.md markdown}}
+{{FILE skills/sdd-plan/references/plan-template.md markdown}}
 
-The files in the "Componenti e file" section go **one per line in the format `- path: what changes`** (the path is the first word, or the text in backticks); the paths in the "Dove" column of the test strategy also count as planned: `diff_scope.py` uses them to detect out-of-plan changes. ACs are searched by exact ID only in the "Strategia di test" section.
+The files in the "Components and files" section go **one per line in the format `- path: what changes`** (the path is the first word, or the text in backticks); the paths in the "Where" column of the test strategy also count as planned: `diff_scope.py` uses them to detect out-of-plan changes. ACs are searched by exact ID only in the "Test strategy" section.
 
 ### 3.5 `tasks.md`
 
-{{FILE skills/sdlc-tasks/references/tasks-template.md markdown}}
+{{FILE skills/sdd-tasks/references/tasks-template.md markdown}}
 
-`T-nn` tasks have `verifica:` and `copre:` and no `<...>` placeholders; `T-DOC` and `T-SYNC` are mandatory and run after the review. `- Basato su piano:` records the hash of the plan they derive from. `T-Rnn` tasks are added by the review when the outcome is `non conforme` (§3.8): they have `verifica:`, optional `copre:`, and run like `T-nn` tasks. At levels M and L, once the human has read the locked tests of an "atteso: rosso" task, `— test approvati: <name, yyyy-mm-dd, sha>` is appended to its line, with the SHA of the `Test-Lock` commit that was read: until then `state.py` does not point to implementation and `loop.py` stops. The "atteso: rosso" (expected: red) marker goes only on tasks that write tests: when the last closed task carries it and the next one is open, the spec is in the **red phase** (red tests are the expected result) and the `Stop` hook and `loop.py` take it into account.
+`T-nn` tasks have `verify:` and `covers:` and no `<...>` placeholders; `T-DOC` and `T-SYNC` are mandatory and run after the review. `- Based on plan:` records the hash of the plan they derive from. `T-Rnn` tasks are added by the review when the outcome is `non-compliant` (§3.8): they have `verify:`, optional `covers:`, and run like `T-nn` tasks. At levels M and L, once the human has read the locked tests of an "expected: red" task, `— tests approved: <name, yyyy-mm-dd, sha>` is appended to its line, with the SHA of the `Test-Lock` commit that was read: until then `state.py` does not point to implementation and `loop.py` stops. The "expected: red" marker goes only on tasks that write tests: when the last closed task carries it and the next one is open, the spec is in the **red phase** (red tests are the expected result) and the `Stop` hook and `loop.py` take it into account.
 
 ### 3.6 `bugfix.md`
 
-{{FILE skills/sdlc-bugfix/references/bugfix-template.md markdown}}
+{{FILE skills/sdd-bugfix/references/bugfix-template.md markdown}}
 
 ### 3.7 Codebase map and area page
 
-The **map** (`docs/system/mappa.md`) is written once, at the start of work on an existing codebase:
+The **map** (`docs/system/map.md`) is written once, at the start of work on an existing codebase:
 
-{{FILE skills/sdlc-map-codebase/references/mappa-template.md markdown}}
+{{FILE skills/sdd-map-codebase/references/map-template.md markdown}}
 
 The **area page** (`docs/system/<area>.md`) grows area by area and is reconciled after every feature:
 
-{{FILE skills/sdlc-sync/references/area-template.md markdown}}
+{{FILE skills/sdd-sync/references/area-template.md markdown}}
 
 ### 3.8 `review.md`
 
-{{FILE skills/sdlc-review-diff/references/review-template.md markdown}}
+{{FILE skills/sdd-review-diff/references/review-template.md markdown}}
 
-The outcome is one of `conforme` (compliant), `conforme con riserve` (compliant with reservations), `non conforme` (not compliant). The final decision belongs to the human. At level L the decision-maker also reads the diff and records it in `- Revisione umana del diff:`; at level S `review.md` is not needed. With `non conforme` every `alta` (high) or `media` (medium) problem becomes a `T-Rnn` task in `tasks.md`; when they are all closed the review is repeated (`state.py` says so).
+The outcome is one of `compliant` (compliant), `compliant with reservations` (compliant with reservations), `non-compliant` (not compliant). The final decision belongs to the human. At level L the decision-maker also reads the diff and records it in `- Human diff review:`; at level S `review.md` is not needed. With `non-compliant` every `high` (high) or `medium` (medium) problem becomes a `T-Rnn` task in `tasks.md`; when they are all closed the review is repeated (`state.py` says so).
 
 ---
 
@@ -258,18 +258,18 @@ The outcome is one of `conforme` (compliant), `conforme con riserve` (compliant 
 
 | Phase | Activity | Plugin skill | Human gate |
 |---|---|---|---|
-| 1. Foundations | Setup (§1), `AGENTS.md`, `constitution.md` written with the agent in conversation and reviewed by you | `sdlc-init` | You approve principles and stack |
-| 2. Spec | From the idea to `spec.md`. Have the agent list open questions and assumptions, answer, then freeze | `sdlc-spec` | **You approve the spec** (name and date in the document) |
-| 3. Plan | `plan.md`, read-only | `sdlc-plan` | **You approve the plan** |
-| 4. Tasks | `tasks.md` in small steps, each with a verification command | `sdlc-tasks` | Quick check |
-| 5. Tests first | From the ACs, the agent writes the tests; they must fail for the right reason; `Test-Lock` commit | `sdlc-tests-from-ac` (via `sdlc-implement`) | **You approve the locked tests** (`test approvati:`; at level S a spot check is enough) |
-| 6. Implementation | Task by task, `verify` at every step; commit at every green task | `sdlc-implement`, or `sdlc-loop` (§7) | — |
-| 7. Diff review | Fresh context, trying to refute; `review.md` | `sdlc-review-diff` | **You decide on the review** |
-| 8. Documentation | T-DOC: executed examples, valid links | `sdlc-docs` | Review |
-| 9. Reconciliation | T-SYNC: spec and `docs/system/` aligned with the real behaviour; spec state = `implemented` | `sdlc-sync` | Review, then PR |
+| 1. Foundations | Setup (§1), `AGENTS.md`, `constitution.md` written with the agent in conversation and reviewed by you | `sdd-init` | You approve principles and stack |
+| 2. Spec | From the idea to `spec.md`. Have the agent list open questions and assumptions, answer, then freeze | `sdd-spec` | **You approve the spec** (name and date in the document) |
+| 3. Plan | `plan.md`, read-only | `sdd-plan` | **You approve the plan** |
+| 4. Tasks | `tasks.md` in small steps, each with a verification command | `sdd-tasks` | Quick check |
+| 5. Tests first | From the ACs, the agent writes the tests; they must fail for the right reason; `Test-Lock` commit | `sdd-tests-from-ac` (via `sdd-implement`) | **You approve the locked tests** (`tests approved:`; at level S a spot check is enough) |
+| 6. Implementation | Task by task, `verify` at every step; commit at every green task | `sdd-implement`, or `sdd-loop` (§7) | — |
+| 7. Diff review | Fresh context, trying to refute; `review.md` | `sdd-review-diff` | **You decide on the review** |
+| 8. Documentation | T-DOC: executed examples, valid links | `sdd-docs` | Review |
+| 9. Reconciliation | T-SYNC: spec and `docs/system/` aligned with the real behaviour; spec state = `implemented` | `sdd-sync` | Review, then PR |
 | 10. Replan | Between features, update `constitution.md`/`AGENTS.md` with what you learned | — | — |
 
-`sdlc-next` tells you at any time the current phase and the next step. At level S (§2.1) phase 3 is skipped and phase 7 is the PR review; at level L phase 7 includes the human reading of the diff.
+`sdd-next` tells you at any time the current phase and the next step. At level S (§2.1) phase 3 is skipped and phase 7 is the PR review; at level L phase 7 includes the human reading of the diff.
 
 ---
 
@@ -277,15 +277,15 @@ The outcome is one of `conforme` (compliant), `conforme con riserve` (compliant 
 
 The main risk is that the agent changes or "improves" what it should not touch. Recommended order:
 
-1. **Map.** Read-only, start from a deterministic inventory (`scan_repo.py`) and have the agent produce the codebase map: modules, entry points, dependencies, real build and test commands. Spot-check that it is true. *(`sdlc-map-codebase`)*
-2. **Real `AGENTS.md`.** With the commands that really work (tried, not inferred), the zones not to touch (`- Non modificare: ...` line) and the sensitive areas (`- Aree sensibili: ...`), paths in backticks. *(`sdlc-map-codebase`, `sdlc-init`)*
-3. **Green baseline.** Run tests and build before any change, **also on Windows if it is a team development environment**. If they already fail, note it: it is not the agent's fault. *(`sdlc-map-codebase`)*
-4. **Characterization tests.** Where the area to change lacks coverage, write tests that pin the current behaviour (even if imperfect) and prove they can fail with a deliberate break. They are the safety net. *(`sdlc-characterize`)*
-5. **Spec of the delta only.** Do not document the whole system: describe only the change, with an **explicit non-scope** (what not to touch). *(`sdlc-spec`)*
-6. **Plan with impact.** `plan.md` lists files touched, callers, migrations, backward compatibility. *(`sdlc-plan`)*
-7. **Small, reversible changes.** One task per commit; full `verify` every time, not just the new tests. *(`sdlc-implement`)*
-8. **Diff review against the spec.** A subagent or a second session with fresh context checks that nothing out of scope changed; `diff_scope.py` reports out-of-plan files and forbidden zones. *(`sdlc-review-diff`)*
-9. **Documentation feedback.** For every area touched create or update `docs/system/<area>.md`: current behaviour in 2-3 paragraphs, constraints discovered, links to the specs. This way knowledge of the system grows area by area without documenting everything upfront. Update `AGENTS.md`/ADRs with what you discovered. *(`sdlc-docs`, `sdlc-sync`)*
+1. **Map.** Read-only, start from a deterministic inventory (`scan_repo.py`) and have the agent produce the codebase map: modules, entry points, dependencies, real build and test commands. Spot-check that it is true. *(`sdd-map-codebase`)*
+2. **Real `AGENTS.md`.** With the commands that really work (tried, not inferred), the zones not to touch (`- Do not modify: ...` line) and the sensitive areas (`- Sensitive areas: ...`), paths in backticks. *(`sdd-map-codebase`, `sdd-init`)*
+3. **Green baseline.** Run tests and build before any change, **also on Windows if it is a team development environment**. If they already fail, note it: it is not the agent's fault. *(`sdd-map-codebase`)*
+4. **Characterization tests.** Where the area to change lacks coverage, write tests that pin the current behaviour (even if imperfect) and prove they can fail with a deliberate break. They are the safety net. *(`sdd-characterize`)*
+5. **Spec of the delta only.** Do not document the whole system: describe only the change, with an **explicit non-scope** (what not to touch). *(`sdd-spec`)*
+6. **Plan with impact.** `plan.md` lists files touched, callers, migrations, backward compatibility. *(`sdd-plan`)*
+7. **Small, reversible changes.** One task per commit; full `verify` every time, not just the new tests. *(`sdd-implement`)*
+8. **Diff review against the spec.** A subagent or a second session with fresh context checks that nothing out of scope changed; `diff_scope.py` reports out-of-plan files and forbidden zones. *(`sdd-review-diff`)*
+9. **Documentation feedback.** For every area touched create or update `docs/system/<area>.md`: current behaviour in 2-3 paragraphs, constraints discovered, links to the specs. This way knowledge of the system grows area by area without documenting everything upfront. Update `AGENTS.md`/ADRs with what you discovered. *(`sdd-docs`, `sdd-sync`)*
 
 Differences from greenfield: more time reading/characterizing, smaller specs, a test net before the code, a review more attentive to the "unexpected diff".
 
@@ -294,9 +294,9 @@ Differences from greenfield: more time reading/characterizing, smaller specs, a 
 ## 6. Tests and documentation
 
 **Tests**
-- Generate tests **from the acceptance criteria**, not from the code: otherwise the agent writes tests that confirm its own bugs. *(`sdlc-tests-from-ac`)*
+- Generate tests **from the acceptance criteria**, not from the code: otherwise the agent writes tests that confirm its own bugs. *(`sdd-tests-from-ac`)*
 - **Locked tests:** red tests are committed alone with the trailer `Test-Lock: T-nn` (the code skeleton, if needed, in an earlier commit). From then on the implementation must make them pass without touching them: `diff_scope.py` reports as an error any later change to those files outside a new `Test-Lock` commit, which must be justified in the review. The branch CI stays red until the implementation task.
-- **Approved tests:** the locked tests define "done" for the implementation, and they were written by the same agent that will implement. At levels M and L the human reads them (the diff of the `Test-Lock` commit) before implementation and records it on the task line (`test approvati: <name, yyyy-mm-dd, sha>`); `state.py`, `loop.py` and `sync_check.py` check it, and `diff_scope.py` reports a new `Test-Lock` commit after the approved SHA: changed tests must be approved again.
+- **Approved tests:** the locked tests define "done" for the implementation, and they were written by the same agent that will implement. At levels M and L the human reads them (the diff of the `Test-Lock` commit) before implementation and records it on the task line (`tests approved: <name, yyyy-mm-dd, sha>`); `state.py`, `loop.py` and `sync_check.py` check it, and `diff_scope.py` reports a new `Test-Lock` commit after the approved SHA: changed tests must be approved again.
 - Traceability: ACs restart from AC-001 in every spec, so every citation must be attributed to a spec. Declare the spec at the top of the test file (`# SPEC-2026-10-24-export-csv`) and cite `AC-001` in the name or a comment, or use the qualified form `SPEC-2026-10-24-export-csv/AC-001` (in function names `SPEC_2026_10_24_export_csv_AC_001`). `trace_check.py` checks that every AC appears in at least one test of its spec, reports requirements without tests and ambiguous citations, and ignores those in `TODO`s.
 - **Executed tests, not just cited ones:** `verify` writes a JUnit XML report (`reports/junit.xml`); with `--junit` `trace_check.py` requires for every AC at least one test case executed and passed, and none failed. A citation in a skipped or never-run test is no longer enough. Mandatory at level L (`sync_check.py --junit`), always recommended.
 - Levels: unit for logic, integration for boundaries, at least one e2e for the main flow.
@@ -304,23 +304,23 @@ Differences from greenfield: more time reading/characterizing, smaller specs, a 
 - If the team develops on Windows, at least the integration suite also runs on Windows in CI.
 
 **Documentation**
-- An explicit final task (`T-DOC`), not a casual addition. *(`sdlc-docs`)*
+- An explicit final task (`T-DOC`), not a casual addition. *(`sdd-docs`)*
 - Source: spec and real code. The agent must run the examples it writes: `docs_check.py --run-examples` runs the Python blocks marked `# docs-check: run` and checks relative links; examples in other languages are tried by hand.
 - What to generate: README (setup, usage), API docs, ADRs for the decisions taken, migration notes in brownfield.
 
 ### 6.1 Bug fixing
 
-A bug is not a miniature feature: the mandatory sequence is **reproduce, pin with a red test, diagnose, fix the minimum, check that nothing else changed**. *(`sdlc-bugfix`, checked by `bug_lint.py`)*
+A bug is not a miniature feature: the mandatory sequence is **reproduce, pin with a red test, diagnose, fix the minimum, check that nothing else changed**. *(`sdd-bugfix`, checked by `bug_lint.py`)*
 
 | Phase | Activity | State in the file | Human gate |
 |---|---|---|---|
-| 1. Reproduction | The agent reproduces the bug with minimal steps. If it cannot, it stops and asks for data: no fix "by intuition" | `aperto` | — |
-| 2. Definition | `bugfix.md`: actual vs expected (with reference to REQ/AC), and **behaviour that must NOT change** | `aperto` | You confirm the expected behaviour: if the spec was silent or wrong, the bug is also a spec bug |
-| 3. Red test | A test that fails for the right reason (the bug's) | `aperto` | Spot check |
-| 4. Diagnosis | Verified root cause (logs, debugger, bisect); read-only until it is clear | `diagnosticato` | — |
-| 5. Minimal fix | Only what is needed; no refactoring in the same commit; test on the unchanged behaviour | `corretto` | PR review |
-| 6. Non-regression | Full `verify` + test on the unchanged behaviour | `corretto` | — |
-| 7. Closure | Update ACs/`docs/system/` if the bug revealed a missing requirement; lesson in `AGENTS.md`/ADR | `verificato` | — |
+| 1. Reproduction | The agent reproduces the bug with minimal steps. If it cannot, it stops and asks for data: no fix "by intuition" | `open` | — |
+| 2. Definition | `bugfix.md`: actual vs expected (with reference to REQ/AC), and **behaviour that must NOT change** | `open` | You confirm the expected behaviour: if the spec was silent or wrong, the bug is also a spec bug |
+| 3. Red test | A test that fails for the right reason (the bug's) | `open` | Spot check |
+| 4. Diagnosis | Verified root cause (logs, debugger, bisect); read-only until it is clear | `diagnosed` | — |
+| 5. Minimal fix | Only what is needed; no refactoring in the same commit; test on the unchanged behaviour | `fixed` | PR review |
+| 6. Non-regression | Full `verify` + test on the unchanged behaviour | `fixed` | — |
+| 7. Closure | Update ACs/`docs/system/` if the bug revealed a missing requirement; lesson in `AGENTS.md`/ADR | `verified` | — |
 
 Isolation: **one session, one branch and one commit per bug**. If the diagnosis spans many areas, a subagent or a fresh session does the diagnosis and delivers only `bugfix.md`; the fix starts in another session, with that file as its only context.
 
@@ -334,7 +334,7 @@ Isolation: **one session, one branch and one commit per bug**. If the diagnosis 
 repeat (max N times):
   1. the agent reads spec, current task and progress.md
   2. implements or fixes one T-nn task
-     ("atteso: rosso" task: writes the tests, sees them fail, Test-Lock commit, moves on)
+     ("expected: red" task: writes the tests, sees them fail, Test-Lock commit, moves on)
   3. runs `verify`
   4. green → commit, update progress.md, move to the next task
      red   → read the error, fix without touching the locked tests, retry
@@ -342,12 +342,12 @@ stop if: verify green AND no open T-nn task | N reached | no progress for K iter
        | locked tests to approve (levels M and L)
 ```
 
-The idea is the so-called "Ralph loop": an outer cycle that reruns the agent until an objective check passes. There is an official plugin for Claude Code; the `sdlc-playbook` plugin provides an equivalent, agent-independent script (`loop.py`, §7.3).
+The idea is the so-called "Ralph loop": an outer cycle that reruns the agent until an objective check passes. There is an official plugin for Claude Code; the `sdd-playbook` plugin provides an equivalent, agent-independent script (`loop.py`, §7.3).
 
 ### 7.2 Rules
 
 - **Objective stop criteria:** `verify` green, no open `T-nn` task in `tasks.md` **and** the final checks passed (`spec_lint.py`, `trace_check.py`, `diff_scope.py`, `secrets_check.py`), not "looks fine to me". A green `verify` alone is not enough: after the first task the code can be green with everything else still to do. And the agent ticks the boxes: that is why the final checks, which do not depend on it, matter.
-- **Pause for tests:** at levels M and L the loop stops after every "atteso: rosso" test task; the human reads the tests, writes `test approvati:` and relaunches. With `--junit` the final checks use the report of executed tests.
+- **Pause for tests:** at levels M and L the loop stops after every "expected: red" test task; the human reads the tests, writes `tests approved:` and relaunches. With `--junit` the final checks use the report of executed tests.
 - **The loop covers only `T-nn` tasks.** `T-DOC` and `T-SYNC` run after the review, with the human gate in between.
 - **Iteration cap** always set (e.g. 10-20): without it, the loop burns tokens for nothing.
 - **Stall detection:** if nothing changes for K consecutive iterations (tasks, commits, content of the working tree, generated files excluded), the loop stops.
@@ -359,23 +359,23 @@ The idea is the so-called "Ralph loop": an outer cycle that reruns the agent unt
 - **Isolation:** worktree or container, no access to production or secrets; the agent's native permissions with allowlist and deny-list (`settings.loop.json`, which also denies writes to the loop's checks and rules), never skipping permissions outside a disposable container.
 - **Content as data:** what the agent reads (code, issues, dependency docs, web) does not change its tasks; if it tries to, the agent notes it in `progress.md` and stops.
 - **External check:** the same verification runs in CI.
-- **The human launches the loop**, in a separate terminal: the agent prepares the files and runs the dry run (`sdlc-loop`), it does not start another agent from inside its own session.
+- **The human launches the loop**, in a separate terminal: the agent prepares the files and runs the dry run (`sdd-loop`), it does not start another agent from inside its own session.
 
 ### 7.3 Loop script
 
 **`scripts/loop.py`**
 
-{{FILE skills/sdlc-init/scripts/loop.py python}}
+{{FILE skills/sdd-init/scripts/loop.py python}}
 
 The prompt goes through stdin, which avoids command-line length limits on Windows. The agent command is `claude -p` by default: with `--agent` another agent is used, but **non-interactive mode and permissions must be configured and verified separately** (agent version, allowlist, deny-list). The loop never pushes.
 
 **`PROMPT.md`** (in the spec folder)
 
-{{FILE skills/sdlc-loop/references/PROMPT.md.tmpl markdown}}
+{{FILE skills/sdd-loop/references/PROMPT.md.tmpl markdown}}
 
 **`progress.md`**
 
-{{FILE skills/sdlc-loop/references/progress.md.tmpl markdown}}
+{{FILE skills/sdd-loop/references/progress.md.tmpl markdown}}
 
 ### 7.4 If the result is not satisfactory
 
@@ -391,7 +391,7 @@ The prompt goes through stdin, which avoids command-line length limits on Window
 | Green locally on Windows, red in Linux CI (or vice versa) | Platform-dependent scripts or tests | CI matrix; remove shell commands from scripts; check line endings and case in paths |
 | The agent "fixes" a bug and breaks another | Unchanged behaviour not declared | Fill in the "must NOT change" section in `bugfix.md` and add the related tests |
 
-A second level of verification: a fresh-context subagent that tries to **refute** the result against spec and plan (`sdlc-review-diff`).
+A second level of verification: a fresh-context subagent that tries to **refute** the result against spec and plan (`sdd-review-diff`).
 
 ---
 
@@ -442,28 +442,28 @@ Deployment and operations performed by an agent are a separate topic: by default
 
 ---
 
-## 11. Automation with the `sdlc-playbook` plugin
+## 11. Automation with the `sdd-playbook` plugin
 
 The plugin implements the steps of this playbook as **skills** (instructions for the agent, with an explicit human gate
-at every approval point) and **scripts** (deterministic checks copied into the project's `scripts/` by `sdlc-init`). It
-works with Claude Code and Codex. Full guide: the plugin's `README.md` and `docs/` (start from `docs/quick-guide.md`).
+at every approval point) and **scripts** (deterministic checks copied into the project's `scripts/` by `sdd-init`). It
+works with Claude Code, Codex and GitHub Copilot (CLI and coding agent). Full guide: the plugin's `README.md` and `docs/` (start from `docs/quick-guide.md`).
 
 | Phase | Skill | Scripts used | Human gate |
 |---|---|---|---|
-| State and next step | `sdlc-next` | `state.py` | — |
-| Setup (§1) | `sdlc-init` | `verify.py` and all the others (copied into the project) | Principles and stack |
-| Map and baseline (§5, steps 1-3) | `sdlc-map-codebase` | `scan_repo.py`, `verify.py` | Map spot-checked |
-| Characterization (§5, step 4) | `sdlc-characterize` | `verify.py` | Spot check |
-| Spec (§3.3) | `sdlc-spec` | `spec_lint.py` | **Spec approval** |
-| Plan (§3.4) | `sdlc-plan` | `spec_lint.py --plan` | **Plan approval** |
-| Tasks (§3.5) | `sdlc-tasks` | `spec_lint.py --tasks` | Quick check |
-| Tests from ACs (§6) | `sdlc-tests-from-ac` | `trace_check.py` | **Approval of the locked tests** (M, L) |
-| Implementation (§4, phase 6) | `sdlc-implement` | `verify.py` | PR review |
-| Loop (§7) | `sdlc-loop` | `loop.py` | **Permissions, cap, launch** |
-| Bug fixing (§6.1) | `sdlc-bugfix` | `bug_lint.py`, `verify.py` | Expected and "must NOT change" |
-| Diff review (§4, phase 7) | `sdlc-review-diff` | `diff_scope.py`, `trace_check.py`, `secrets_check.py` | **Review decision** |
-| Documentation (§6) | `sdlc-docs` | `docs_check.py` | Review |
-| Reconciliation (§4, phase 9) | `sdlc-sync` | `sync_check.py` | Review, then PR |
+| State and next step | `sdd-next` | `state.py` | — |
+| Setup (§1) | `sdd-init` | `verify.py` and all the others (copied into the project) | Principles and stack |
+| Map and baseline (§5, steps 1-3) | `sdd-map-codebase` | `scan_repo.py`, `verify.py` | Map spot-checked |
+| Characterization (§5, step 4) | `sdd-characterize` | `verify.py` | Spot check |
+| Spec (§3.3) | `sdd-spec` | `spec_lint.py` | **Spec approval** |
+| Plan (§3.4) | `sdd-plan` | `spec_lint.py --plan` | **Plan approval** |
+| Tasks (§3.5) | `sdd-tasks` | `spec_lint.py --tasks` | Quick check |
+| Tests from ACs (§6) | `sdd-tests-from-ac` | `trace_check.py` | **Approval of the locked tests** (M, L) |
+| Implementation (§4, phase 6) | `sdd-implement` | `verify.py` | PR review |
+| Loop (§7) | `sdd-loop` | `loop.py` | **Permissions, cap, launch** |
+| Bug fixing (§6.1) | `sdd-bugfix` | `bug_lint.py`, `verify.py` | Expected and "must NOT change" |
+| Diff review (§4, phase 7) | `sdd-review-diff` | `diff_scope.py`, `trace_check.py`, `secrets_check.py` | **Review decision** |
+| Documentation (§6) | `sdd-docs` | `docs_check.py` | Review |
+| Reconciliation (§4, phase 9) | `sdd-sync` | `sync_check.py` | Review, then PR |
 
 **Plugin scripts** (all Python, standard library only, identical on Windows and Linux; exit code `0` = ok, `1` = check failed, `2` = wrong usage or missing precondition):
 
@@ -475,24 +475,24 @@ works with Claude Code and Codex. Full guide: the plugin's `README.md` and `docs
 | `scan_repo.py` | Deterministic inventory of a codebase (stack, languages, tests, CI, entry points) |
 | `trace_check.py` | Every AC cited in at least one test of its spec (`SPEC-nnn/AC-nnn` or declared file); with `--junit` also executed and passed in the report; requirements without tests; ambiguous citations |
 | `bug_lint.py` | Completeness of a bug file according to its state |
-| `diff_scope.py` | Changed files: forbidden zones (`Non modificare:` in `AGENTS.md`), locked tests (`Test-Lock`) changed after locking, test approvals voided by a new `Test-Lock`, level underestimated by the diff, dependencies without plan or ADR, out-of-plan files, planned files not touched |
+| `diff_scope.py` | Changed files: forbidden zones (`Do not modify:` in `AGENTS.md`), locked tests (`Test-Lock`) changed after locking, test approvals voided by a new `Test-Lock`, level underestimated by the diff, dependencies without plan or ADR, out-of-plan files, planned files not touched |
 | `docs_check.py` | Valid relative links; marked Python examples executed successfully |
 | `sync_check.py` | Closure: spec `implemented`, tasks closed, tests approved, review with human decision, area page, traceability (with the JUnit report at level L) |
 | `secrets_check.py` | Keys and tokens with a known format and `.env` files in the branch files (or in the whole repository with `--all`) |
 | `loop.py` | Outer loop with cap, stall detection, timeout per iteration, baseline, protected branch, pause for test approval and dry run |
 
-**Optional hooks (Claude Code only)**, inactive unless enabled with an environment variable. They start from `hooks/run.sh`, which exits immediately if the hook is not enabled and otherwise uses the first of `python3`, `python` and `py -3` that is Python 3; without Python the error is visible but non-blocking:
+**Optional hooks (Claude Code only; not ported to Codex and GitHub Copilot)**, inactive unless enabled with an environment variable. They start from `hooks/run.sh`, which exits immediately if the hook is not enabled and otherwise uses the first of `python3`, `python` and `py -3` that is Python 3; without Python the error is visible but non-blocking:
 
 | Hook | Enabled with | Effect |
 |---|---|---|
-| `Stop` | `SDLC_ENFORCE_VERIFY=1` (and `SDLC_VERIFY_ARGS`, e.g. `--fast`; `SDLC_STOP_MAX`, default 3) | If `verify` is red, the agent cannot declare the work finished, except in the red phase; it blocks up to `SDLC_STOP_MAX` times per session, then lets the agent stop with a warning to the user |
-| `PreToolUse` | `SDLC_GUARD=1` | Blocks forced or destructive pushes, `reset --hard`, `clean -f`, recursive deletes, download-and-execute, references to `.env`; also blocks if the event is unreadable |
+| `Stop` | `SDD_ENFORCE_VERIFY=1` (and `SDD_VERIFY_ARGS`, e.g. `--fast`; `SDD_STOP_MAX`, default 3) | If `verify` is red, the agent cannot declare the work finished, except in the red phase; it blocks up to `SDD_STOP_MAX` times per session, then lets the agent stop with a warning to the user |
+| `PreToolUse` | `SDD_GUARD=1` | Blocks forced or destructive pushes, `reset --hard`, `clean -f`, recursive deletes, download-and-execute, references to `.env`; also blocks if the event is unreadable |
 
-**Subagent (Claude Code only):** `sdlc-reviewer`, the independent reviewer used by `sdlc-review-diff`, read-only by construction (read tools only: it receives the diff and the check outputs in the message). With other agents the review happens in a new session with the same instructions.
+**Reviewer agent:** `sdd-reviewer`, the independent reviewer used by `sdd-review-diff`, read-only by construction (read tools only: it receives the diff and the check outputs in the message). Claude Code loads it as a subagent; for GitHub Copilot `sdd-init` copies an equivalent custom agent to `.github/agents/sdd-reviewer.agent.md` (tools `read` and `search`). With Codex the review happens in a new session with the same instructions.
 
 **What the plugin does not do:** it does not approve on behalf of the human, does not launch the loop from inside a session, does not cover release, infrastructure security and operations (§8), does not configure the agent's permissions (for the loop it provides an example).
 
-**Updates:** every script copied into the project carries the plugin version on line 2 (`# sdlc-playbook: <version>`); `sdlc-init` can compare it and update the scripts, without touching the `STEPS` of `verify.py`.
+**Updates:** every script copied into the project carries the plugin version on line 2 (`# sdd-playbook: <version>`); `sdd-init` can compare it and update the scripts, without touching the `STEPS` of `verify.py`.
 
 ---
 
@@ -506,6 +506,8 @@ works with Claude Code and Codex. Full guide: the plugin's `README.md` and `docs
 - Claude Code installation and shell on Windows (native, Git Bash/PowerShell, WSL): https://code.claude.com/docs/en/install
 - VS Code tasks: https://code.visualstudio.com/docs/editor/tasks
 - Codex skills (Agent Skills format): https://developers.openai.com/codex/skills
+- GitHub Copilot agent skills, custom agents and CLI plugins: https://docs.github.com/en/copilot
+- Agent Skills format: https://agentskills.io
 - Course "Spec-Driven Development with Coding Agents" (DeepLearning.AI, with JetBrains): https://www.deeplearning.ai/courses/spec-driven-development-with-coding-agents
 - Ralph loop (practical guide): https://sidbharath.com/blog/ralph-wiggum-claude-code/
 - Book: Addy Osmani, *Beyond Vibe Coding* (O'Reilly)

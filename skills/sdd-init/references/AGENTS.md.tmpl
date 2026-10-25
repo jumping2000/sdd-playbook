@@ -1,0 +1,27 @@
+# AGENTS.md
+
+## Project
+<2-3 lines: what it does, main stack>
+
+## Commands
+- Setup: `<command>`
+- Full verification (definition of "done"): `python scripts/verify.py`
+- Quick verification (only while working): `python scripts/verify.py --fast`
+- Single test: `<command for one test>`
+- Local run: `<command>`
+
+## Conventions
+- <style, naming, folder structure: only what cannot be inferred from the code>
+- No shell-specific commands in scripts: they must run on Windows and Linux.
+
+## Rules
+- Do not modify: <paths in backticks, e.g. `migrations/applied/`, `src/generated/`>
+- Sensitive areas: <paths in backticks that require level L, e.g. `src/auth/`, `src/payments/`, `migrations/`>
+- Every behaviour change requires a test.
+- Never declare a task completed without having run `python scripts/verify.py` successfully.
+- Ambiguity or missing requirements: stop and ask, do not assume.
+- Behaviour changes: update the spec or the area page in `docs/system/`.
+
+## Documentation
+- Specs in `docs/specs/<id>/`. Read `spec.md` and `plan.md` before writing code.
+- Non-trivial bugs: `docs/bugs/`. Current behaviour per area: `docs/system/`.

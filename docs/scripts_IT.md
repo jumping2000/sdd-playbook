@@ -2,18 +2,18 @@
 
 *English version: [scripts.md](scripts.md)*
 
-Tutti gli script stanno in `skills/sdlc-init/scripts/` e `sdlc-init` li copia in `scripts/` del progetto. Sono Python con sola
+Tutti gli script stanno in `skills/sdd-init/scripts/` e `sdd-init` li copia in `scripts/` del progetto. Sono Python con sola
 libreria standard, senza comandi di shell, e girano uguali su Windows, Linux e macOS. Si lanciano dalla **radice del
-progetto**. La seconda riga di ogni script riporta la versione del plugin (`# sdlc-playbook: <versione>`), per
-sapere quali copie aggiornare (`sdlc-init`, sezione "Aggiornare un progetto"). Exit code: `0` ok, `1` controllo fallito, `2` uso errato o precondizione mancante. L'output è sempre UTF-8,
-anche con una console Windows in cp1252.
+progetto**. La seconda riga di ogni script riporta la versione del plugin (`# sdd-playbook: <versione>`), per
+sapere quali copie aggiornare (`sdd-init`, sezione "Updating an already initialized project"). Exit code: `0` ok, `1` controllo fallito, `2` uso errato o precondizione mancante. L'output è sempre UTF-8,
+anche con una console Windows in cp1252. I messaggi sono in inglese.
 
 I formati dei file che gli script leggono sono descritti in [architecture_IT.md](architecture_IT.md#contratti-sui-file).
 
 | Script | Usato da | Scopo |
 |---|---|---|
 | `verify.py` | tutte | criterio di "fatto" del progetto |
-| `state.py` | `sdlc-next` | stato e prossima fase |
+| `state.py` | `sdd-next` | stato e prossima fase |
 | `spec_lint.py` | spec, plan, tasks, implement, loop | lint di spec, piano e task |
 | `trace_check.py` | tests-from-ac, review-diff | tracciabilità AC → test |
 | `bug_lint.py` | bugfix | completezza del file di un bug |
@@ -28,7 +28,7 @@ I formati dei file che gli script leggono sono descritti in [architecture_IT.md]
 
 ### verify.py
 
-Esegue gli step di `STEPS` (format, lint, tipi, test, segreti) e stampa una riga per step più `VERIFY: VERDE|ROSSO -> ...`.
+Esegue gli step di `STEPS` (format, lint, tipi, test, segreti) e stampa una riga per step più `VERIFY: GREEN|RED -> ...`.
 Va adattato dal progetto: ogni comando è una lista di argomenti, provato a mano prima di registrarlo.
 
 ```
@@ -44,22 +44,22 @@ Exit: `0` verde, `1` almeno uno step rosso o comando non trovato, `2` nessuno st
 
 Sola lettura. Riporta infrastruttura (`AGENTS.md`, `verify.py`, CI, `docs/`), presenza di codice esistente e della mappa,
 stato e livello di ogni spec con il suo passo successivo (`-> skill`), bug non verificati, branch corrente e la riga
-`PROSSIMO`.
-Ordine del suggerimento per una spec: `sdlc-spec` (bozza, `in-revisione`, approvazione decaduta) → `sdlc-plan` (mancante,
-da approvare o decaduto) → `sdlc-tasks` (mancanti o basate su un altro piano) → `sdlc-implement` (task `T-nn`/`T-Rnn`
-aperte) → `sdlc-review-diff` (review mancante; con `non conforme`: creare le `T-R`, o ripetere la review quando sono
-chiuse) → `sdlc-docs` (`T-DOC` aperta) → `sdlc-sync`. Prima di tutto `sdlc-init` e, nel brownfield senza mappa né spec,
-`sdlc-map-codebase`. `scripts/`, `docs/`, `.github/` e `.vscode/` non contano come codice esistente.
+`NEXT`.
+Ordine del suggerimento per una spec: `sdd-spec` (bozza, `in-revision`, approvazione decaduta) → `sdd-plan` (mancante,
+da approvare o decaduto) → `sdd-tasks` (mancanti o basate su un altro piano) → `sdd-implement` (task `T-nn`/`T-Rnn`
+aperte) → `sdd-review-diff` (review mancante; con `non-compliant`: creare le `T-R`, o ripetere la review quando sono
+chiuse) → `sdd-docs` (`T-DOC` aperta) → `sdd-sync`. Prima di tutto `sdd-init` e, nel brownfield senza mappa né spec,
+`sdd-map-codebase`. `scripts/`, `docs/`, `.github/` e `.vscode/` non contano come codice esistente.
 
-**Livelli** (playbook §2.1). Livello S: dopo la spec approvata `sdlc-tasks` (senza piano), poi `sdlc-implement`,
-`sdlc-docs` se `T-DOC` è aperta e `sdlc-sync`; `review.md` conta solo se c'è ed è `non conforme`. Livelli M e L: una
-task di test "atteso: rosso" chiusa senza `test approvati:` porta a `sdlc-tests-from-ac` prima dell'implementazione.
-Livello L: dopo una review accettata serve anche `- Revisione umana del diff:` in `review.md`, altrimenti
-`sdlc-review-diff`. Senza il campo `- Livello:` la spec vale M.
+**Livelli** (playbook §2.1). Livello S: dopo la spec approvata `sdd-tasks` (senza piano), poi `sdd-implement`,
+`sdd-docs` se `T-DOC` è aperta e `sdd-sync`; `review.md` conta solo se c'è ed è `non-compliant`. Livelli M e L: una
+task di test "expected: red" chiusa senza `tests approved:` porta a `sdd-tests-from-ac` prima dell'implementazione.
+Livello L: dopo una review accettata serve anche `- Human diff review:` in `review.md`, altrimenti
+`sdd-review-diff`. Senza il campo `- Level:` la spec vale M.
 
-**Più spec attive.** `PROSSIMO` riguarda la spec indicata con `--spec <id>` (nome della cartella o ID del titolo), quella
+**Più spec attive.** `NEXT` riguarda la spec indicata con `--spec <id>` (nome della cartella o ID del titolo), quella
 il cui nome di cartella compare nel branch corrente (`feat/2026-10-24-export-csv`), o l'unica attiva. Altrimenti riporta
-`scegli` con l'elenco delle spec e del loro passo: la scelta è dell'utente.
+`choose` con l'elenco delle spec e del loro passo: la scelta è dell'utente.
 
 ```
 python scripts/state.py [--json] [--spec <id>] [radice]
@@ -75,17 +75,17 @@ python scripts/spec_lint.py <file.md> --hash
 **Approvazione.** `--hash` stampa l'hash del corpo del file (dalla prima sezione `## ` in poi, fine riga e spazi
 finali normalizzati, più il livello se la spec lo dichiara: abbassarlo dopo l'approvazione la fa decadere), da scrivere in `- Hash:` dopo l'approvazione. Una spec `approved`/`implemented` senza hash, o con
 un hash che non corrisponde più al contenuto, è un errore. Un piano approvato deve avere `- Hash:` valido e
-`- Basato su spec:` uguale all'hash attuale della spec: se la spec cambia, il piano decade. Con `--base <ref>` spec e
+`- Based on spec:` uguale all'hash attuale della spec: se la spec cambia, il piano decade. Con `--base <ref>` spec e
 piano devono esistere su `<ref>` ed essere identici alla copia di lavoro: il merge della PR di design su un branch
 protetto è l'approvazione che l'agente non può darsi da solo (playbook §1.2).
 
 | Modalità | Errori rilevati |
 |---|---|
-| spec | stato non valido (`draft`, `approved`, `in-revisione`, `implemented`, `superseded`); livello diverso da S, M, L (avviso se manca: vale M); titolo senza ID `# SPEC-<id>:`, data non valida o ID diverso dal nome della cartella; `in-revisione` senza una voce in `## Revisioni`; sezioni mancanti; ID REQ/AC duplicati; REQ senza AC; AC che cita REQ inesistenti; non-scope assente o con segnaposto; se `approved`/`implemented`: approvatore mancante, hash mancante o non corrispondente, domande aperte (avviso se restano `[ASSUNZIONE]`) |
-| `--plan` | sezione `## Strategia di test` mancante; AC della spec assenti da quella sezione (ID esatto: `AC-001` non vale per `AC-0011`); piano approvato con hash non valido o basato su un'altra versione della spec; avviso se il piano non è approvato |
+| spec | stato non valido (`draft`, `approved`, `in-revision`, `implemented`, `superseded`); livello diverso da S, M, L (avviso se manca: vale M); titolo senza ID `# SPEC-<id>:`, data non valida o ID diverso dal nome della cartella; `in-revision` senza una voce in `## Revisions`; sezioni mancanti; ID REQ/AC duplicati; REQ senza AC; AC che cita REQ inesistenti; non-scope assente o con segnaposto; se `approved`/`implemented`: approvatore mancante, hash mancante o non corrispondente, domande aperte (avviso se restano `[ASSUMPTION]`) |
+| `--plan` | sezione `## Test strategy` mancante; AC della spec assenti da quella sezione (ID esatto: `AC-001` non vale per `AC-0011`); piano approvato con hash non valido o basato su un'altra versione della spec; avviso se il piano non è approvato |
 | `--base` | spec o piano assenti su `<ref>` o diversi dalla versione su `<ref>` |
-| `--tasks` | nessuna task; task `T-nn` senza `verifica:` o `copre:` o con segnaposto `<...>`; task `T-Rnn` senza `verifica:` o con segnaposto (`copre:` facoltativo); ID duplicati; `T-SYNC` mancante, o `T-DOC` mancante salvo nel livello S; AC non coperto da nessuna task |
-| `--plan` e `--tasks` insieme | task con `- Basato su piano:` diverso dall'hash del piano (avviso se il campo manca) |
+| `--tasks` | nessuna task; task `T-nn` senza `verify:` o `covers:` o con segnaposto `<...>`; task `T-Rnn` senza `verify:` o con segnaposto (`covers:` facoltativo); ID duplicati; `T-SYNC` mancante, o `T-DOC` mancante salvo nel livello S; AC non coperto da nessuna task |
+| `--plan` e `--tasks` insieme | task con `- Based on plan:` diverso dall'hash del piano (avviso se il campo manca) |
 
 ### trace_check.py
 
@@ -105,7 +105,7 @@ normalizzata (`_` come `-`, numeri senza zeri iniziali): `SPEC-2026-10-24-export
   non conta ed è segnalata come avviso;
 - le citazioni su righe con `TODO`, `FIXME` o `XXX` non contano e sono segnalate.
 
-Stampa per ogni AC il numero di riferimenti o `NESSUN TEST`, segnala i REQ senza alcun AC testato e, come avvisi, gli AC
+Stampa per ogni AC il numero di riferimenti o `NO TEST`, segnala i REQ senza alcun AC testato e, come avvisi, gli AC
 attribuiti alla spec ma assenti dalla spec, le citazioni ambigue e quelle ignorate. Exit `1` se un AC non ha test (salvo
 `--warn-only`), `2` se non trova cartelle di test.
 
@@ -116,7 +116,7 @@ appartiene a un file di test attribuito alla spec (attributo `file`, o un compon
 file, come `tests.test_export` per `tests/test_export.py` o `com.acme.ExportTest` per `ExportTest.java`) o il progetto
 ha una sola spec. Il file di un caso è quello il cui percorso coincide più a lungo con `file` o `classname`: file
 omonimi in cartelle diverse non si confondono, e a pari merito tra file di spec diverse il caso non conta. Report
-illeggibile o `--junit` senza valore: exit `2`. Il report lo scrive `verify` (vedi `references/stacks.md` di `sdlc-init`).
+illeggibile o `--junit` senza valore: exit `2`. Il report lo scrive `verify` (vedi `references/stacks.md` di `sdd-init`).
 
 ### bug_lint.py
 
@@ -124,9 +124,9 @@ illeggibile o `--junit` senza valore: exit `2`. Il report lo scrive `verify` (ve
 python scripts/bug_lint.py docs/bugs/BUG-001-esempio.md
 ```
 
-I requisiti crescono con lo stato: `aperto` → riproduzione compilata; `diagnosticato` → atteso e attuale, "da NON
-cambiare", causa radice, percorso del test rosso; `corretto` → fix minimo descritto e test di non-regressione indicato;
-`verificato` → tutte le voci di "Chiusura" spuntate. Segnaposto `<...>` ed etichette vuote non contano come contenuto.
+I requisiti crescono con lo stato: `open` → riproduzione compilata; `diagnosed` → atteso e attuale, "da NON
+cambiare", causa radice, percorso del test rosso; `fixed` → fix minimo descritto e test di non-regressione indicato;
+`verified` → tutte le voci di "Closure" spuntate. Segnaposto `<...>` ed etichette vuote non contano come contenuto.
 
 ### diff_scope.py
 
@@ -140,23 +140,23 @@ partenza e quello di arrivo (`--no-renames`); i file generati (`__pycache__/`, `
 `AGENTS.md` e il livello della spec si leggono **dal merge-base** quando esistono lì: il ramo non può allentarli (se il
 ramo modifica `AGENTS.md` c'è un avviso). Le voci di `AGENTS.md` valgono come percorsi (testo tra backtick o prima
 parola); quelle che non sembrano percorsi sono segnalate e ignorate. Segnala:
-- **errore** (exit 1): file nelle zone delle righe `- Non modificare:` di `AGENTS.md` (tutte, non solo la prima);
+- **errore** (exit 1): file nelle zone delle righe `- Do not modify:` di `AGENTS.md` (tutte, non solo la prima);
 - **errore** (exit 1): file di test bloccati modificati dopo il blocco. Un commit con il trailer `Test-Lock: T-nn` blocca i
   suoi file di test (cartelle `tests`, `test`, `__tests__`, `spec` o nomi come `test_*.py`, `*_test.go`, `*.test.ts`,
   `*Test.java`); una modifica successiva in un commit senza lo stesso trailer, o non committata, è una violazione. I file
   non di test di un commit `Test-Lock` (per esempio uno scheletro) non vengono bloccati e sono segnalati come avviso;
 - **avviso** (errore con `--strict`): file fuori dal piano (esclusi `docs/specs/<questa spec>/`, `docs/system/`,
   `docs/bugs/`, `docs/adr/`). Il piano comprende le righe di "Componenti e file" (percorso = prima parola o testo tra
-  backtick, quindi `- src/a.py (nuovo): ...` vale `src/a.py`) e la colonna "Dove" della strategia di test;
-- **errore** (exit 1): **livello sottostimato** (playbook §2.1). Un file nelle righe `- Aree sensibili:` di `AGENTS.md`
+  backtick, quindi `- src/a.py (new): ...` vale `src/a.py`) e la colonna "Where" della strategia di test;
+- **errore** (exit 1): **livello sottostimato** (playbook §2.1). Un file nelle righe `- Sensitive areas:` di `AGENTS.md`
   richiede L; una modifica a un manifest o lockfile delle dipendenze (`package.json`, `pyproject.toml`,
   `requirements*.txt`, `go.mod`, `*.csproj`, i lockfile, ...) o più di 3 file di produzione (esclusi test, `docs/` e
-  `*.md`) richiedono almeno M. Il livello dichiarato viene da `- Livello:` della spec (M se manca); nel livello S senza
+  `*.md`) richiedono almeno M. Il livello dichiarato viene da `- Level:` della spec (M se manca); nel livello S senza
   piano il confronto con il piano è saltato;
 - **errore** (exit 1): **dipendenze senza decisione**: un manifest o lockfile modificato che il piano non elenca (un
   lockfile vale se il piano elenca il suo manifest nella stessa cartella), in un diff che non **aggiunge** un ADR in
   `docs/adr/` (README e indici non contano). Playbook §8: nuove dipendenze solo con ADR o nel piano approvato;
-- **errore** (exit 1): **test approvati superati**: lo SHA di `test approvati: <nome, data, sha>` non è un commit
+- **errore** (exit 1): **test approvati superati**: lo SHA di `tests approved: <name, date, sha>` non è un commit
   `Test-Lock` del ramo per quella task (rebase, amend), o dopo di esso c'è un altro commit `Test-Lock` per la stessa task;
 - **info**: percorsi del piano non toccati.
 
@@ -188,13 +188,13 @@ terminare con exit 0). Gli altri blocchi non vengono eseguiti.
 python scripts/sync_check.py docs/specs/001-x [--area docs/system/<area>.md] [--tests DIR ...] [--junit FILE|DIR ...]
 ```
 
-Verifica che: la spec sia valida con `Stato: implemented`; nessuna task sia aperta; `review.md` abbia un esito valido,
-diverso da `non conforme`, e la "Decisione di" compilata; esista una pagina d'area (o quella indicata) con le sezioni
-richieste, "Ultimo allineamento" compilato e la spec tra le "Specifiche collegate"; ogni AC sia citato in un test **di
+Verifica che: la spec sia valida con `Status: implemented`; nessuna task sia aperta; `review.md` abbia un esito valido,
+diverso da `non-compliant`, e la "Decided by" compilata; esista una pagina d'area (o quella indicata) con le sezioni
+richieste, "Last aligned" compilato e la spec tra le "Linked specs"; ogni AC sia citato in un test **di
 questa spec**, con le regole di `trace_check.py` (se mancano test e ci sono citazioni ambigue, l'errore lo dice).
 Livello S: `review.md` e pagina d'area facoltative (se `review.md` c'è, si controlla). Livello L: `review.md` deve avere
-anche `- Revisione umana del diff:` compilato. Nei livelli M e L le task di test chiuse ("atteso: rosso") riportano
-`test approvati:`. Con `--junit` gli AC devono essere verificati dal report dei test eseguiti, come in `trace_check.py`;
+anche `- Human diff review:` compilato. Nei livelli M e L le task di test chiuse ("expected: red") riportano
+`tests approved:`. Con `--junit` gli AC devono essere verificati dal report dei test eseguiti, come in `trace_check.py`;
 nel livello L il report è obbligatorio.
 
 ### secrets_check.py
@@ -233,18 +233,21 @@ sempre sullo stesso file non è in stallo, un report che cambia a ogni `verify` 
 il report non è ignorato da git. Ogni iterazione dura al
 massimo `--timeout` secondi: oltre, l'agente viene terminato e il loop prosegue; un codice di uscita diverso da zero viene
 riportato come avviso. Rifiuta di partire (exit `2`) su `main`/`master` (salvo `--allow-main` in ambienti isolati) e con
-`verify` già rosso, salvo fase rossa (l'ultima task `T-nn` chiusa è "atteso: rosso") o `--allow-red-baseline`.
-**Test da approvare** (livelli M e L): se dopo un'iterazione una task di test "atteso: rosso" è chiusa senza
-`test approvati:`, il loop si ferma con exit `1` perché l'umano rilegga i test bloccati; con un'approvazione già in
+`verify` già rosso, salvo fase rossa (l'ultima task `T-nn` chiusa è "expected: red") o `--allow-red-baseline`.
+**Test da approvare** (livelli M e L): se dopo un'iterazione una task di test "expected: red" è chiusa senza
+`tests approved:`, il loop si ferma con exit `1` perché l'umano rilegga i test bloccati; con un'approvazione già in
 attesa non parte (exit `2`). Con `--junit` il controllo finale `trace_check.py` usa il report dei test eseguiti.
 `--dry-run` controlla le precondizioni senza lanciare l'agente e mostra se c'è una fase rossa. Non fa push. Permessi e
-modalità non interattiva dell'agente vanno configurati a parte: `skills/sdlc-loop/references/settings.loop.json` è un
+modalità non interattiva dell'agente vanno configurati a parte: `skills/sdd-loop/references/settings.loop.json` è un
 esempio di allowlist e deny-list per Claude Code (nega anche la scrittura di `scripts/`, `AGENTS.md`, `.github/`, spec,
 piano e review: i controlli e le regole del loop) (`--agent "claude -p --settings <file>"`, da verificare sulla versione).
 
 ---
 
 ## Hook opzionali (solo Claude Code)
+
+Non sono portati su Codex e GitHub Copilot (gli hook di Copilot hanno un formato diverso e nessun evento di stop
+bloccante).
 
 Si caricano con il plugin (`hooks/hooks.json`) ma restano **inattivi** finché non imposti la variabile d'ambiente.
 Sono una rete di sicurezza minima, non un sandbox: non sostituiscono permessi, allowlist e isolamento.
@@ -256,18 +259,18 @@ Python 3 esce `1` con un messaggio, cioè un errore visibile ma non bloccante.
 
 ### Hook `Stop` — `hooks/stop_verify.py`
 
-Abilitazione: `SDLC_ENFORCE_VERIFY=1`. Se `scripts/verify.py` esiste ed è rosso, esce con codice 2 e riporta le ultime
-30 righe all'agente, che non può dichiarare il lavoro finito. Blocca fino a `SDLC_STOP_MAX` volte di fila per sessione
-(default 3; contatore per `session_id` in una cartella privata dell'utente, `%LOCALAPPDATA%\sdlc-playbook` o
-`~/.cache/sdlc-playbook`, aperto senza seguire link simbolici e azzerato quando `verify` torna verde), poi lascia fermare
+Abilitazione: `SDD_ENFORCE_VERIFY=1`. Se `scripts/verify.py` esiste ed è rosso, esce con codice 2 e riporta le ultime
+30 righe all'agente, che non può dichiarare il lavoro finito. Blocca fino a `SDD_STOP_MAX` volte di fila per sessione
+(default 3; contatore per `session_id` in una cartella privata dell'utente, `%LOCALAPPDATA%\sdd-playbook` o
+`~/.cache/sdd-playbook`, aperto senza seguire link simbolici e azzerato quando `verify` torna verde), poi lascia fermare
 l'agente con un avviso per l'utente (`systemMessage`). Senza `session_id` blocca una volta sola (`stop_hook_active`).
 Non agisce se il progetto non ha `verify.py`, o se una spec è in **fase rossa** (in `docs/specs/*/tasks.md` l'ultima task `T-nn` chiusa è
-marcata "atteso: rosso" e la successiva è aperta): lì i test rossi sono il risultato atteso. `SDLC_VERIFY_ARGS` restringe la
+marcata "expected: red" e la successiva è aperta): lì i test rossi sono il risultato atteso. `SDD_VERIFY_ARGS` restringe la
 verifica (es. `--fast`).
 
 ### Hook `PreToolUse` — `hooks/pretool_guard.py`
 
-Abilitazione: `SDLC_GUARD=1`. Analizza ogni comando di Bash e PowerShell per segmenti (`;`, `&&`, `||`, `|`) e parole,
+Abilitazione: `SDD_GUARD=1`. Analizza ogni comando di Bash e PowerShell per segmenti (`;`, `&&`, `||`, `|`) e parole,
 non con una sola espressione regolare. Blocca:
 - push forzati o distruttivi: `--force`, `-f` (anche dentro `-uf`), `--force-with-lease`, refspec con `+` (`+main`),
   `--delete`/`-d`, refspec `:branch`, `--mirror`;

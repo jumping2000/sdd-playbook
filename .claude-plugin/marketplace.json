@@ -1,14 +1,14 @@
 {
-  "name": "sdlc-playbook-marketplace",
+  "name": "sdd-playbook-marketplace",
   "owner": {
-    "name": "<da-compilare>"
+    "name": "jumping2000"
   },
-  "description": "Marketplace del plugin sdlc-playbook: skill per il ciclo di vita software con coding agent",
+  "description": "Marketplace of the SDD Playbook plugin: spec-driven development skills for coding agents",
   "plugins": [
     {
-      "name": "sdlc-playbook",
+      "name": "sdd-playbook",
       "source": "./",
-      "description": "Skill, script e hook per il ciclo di vita software con coding agent"
+      "description": "Skills, cross-platform checks and opt-in hooks for spec-driven development with coding agents"
     }
   ]
 }

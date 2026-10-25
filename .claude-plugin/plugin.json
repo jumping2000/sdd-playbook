@@ -1,5 +1,12 @@
 {
-  "name": "sdlc-playbook",
-  "version": "0.12.0",
-  "description": "Skill, script e hook per il ciclo di vita software con coding agent: spec-driven, verify cross-platform, bug fixing, review, riconciliazione"
+  "name": "sdd-playbook",
+  "version": "0.13.0",
+  "description": "SDD Playbook: spec-driven development for coding agents (Claude Code, Codex, GitHub Copilot). Skills, cross-platform checks and opt-in hooks: specs with acceptance criteria, approved plans, locked tests, verify, review, reconciliation.",
+  "author": {
+    "name": "jumping2000"
+  },
+  "homepage": "https://github.com/jumping2000/sdd-playbook",
+  "repository": "https://github.com/jumping2000/sdd-playbook",
+  "license": "MIT",
+  "keywords": ["spec-driven-development", "sdd", "coding-agents", "skills", "tdd", "code-review"]
 }
