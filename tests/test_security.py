@@ -147,6 +147,7 @@ class TestMaintenance(unittest.TestCase):
             text = (ROOT / rel).read_text(encoding="utf-8")
             self.assertNotRegex(text, r"actions/checkout@v[1-5]\b", rel)
             self.assertNotRegex(text, r"actions/setup-python@v[1-5]\b", rel)
+            self.assertNotIn("ubuntu-latest", text, rel)  # pinned: the label moves to new Ubuntu releases
 
 
 if __name__ == "__main__":

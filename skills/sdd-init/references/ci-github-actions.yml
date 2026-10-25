@@ -1,4 +1,4 @@
-# Same verification locally and in CI. Windows + Linux matrix: keep only ubuntu-latest
+# Same verification locally and in CI. Windows + Linux matrix: keep only ubuntu-24.04
 # if the team does not develop on Windows. In regulated contexts pin the actions by SHA.
 name: verify
 on:
@@ -9,7 +9,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os: [ubuntu-24.04, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v6

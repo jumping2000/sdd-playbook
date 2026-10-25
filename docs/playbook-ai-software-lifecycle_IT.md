@@ -35,7 +35,7 @@ Convenzione: **`verify`** significa `python scripts/verify.py` (§1.1).
 |---|---|
 | Repo e git | Repo git con branch protetto; un branch per feature; commit piccoli |
 | Un comando di verifica | Uno script nel linguaggio del progetto (`scripts/verify.py`) che lancia format, lint, type-check, test. È il criterio di "fatto" per l'agente. Vedi §1.1 per template, alias e integrazione VS Code |
-| CI | Stessa verifica in CI: controllo esterno che l'agente non può aggirare. Se si sviluppa su Windows, matrice `windows-latest` + `ubuntu-latest` |
+| CI | Stessa verifica in CI: controllo esterno che l'agente non può aggirare. Se si sviluppa su Windows, matrice `windows-latest` + `ubuntu-24.04` |
 | File di contesto | `AGENTS.md` come fonte; `CLAUDE.md` con `@AGENTS.md` in prima riga (evita i symlink: su Windows richiedono privilegi) |
 | Controlli sui documenti | Gli script di `scripts/` (§11): lint di spec, piano e task, tracciabilità, scope del diff, stato del progetto |
 | Permessi e audit | Vedi §1.2 |
@@ -202,7 +202,7 @@ verify:
 **CI (GitHub Actions)**
 
 ```yaml
-# Same verification locally and in CI. Windows + Linux matrix: keep only ubuntu-latest
+# Same verification locally and in CI. Windows + Linux matrix: keep only ubuntu-24.04
 # if the team does not develop on Windows. In regulated contexts pin the actions by SHA.
 name: verify
 on:
@@ -213,7 +213,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os: [ubuntu-24.04, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v6
@@ -256,7 +256,7 @@ jobs:
 | Tu, in VS Code | Task `verify` (o terminale integrato) | Funziona in PowerShell, cmd, Git Bash, WSL |
 | Agente (Claude Code, Codex, GitHub Copilot) | `python scripts/verify.py`, indicato in `AGENTS.md` | Secondo la documentazione di Claude Code consultata a ottobre 2026, su Windows nativo usa Git Bash se presente, altrimenti PowerShell: lo script è indipendente dalla shell |
 | Hook dell'agente (facoltativo) | Hook `Stop` del plugin con `SDD_ENFORCE_VERIFY=1` (§11) | Mai l'unico controllo |
-| CI | `python scripts/verify.py`, su `ubuntu-latest` e `windows-latest`; controlli di processo sulle PR | Il controllo che l'agente non può aggirare |
+| CI | `python scripts/verify.py`, su `ubuntu-24.04` e `windows-latest`; controlli di processo sulle PR | Il controllo che l'agente non può aggirare |
 
 **Trappole tipiche su Windows**
 

@@ -25,6 +25,8 @@ i nomi precedenti: il plugin è in progettazione e non è mai stato usato su un 
   CI, Python, dipendenze, piattaforme, agenti, stato, lingue, ultimo commit, stelle).
 - **Documentazione bilingue completa:** anche changelog e review hanno la versione inglese (senza suffisso) e italiana
   (`_IT`); il playbook si intitola "SDD Playbook" e descrive Copilot.
+- CI del repository e template generato da `sdd-init`: runner Linux fissato a `ubuntu-24.04` invece di
+  `ubuntu-latest`, che passa a Ubuntu 26 dal 2026-10-19.
 - Test riscritti in inglese e rinominati (`test_consistency`, `test_levels`, `test_test_verification`,
   `test_security`, `test_review_fixes`); nuovi controlli: tre manifest con la stessa versione, badge della versione,
   licenza, agente Copilot in sola lettura, nessun testo italiano nei file del plugin, nessun nome `sdlc-`/`SDLC_` fuori

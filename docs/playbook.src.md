@@ -35,7 +35,7 @@ Convention: **`verify`** means `python scripts/verify.py` (§1.1).
 |---|---|
 | Repo and git | Git repo with a protected branch; one branch per feature; small commits |
 | One verification command | A script in the project's language (`scripts/verify.py`) that runs format, lint, type-check, tests. It is the agent's definition of "done". See §1.1 for template, aliases and VS Code integration |
-| CI | Same verification in CI: an external check the agent cannot bypass. If you develop on Windows, a `windows-latest` + `ubuntu-latest` matrix |
+| CI | Same verification in CI: an external check the agent cannot bypass. If you develop on Windows, a `windows-latest` + `ubuntu-24.04` matrix |
 | Context file | `AGENTS.md` as the source; `CLAUDE.md` with `@AGENTS.md` on the first line (avoid symlinks: on Windows they need privileges) |
 | Document checks | The scripts in `scripts/` (§11): lint of spec, plan and tasks, traceability, diff scope, project state |
 | Permissions and audit | See §1.2 |
@@ -115,7 +115,7 @@ verify:
 | You, in VS Code | `verify` task (or integrated terminal) | Works in PowerShell, cmd, Git Bash, WSL |
 | Agent (Claude Code, Codex, GitHub Copilot) | `python scripts/verify.py`, stated in `AGENTS.md` | According to the Claude Code documentation consulted in October 2026, on native Windows it uses Git Bash if present, otherwise PowerShell: the script is shell-independent |
 | Agent hook (optional) | The plugin's `Stop` hook with `SDD_ENFORCE_VERIFY=1` (§11) | Never the only check |
-| CI | `python scripts/verify.py`, on `ubuntu-latest` and `windows-latest`; process checks on PRs | The check the agent cannot bypass |
+| CI | `python scripts/verify.py`, on `ubuntu-24.04` and `windows-latest`; process checks on PRs | The check the agent cannot bypass |
 
 **Typical Windows pitfalls**
 
