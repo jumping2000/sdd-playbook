@@ -44,12 +44,13 @@ You invoke a skill by asking the agent to use it, for example *"use sdd-spec for
 2. **`sdd-map-codebase`** (read-only). Starting from the `scan_repo.py` inventory, it reads the code and writes
    `docs/system/map.md` with real, tried commands and the **baseline**: which tests already pass and which do not. A
    pre-existing red is not the agent's fault. **Gate:** you spot-check the map.
-3. **Complete `AGENTS.md`** with two lines the scripts enforce, paths in backticks:
+3. **Complete `AGENTS.md`** with two lines the scripts enforce, paths in backticks, and review its **Decision
+   rights** (what the agent decides alone, asks first, never does):
    ```
    - Do not modify: `migrations/applied/`, `src/generated/`
    - Sensitive areas: `src/auth/`, `src/payments/`
    ```
-   "Non modificare" (do not modify) zones are never touched; "Aree sensibili" (sensitive areas) require level L.
+   "Do not modify" zones are never touched; "Sensitive areas" require level L.
 4. **`sdd-characterize`** on the area you want to change: tests that pin the current behaviour (even if wrong) and
    proof that they can fail. **Gate:** spot check.
 5. The **feature cycle**, with a spec that describes **only the change**, not the whole system.

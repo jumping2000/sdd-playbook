@@ -105,7 +105,7 @@ del diff.
 
 - **Precondizione:** spec e piano approvati (livello S: solo la spec).
 - **Cosa fa:** `tasks.md` con una riga per task nel formato descritto al §3.5 del playbook (azione, `verify:`, `covers:`), test prima del codice, ogni AC
-  coperto, `T-SYNC` sempre presente e `T-DOC` salvo nel livello S; `spec_lint.py --tasks` deve passare.
+  coperto (gli AC nominati da una domanda aperta non bloccante in task proprie, in fondo), `T-SYNC` sempre presente e `T-DOC` salvo nel livello S; `spec_lint.py --tasks` deve passare.
 
 ### sdd-tests-from-ac
 
@@ -179,7 +179,7 @@ del diff.
   `T-DOC` chiusa.
 - **Cosa fa:** confronta spec e comportamento reale: ogni scostamento è un bug (`sdd-bugfix`) o un cambio di
   requisito da approvare, mai nascosto; crea/aggiorna `docs/system/<area>.md` (facoltativa nel livello S); imposta `Status: implemented`; spunta
-  `T-SYNC`; `sync_check.py` deve passare; propone lezioni per `AGENTS.md` e ADR.
+  `T-SYNC`; segnala le domande aperte non bloccanti rimaste nella spec (risposte con una revisione, o spostate); `sync_check.py` deve passare; propone lezioni per `AGENTS.md` e ADR.
 
 ### sdd-loop
 

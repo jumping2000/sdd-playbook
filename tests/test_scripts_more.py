@@ -148,11 +148,13 @@ class TestDiffScope(unittest.TestCase):
             write(d, "legacy/a.py", "v2\n")
             write(d, "other.py", "x\n")
             write(d, "docs/system/export.md", "x\n")
+            write(d, "docs/glossary.md", "x\n")
             r = cli(d, "diff_scope", "docs/specs/001-x", "--base", "main")
             self.assertEqual(r.returncode, 1, r.stdout)
             self.assertIn("file in a forbidden zone (AGENTS.md): legacy/a.py", r.stdout)
             self.assertIn("[WARN] file outside the plan: other.py", r.stdout)
             self.assertNotIn("outside the plan: docs/system", r.stdout)
+            self.assertNotIn("outside the plan: docs/glossary.md", r.stdout)
             self.assertNotIn("outside the plan: src/export.py", r.stdout)
             self.assertIn("in the plan but not touched: tests/", r.stdout)
 

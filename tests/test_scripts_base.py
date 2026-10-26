@@ -287,6 +287,18 @@ class TestState(unittest.TestCase):
         self.assertEqual(self.next(lambda r: self.with_spec(r, tasks=everything, review=REVIEW_OK,
                                                             status="implemented"))["skill"], "sdd-spec")
 
+    def test_task_waiting_for_an_open_question(self):
+        def setup(r):
+            text = SPEC_OK.replace("## Open questions\n- none", "## Open questions\n- Separator? — blocking: no — about: AC-001")
+            text = text.replace(spec_lint.field(text, "Hash"), spec_lint.fingerprint(text))
+            self.with_spec(r, tasks=TASKS_OK)
+            write(r, "docs/specs/001-x/spec.md", text)
+            write(r, "docs/specs/001-x/plan.md", PLAN_OK.replace(spec_lint.field(PLAN_OK, "Based on spec"),
+                                                                 spec_lint.fingerprint(text)))
+        p = self.next(setup)
+        self.assertEqual(p["skill"], "sdd-spec")
+        self.assertIn("T-01 covers AC-001, named by a non-blocking open question", p["reason"])
+
     def test_plan_not_approved(self):
         def setup(r):
             self.with_spec(r)

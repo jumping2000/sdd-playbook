@@ -7,7 +7,7 @@ Usage:
 
 - Forbidden: paths listed in AGENTS.md on the "- Do not modify: a, b" lines -> error (exit 1).
 - Out of plan: changed files not listed in plan.md ("Components and files to create/modify" and the "Where" column of
-  the "Test strategy" and "Review focus" tables), excluding docs/specs/<this spec>/, docs/system/, docs/bugs/, docs/adr/ -> warning (error with
+  the "Test strategy" and "Review focus" tables), excluding docs/specs/<this spec>/, docs/system/, docs/bugs/, docs/adr/, docs/glossary.md -> warning (error with
   --strict).
 - Locked tests: the test files of a commit with the trailer "Test-Lock: T-nn" (the red tests written from the ACs)
   cannot change in a later commit without the same trailer, nor in uncommitted changes -> error (exit 1). An intended
@@ -40,7 +40,7 @@ sys.dont_write_bytecode = True  # no __pycache__ in the project: it would count 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import spec_lint  # noqa: E402
 
-ALWAYS_ALLOWED = ("docs/system/", "docs/bugs/", "docs/adr/")
+ALWAYS_ALLOWED = ("docs/system/", "docs/bugs/", "docs/adr/", "docs/glossary.md")
 PLACEHOLDER = re.compile(r"<[^<>\n]{1,100}>")
 PLAN_LINE = re.compile(r"^\s*[-*]\s+(?:`([^`]+)`|([^\s`:]+))")
 TEST_LOCK = re.compile(r"^Test-Lock:\s*(\S+)", re.M)

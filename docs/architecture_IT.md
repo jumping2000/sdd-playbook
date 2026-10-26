@@ -82,6 +82,7 @@ spec in-revision ....................................... sdd-spec
 spec in bozza, non approvata o con hash non valido ...... sdd-spec
 --- livello S: niente piano né review.md -----------------
 tasks.md mancante ....................................... sdd-tasks
+task successiva su un AC di una domanda non bloccante ... sdd-spec (risposta e revisione della spec)
 task T-nn o T-Rnn aperte ................................ sdd-implement
 review.md "non-compliant" (se c'è) ....................... sdd-review-diff
 T-DOC aperta, altrimenti ................................ sdd-docs, sdd-sync
@@ -89,7 +90,9 @@ T-DOC aperta, altrimenti ................................ sdd-docs, sdd-sync
 piano mancante, non approvato o decaduto ................ sdd-plan
 tasks.md mancante o basato su un altro piano ............ sdd-tasks
 task di test chiusa senza "tests approved:" ............. sdd-tests-from-ac
+task successiva su un AC di una domanda non bloccante ... sdd-spec (risposta e revisione della spec)
 task T-nn o T-Rnn aperte ................................ sdd-implement   (valuta sdd-loop)
+review per task mancante (L, o M con "Task review: on") . sdd-implement
 review.md mancante o senza esito valido ................. sdd-review-diff
 review "non-compliant" senza T-R ......................... sdd-review-diff (crea le T-R)
 review "non-compliant" con T-R tutte chiuse .............. sdd-review-diff (ripeti la review)
@@ -193,7 +196,12 @@ Un campo con segnaposto `<...>` o vuoto vale come **non compilato**.
 
 `python -m unittest discover -s tests -v`. Oltre ai test degli script (su repository git temporanei), del loop (con un agente
 finto che spunta una task per esecuzione) e degli hook, i **test di coerenza** verificano che:
-- ogni `SKILL.md` abbia frontmatter valido, `name` uguale alla cartella e meno di 150 righe;
+- ogni `SKILL.md` abbia frontmatter valido, `name` uguale alla cartella e meno di 150 righe, `name` e `description` nei
+  limiti del formato Agent Skills;
+- nessun file delle skill contenga `../`, e ogni percorso citato da una skill (i propri `references/` o quelli di
+  un'altra skill trovati con una ricerca) esista;
+- i template siano coerenti con gli script: review focus, anti-obiettivi, `blocking:` nelle domande aperte, le tre
+  liste dei diritti decisionali in `AGENTS.md` e nelle skill, nell'agente e nel prompt del loop che le seguono;
 - ogni `python scripts/<x>.py` citato esista e ogni script sia documentato, in entrambe le lingue;
 - ogni skill sia nei due README, nei due riferimenti delle skill, nelle due guide rapide e nei due playbook, e ogni skill
   citata esista;

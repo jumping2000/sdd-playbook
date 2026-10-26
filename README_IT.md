@@ -48,7 +48,7 @@ I coding agent sbagliano in modi ricorrenti. Ogni skill e ogni script esiste per
 
 | Errore tipico di un coding agent | Risposta del plugin | Dove |
 |---|---|---|
-| Indovina i requisiti e riempie i vuoti con assunzioni | Spec con requisiti, acceptance criteria e non-scope esplicito; domande aperte poste, non risolte dall'agente; assunzioni marcate | `sdd-spec`, `spec_lint.py` |
+| Indovina i requisiti e riempie i vuoti con assunzioni | Spec con requisiti, acceptance criteria e non-scope esplicito; domande aperte poste, non risolte dall'agente, e marcate bloccanti o no; assunzioni marcate; parole vaghe e sinonimi del glossario segnalati; diritti decisionali in `AGENTS.md` | `sdd-spec`, `spec_lint.py` |
 | Dichiara "fatto" senza evidenze | Un solo comando di verifica come definizione di "fatto"; l'hook `Stop` blocca la chiusura con `verify` rosso; il loop termina solo su controlli oggettivi | `verify.py`, hook `Stop`, `loop.py` |
 | Scrive test che confermano i propri bug | Test dagli AC, rossi per il motivo giusto, bloccati da un commit `Test-Lock` e approvati da una persona; tracciabilità AC → test eseguito | `sdd-tests-from-ac`, `trace_check.py --junit`, `diff_scope.py` |
 | Modifica o "migliora" ciò che è fuori scope | Piano approvato con i file da toccare; zone vietate e aree sensibili in `AGENTS.md`; diff confrontato con piano e livello | `sdd-plan`, `diff_scope.py` |

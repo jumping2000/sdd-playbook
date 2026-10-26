@@ -23,6 +23,10 @@ Idee dal marketplace AI Unified Process (S2, S3, S4, S5, S8 dell'analisi compara
 - **Test scritti dopo il codice (S8):** nuova sezione delle convenzioni dei test: l'oracolo è la spec, valori attesi
   dagli AC, un test in disaccordo con codice esterno alla task resta rosso e si segnala; fanno eccezione i test di
   caratterizzazione.
+- `state.py` indica `sdd-spec` quando la task successiva copre un AC nominato da una domanda aperta non bloccante;
+  `sdd-tasks` mette quegli AC in task proprie, in fondo; `sdd-sync` segnala le domande non bloccanti rimaste alla
+  chiusura; `docs/glossary.md` non conta come fuori piano in `diff_scope.py`; `sdd-init` spiega come portare un progetto
+  esistente a questi formati.
 - Playbook §3.1, §3.3, §6, riferimenti di skill e script, architettura e guida rapida aggiornati; nuovi test.
 
 ## 0.15.0

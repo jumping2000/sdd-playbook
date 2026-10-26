@@ -48,7 +48,7 @@ stato e livello di ogni spec con il suo passo successivo (`-> skill`), bug non v
 `NEXT`.
 Ordine del suggerimento per una spec: `sdd-spec` (bozza, `in-revision`, approvazione decaduta) → `sdd-plan` (mancante,
 da approvare o decaduto) → `sdd-tasks` (mancanti o basate su un altro piano) → `sdd-implement` (task `T-nn`/`T-Rnn`
-aperte) → `sdd-review-diff` (review mancante; con `non-compliant`: creare le `T-R`, o ripetere la review quando sono
+aperte; invece `sdd-spec` se la task successiva copre un AC nominato da una domanda aperta non bloccante) → `sdd-review-diff` (review mancante; con `non-compliant`: creare le `T-R`, o ripetere la review quando sono
 chiuse) → `sdd-docs` (`T-DOC` aperta) → `sdd-sync`. Prima di tutto `sdd-init` e, nel brownfield senza mappa né spec,
 `sdd-map-codebase`. `scripts/`, `docs/`, `.github/` e `.vscode/` non contano come codice esistente.
 
@@ -148,7 +148,7 @@ parola); quelle che non sembrano percorsi sono segnalate e ignorate. Segnala:
   `*Test.java`); una modifica successiva in un commit senza lo stesso trailer, o non committata, è una violazione. I file
   non di test di un commit `Test-Lock` (per esempio uno scheletro) non vengono bloccati e sono segnalati come avviso;
 - **avviso** (errore con `--strict`): file fuori dal piano (esclusi `docs/specs/<questa spec>/`, `docs/system/`,
-  `docs/bugs/`, `docs/adr/`). Il piano comprende le righe di "Components and files" (percorso = prima parola o testo tra
+  `docs/bugs/`, `docs/adr/`, `docs/glossary.md`). Il piano comprende le righe di "Components and files" (percorso = prima parola o testo tra
   backtick, quindi `- src/a.py (new): ...` vale `src/a.py`) e la colonna "Where" della strategia di test e del review focus;
 - **errore** (exit 1): **livello sottostimato** (playbook §2.1). Un file nelle righe `- Sensitive areas:` di `AGENTS.md`
   richiede L; una modifica a un manifest o lockfile delle dipendenze (`package.json`, `pyproject.toml`,

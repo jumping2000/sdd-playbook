@@ -23,7 +23,9 @@ Playbook §3.7 and §4 (phase 9). A spec not reconciled with the code stops bein
 3. **Area page** (optional at level S): create or update `docs/system/<area>.md` from `references/area-template.md`:
    current behaviour (only what is true in the code), constraints, characterization tests, references. Add the spec to
    "Linked specs" and set "Last aligned" to today's date.
-4. **Close:** set `Status: implemented` in the spec and tick `T-SYNC` in `tasks.md`.
+4. **Close:** set `Status: implemented` in the spec and tick `T-SYNC` in `tasks.md`. Non-blocking open questions still
+   in the spec (`spec_lint.py` warns) are reported to the user: answered with a revision, or moved to a new spec or to
+   the issue tracker; never removed silently.
 5. **Check:** `python scripts/sync_check.py <spec-dir> --junit <report>` (JUnit report from `verify`, mandatory at level
    L). Fix until it passes; if an error depends on a user decision, report it without forcing.
 6. **Lessons:** propose, without applying them, the changes for `AGENTS.md` and ADRs that emerged from the work.

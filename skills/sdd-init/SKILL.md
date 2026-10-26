@@ -58,7 +58,9 @@ skill's. For every older or missing script show the difference and copy it after
 `verify.py` is never overwritten: it contains the project's `STEPS`, so bring over only the new template lines (for
 example the `secrets` step) and let the user decide. Also update `.gitignore` (`reports/`, `__pycache__/`), the CI
 workflow ("Process checks" step of the template) and, for Copilot, `.github/skills/` and `.github/agents/`. Then run
-`verify` and `state.py`, and read the plugin CHANGELOG for format changes (new fields in spec, tasks and review).
+`verify` and `state.py`, and read the plugin CHANGELOG for format changes (new fields in spec, tasks and review). Since
+0.16.0: propose the `## Decision rights` section of the `AGENTS.md` template to the user, mark the open questions of
+active specs `blocking: yes|no`, and offer `docs/glossary.md`.
 
 ## STOP
 

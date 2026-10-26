@@ -35,6 +35,8 @@ Playbook §3.5 and §4 (phase 4).
      `spec_lint.py <spec> --plan <plan> --tasks <tasks>` and `state.py` ask to review the tasks.
    - `T-Rnn` tasks are not written here: `sdd-review-diff` adds them after a non-compliant review.
    - Every AC is covered by at least one task; no task touches what is in the non-scope.
+   - ACs named by a non-blocking open question of the spec (directly or through their REQ) go into tasks of their own,
+     placed last: they wait for the answer (`spec_lint.py --tasks` warns, `state.py` points back to `sdd-spec`).
    - The tests of the plan's **Review focus** go into the test task of the component that owns the case (they cite no
      AC: name them after the case).
    - Always include `T-DOC` (documentation, executed examples: `sdd-docs`; optional at level S) and `T-SYNC`

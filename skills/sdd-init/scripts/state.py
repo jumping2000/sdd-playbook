@@ -10,7 +10,9 @@ whose folder name appears in the current branch, or the only active one. Otherwi
 Levels (playbook §2.1): a level-S spec skips plan and review.md; a level-L spec also requires the human reading of the
 diff ("- Human diff review:" in review.md). At levels M and L the locked tests of a closed "expected: red" task must be
 approved by the human ("tests approved:" on the task line) before moving on. At level L (or M with "- Task review: on"
-in progress.md) every closed T-nn task needs a passed task review in progress.md before the final review.
+in progress.md) every closed T-nn task needs a passed task review in progress.md before the final review. When the
+next open T-nn task covers an AC named by a non-blocking open question of the spec, the next step is sdd-spec (the
+answer enters the spec with a revision).
 Standard library only (+ git for the branch name, if present), cross-platform.
 """
 from __future__ import annotations
@@ -74,6 +76,9 @@ def analyze_spec(d: Path) -> dict:
     open_tasks = re.findall(r"^\s*-\s+\[ \]\s+(T-[A-Z0-9]+)", tasks, re.M)
     closed_tasks = re.findall(r"^\s*-\s+\[[xX]\]\s+(T-[A-Z0-9]+)", tasks, re.M)
     numbered = [t for t in open_tasks if re.fullmatch(r"T-R?\d+", t)]
+    waiting = spec_lint.waiting_acs(spec) if spec else set()
+    waiting_tasks = {m.group(1): sorted(set(re.findall(r"AC-\d+", m.group(2))) & waiting)
+                     for m in re.finditer(r"^\s*-\s+\[ \]\s+(T-\d+)\b.*?covers:(.*)$", tasks, re.M)}
     spec_signed = _filled(spec, "Approved by / date")
     plan_signed = _filled(plan, "Approved by / date")
     state = (_field(spec, "Status").split("|")[0].strip() if spec else "") or "n/a"
@@ -99,6 +104,7 @@ def analyze_spec(d: Path) -> dict:
         "tasks_total": len(closed_tasks) + len(open_tasks),
         "numbered_tasks_open": len(numbered),
         "next_task": numbered[0] if numbered else None,
+        "next_task_waits_for": (waiting_tasks.get(numbered[0]) or []) if numbered else [],
         "tests_to_approve": spec_lint.tests_to_approve(tasks),
         "task_reviews_missing": spec_lint.task_reviews_missing(spec, tasks, progress),
         "review_tasks": len([t for t in open_tasks + closed_tasks if t.startswith("T-R")]),
@@ -135,6 +141,8 @@ def next_for_spec(s: dict) -> dict:
         return {"skill": "sdd-tests-from-ac", "spec": i,
                 "reason": f"locked tests of {', '.join(s['tests_to_approve'])} to be approved by the human "
                           "('tests approved:' on the task line) before implementation"}
+    if s["next_task_waits_for"]:
+        return waiting_task(s)
     if s["numbered_tasks_open"]:
         return {"skill": "sdd-implement", "spec": i,
                 "reason": f"open tasks: {s['numbered_tasks_open']}, next {s['next_task']} "
@@ -167,11 +175,19 @@ def closing(s: dict) -> dict:
             "reason": "reconcile spec and docs/system (T-SYNC) and set Status = implemented"}
 
 
+def waiting_task(s: dict) -> dict:
+    return {"skill": "sdd-spec", "spec": s["id"],
+            "reason": f"{s['next_task']} covers {', '.join(s['next_task_waits_for'])}, named by a non-blocking open "
+                      "question: get it answered and put the answer into the spec with a revision"}
+
+
 def next_level_s(s: dict) -> dict:
     """Level S: no plan; the review is the PR review, review.md counts only if present."""
     i = s["id"]
     if not s["tasks"]:
         return {"skill": "sdd-tasks", "spec": i, "reason": "level S: minimal tasks, without a plan"}
+    if s["next_task_waits_for"]:
+        return waiting_task(s)
     if s["numbered_tasks_open"]:
         return {"skill": "sdd-implement", "spec": i,
                 "reason": f"open tasks: {s['numbered_tasks_open']}, next {s['next_task']}"}

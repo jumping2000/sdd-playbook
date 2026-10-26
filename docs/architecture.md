@@ -81,6 +81,7 @@ spec in-revision ....................................... sdd-spec
 spec draft, not approved or with invalid hash ........... sdd-spec
 --- level S: no plan, no review.md -----------------------
 tasks.md missing ........................................ sdd-tasks
+next task covers an AC of a non-blocking question ....... sdd-spec (answer it, revise the spec)
 open T-nn or T-Rnn tasks ................................ sdd-implement
 review.md "non-compliant" (if present) ................... sdd-review-diff
 T-DOC open, otherwise ................................... sdd-docs, sdd-sync
@@ -88,7 +89,9 @@ T-DOC open, otherwise ................................... sdd-docs, sdd-sync
 plan missing, not approved or lapsed .................... sdd-plan
 tasks.md missing or based on another plan ............... sdd-tasks
 closed test task without "tests approved:" .............. sdd-tests-from-ac
+next task covers an AC of a non-blocking question ....... sdd-spec (answer it, revise the spec)
 open T-nn or T-Rnn tasks ................................ sdd-implement   (consider sdd-loop)
+task review missing (L, or M with "Task review: on") .... sdd-implement
 review.md missing or without a valid outcome ............ sdd-review-diff
 review "non-compliant" without T-R ....................... sdd-review-diff (create the T-R tasks)
 review "non-compliant" with all T-R closed ............... sdd-review-diff (repeat the review)
@@ -200,7 +203,11 @@ A field with a `<...>` placeholder or empty counts as **not filled in**.
 
 `python -m unittest discover -s tests -v`. Besides the tests of the scripts (on temporary git repositories), of the loop
 (with a fake agent that ticks one task per run) and of the hooks, the **coherence tests** check that:
-- every `SKILL.md` has valid frontmatter, `name` equal to the folder and fewer than 150 lines;
+- every `SKILL.md` has valid frontmatter, `name` equal to the folder and fewer than 150 lines, `name` and `description`
+  within the limits of the Agent Skills format;
+- no skill file contains `../`, every path a skill cites (its own `references/` or another skill's by search) exists;
+- the templates match the scripts: review focus, anti-goals, `blocking:` in the open questions, the three decision
+  rights lists in `AGENTS.md` and in the skills, agent and loop prompt that follow them;
 - every cited `python scripts/<x>.py` exists and every script is documented, in both languages;
 - every skill is in both READMEs, both skill references, both quick guides and both playbooks, and every cited skill exists;
 - every cited `§` exists as a playbook heading, and the two playbooks have the same section numbering;

@@ -44,7 +44,8 @@ Le skill si richiamano chiedendo all'agente di usarle, per esempio *"usa sdd-spe
 2. **`sdd-map-codebase`** (sola lettura). Parte dall'inventario di `scan_repo.py`, legge il codice, scrive
    `docs/system/map.md` con comandi reali provati e la **baseline**: quali test passano già e quali no. Un rosso che
    c'era prima non è colpa dell'agente. **Gate:** verifichi la mappa a campione.
-3. **Completa `AGENTS.md`** con due righe che gli script fanno rispettare, con i percorsi tra backtick:
+3. **Completa `AGENTS.md`** con due righe che gli script fanno rispettare, con i percorsi tra backtick, e rivedi i suoi
+   **Decision rights** (cosa l'agente decide da solo, chiede prima, non fa mai):
    ```
    - Do not modify: `migrations/applied/`, `src/generated/`
    - Sensitive areas: `src/auth/`, `src/payments/`

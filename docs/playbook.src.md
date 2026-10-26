@@ -399,7 +399,7 @@ The prompt goes through stdin, which avoids command-line length limits on Window
 |---|---|---|
 | Tests pass but the behaviour is wrong | Weak or missing acceptance criteria | Strengthen the ACs and tests, not the prompt |
 | The agent "completes" without verifying | No executable check | Make `verify` mandatory (rule in AGENTS.md, `Stop` hook, CI) |
-| It does out-of-scope things | Missing non-scope | Add it to the spec; `diff_scope.py` with `--strict`; list the zones in "Non modificare:" |
+| It does out-of-scope things | Missing non-scope | Add it to the spec; `diff_scope.py` with `--strict`; list the zones in "Do not modify:" |
 | It goes in circles on the same error | Task too big or ambiguous spec | Split the task, clarify the spec, restart with fresh context |
 | Quality drops in long sessions | Saturated context | New session, state read from `progress.md` |
 | It ignores instructions | `AGENTS.md` too long | Prune: keep only what cannot be inferred from the code |

@@ -107,7 +107,8 @@ the diff.
 
 - **Precondition:** spec and plan approved (level S: spec only).
 - **What it does:** `tasks.md` with one line per task in the format described in playbook §3.5 (action, `verify:`,
-  `covers:`), tests before code, every AC covered, `T-SYNC` always present and `T-DOC` except at level S;
+  `covers:`), tests before code, every AC covered (ACs named by a non-blocking open question in tasks of their own,
+  placed last), `T-SYNC` always present and `T-DOC` except at level S;
   `spec_lint.py --tasks` must pass.
 
 ### sdd-tests-from-ac
@@ -180,7 +181,7 @@ the diff.
   closed.
 - **What it does:** compares spec and real behaviour: every gap is either a bug (`sdd-bugfix`) or a requirement change to
   approve, never hidden; creates/updates `docs/system/<area>.md` (optional at level S); sets `Status: implemented`; ticks
-  `T-SYNC`; `sync_check.py --junit` must pass; proposes lessons for `AGENTS.md` and ADRs.
+  `T-SYNC`; reports the non-blocking open questions still in the spec (answered with a revision, or moved); `sync_check.py --junit` must pass; proposes lessons for `AGENTS.md` and ADRs.
 
 ### sdd-loop
 

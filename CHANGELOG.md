@@ -22,6 +22,10 @@ Ideas from the AI Unified Process marketplace (S2, S3, S4, S5, S8 of the compara
 - **Tests written after the code (S8):** new section of the test conventions: the spec is the oracle, expected values
   from the ACs, a test that disagrees with code outside the task stays failing and is reported; characterization tests
   are the exception.
+- `state.py` points to `sdd-spec` when the next task covers an AC named by a non-blocking open question;
+  `sdd-tasks` places those ACs in tasks of their own, last; `sdd-sync` reports the non-blocking questions left at
+  closure; `docs/glossary.md` does not count as out of plan in `diff_scope.py`; `sdd-init` explains how to bring an
+  existing project to these formats.
 - Playbook §3.1, §3.3, §6, skill and script references, architecture, quick guide updated; new tests.
 
 ## 0.15.0

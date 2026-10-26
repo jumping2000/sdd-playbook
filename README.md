@@ -48,7 +48,7 @@ Coding agents fail in recurring ways. Each skill and script exists to counter on
 
 | Typical failure of a coding agent | Answer in the plugin | Where |
 |---|---|---|
-| It guesses requirements and fills gaps with assumptions | Spec with requirements, acceptance criteria and explicit non-scope; open questions asked, not answered by the agent; assumptions marked | `sdd-spec`, `spec_lint.py` |
+| It guesses requirements and fills gaps with assumptions | Spec with requirements, acceptance criteria and explicit non-scope; open questions asked, not answered by the agent, and marked blocking or not; assumptions marked; vague words and glossary synonyms flagged; decision rights in `AGENTS.md` | `sdd-spec`, `spec_lint.py` |
 | It declares "done" without evidence | One verification command as the definition of "done"; the `Stop` hook blocks a red stop; the loop ends only on objective checks | `verify.py`, `Stop` hook, `loop.py` |
 | It writes tests that confirm its own bugs | Tests from the ACs, red for the right reason, locked by a `Test-Lock` commit and approved by a human; traceability AC → executed test | `sdd-tests-from-ac`, `trace_check.py --junit`, `diff_scope.py` |
 | It changes or "improves" things outside the scope | Approved plan with the files to touch; forbidden zones and sensitive areas in `AGENTS.md`; diff checked against plan and level | `sdd-plan`, `diff_scope.py` |

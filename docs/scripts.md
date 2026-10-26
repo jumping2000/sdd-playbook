@@ -48,7 +48,7 @@ Read-only. Reports infrastructure (`AGENTS.md`, `verify.py`, CI, `docs/`), prese
 state and level of every spec with its next step (`-> skill`), unverified bugs, current branch and the `NEXT`
 (next) line. Order of the suggestion for a spec: `sdd-spec` (draft, `in-revision`, lapsed approval) → `sdd-plan`
 (missing, to approve or lapsed) → `sdd-tasks` (missing or based on another plan) → `sdd-implement` (open `T-nn`/`T-Rnn`
-tasks) → `sdd-review-diff` (missing review; with `non-compliant`: create the `T-R` tasks, or repeat the review once they
+tasks; `sdd-spec` instead when the next task covers an AC named by a non-blocking open question) → `sdd-review-diff` (missing review; with `non-compliant`: create the `T-R` tasks, or repeat the review once they
 are closed) → `sdd-docs` (`T-DOC` open) → `sdd-sync`. First of all `sdd-init` and, in brownfield without map or specs,
 `sdd-map-codebase`. `scripts/`, `docs/`, `.github/` and `.vscode/` do not count as existing code.
 
@@ -154,7 +154,7 @@ look like paths are reported and ignored. It reports:
   `*Test.java`); a later change in a commit without the same trailer, or uncommitted, is a violation. Non-test files of a
   `Test-Lock` commit (e.g. a skeleton) are not locked and are reported as a warning;
 - **warning** (error with `--strict`): files outside the plan (excluding `docs/specs/<this spec>/`, `docs/system/`,
-  `docs/bugs/`, `docs/adr/`). The plan includes the lines of "Components and files" (path = first word or text in backticks,
+  `docs/bugs/`, `docs/adr/`, `docs/glossary.md`). The plan includes the lines of "Components and files" (path = first word or text in backticks,
   so `- src/a.py (new): ...` means `src/a.py`) and the "Where" column of the test strategy and of the review focus;
 - **error** (exit 1): **underestimated level** (playbook §2.1). A file in the `- Sensitive areas:` lines of `AGENTS.md`
   requires L; a change to a dependency manifest or lockfile (`package.json`, `pyproject.toml`, `requirements*.txt`,
