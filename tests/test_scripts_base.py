@@ -37,6 +37,46 @@ class TestSpecLint(unittest.TestCase):
         err, _ = spec_lint.lint_spec(SPEC_OK.replace("- none", "- Which separator?"))
         self.assertTrue(any("open questions" in e for e in err))
 
+    def test_blocking_and_non_blocking_open_questions(self):
+        def spec_with(question: str) -> str:
+            text = SPEC_OK.replace("## Open questions\n- none", "## Open questions\n" + question)
+            return text.replace(spec_lint.field(text, "Hash"), spec_lint.fingerprint(text))
+        unmarked = spec_with("- Which separator? — about: AC-001")
+        self.assertTrue(any("blocking open questions" in e for e in spec_lint.lint_spec(unmarked)[0]))
+        blocking = spec_with("- Which separator? — blocking: yes — about: AC-001")
+        self.assertTrue(any("blocking open questions" in e for e in spec_lint.lint_spec(blocking)[0]))
+        non_blocking = spec_with("- Which separator? — blocking: no — about: REQ-001")
+        err, warn = spec_lint.lint_spec(non_blocking)
+        self.assertEqual(err, [])
+        self.assertTrue(any("1 non-blocking open questions: the tasks covering REQ-001 wait" in w for w in warn))
+        self.assertEqual(spec_lint.waiting_acs(non_blocking), {"AC-001", "AC-002"})  # through REQ-001
+        _, warn = spec_lint.lint_tasks(non_blocking, TASKS_OK)
+        self.assertTrue(any(w.startswith("T-01 covers AC-001, AC-002") for w in warn), warn)
+        done = TASKS_OK.replace("[ ] T-01", "[x] T-01").replace("[ ] T-02", "[x] T-02")
+        self.assertEqual(spec_lint.lint_tasks(non_blocking, done)[1], [])  # closed tasks do not wait
+        dangling = spec_with("- Which separator? — blocking: no — about: AC-009")
+        self.assertIn("Open question about AC-009, which does not exist", spec_lint.lint_spec(dangling)[0])
+
+    def test_vague_words_and_glossary(self):
+        vague = SPEC_OK.replace("then I get a clear error", "then I quickly get an appropriate error, etc")
+        warn = spec_lint.lint_spec(vague)[1]
+        self.assertIn("AC-002: vague words (appropriate, etc, quickly): replace them with something verifiable", warn)
+        self.assertFalse(any("vague" in w for w in spec_lint.lint_spec(SPEC_OK)[1]))
+        glossary = ("| Term | Definition | Avoid |\n|---|---|---|\n| report | a document | statement, sheet |\n"
+                    "| <term> | <definition> | <avoid> |\n")
+        self.assertEqual(spec_lint.glossary_avoid(glossary), {"statement": "report", "sheet": "report"})
+        synonym = SPEC_OK.replace("Given a report, when", "Given a statement, when")
+        warn = spec_lint.lint_spec(synonym, glossary=glossary)[1]
+        self.assertIn("AC-001: 'statement' is a synonym to avoid in docs/glossary.md: use 'report'", warn)
+        self.assertFalse(any("synonym" in w for w in spec_lint.lint_spec(synonym)[1]))  # no glossary, no warning
+        with TmpDir() as d:
+            copy_scripts(d)
+            write(d, "spec.md", synonym.replace("Status: approved", "Status: draft"))  # body changed: no hash check
+            write(d, "docs/glossary.md", glossary)
+            r = run([sys.executable, "scripts/spec_lint.py", "spec.md"], d)
+            self.assertEqual(r.returncode, 0, r.stdout)
+            self.assertIn("'statement' is a synonym to avoid", r.stdout)
+
     def test_empty_non_scope(self):
         err, _ = spec_lint.lint_spec(SPEC_OK.replace("no change to the PDF format", ""))
         self.assertTrue(any("Non-scope" in e for e in err))

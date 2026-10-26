@@ -134,6 +134,7 @@ They are a safety net, not a sandbox: the real defence is permissions, isolation
 |---|---|
 | `state.py` says `choose` (choose) | Several active specs: work on the branch whose name contains the spec, or use `--spec <id>` |
 | An approval "lapses" | The content changed after the approval (the hash no longer matches): get it re-approved and recompute the hash |
+| `spec_lint.py`: "blocking open questions" | Answer them, or mark `blocking: no` the ones whose answer would not change a REQ or an AC the plan relies on |
 | `diff_scope.py`: "level underestimated" | The change is bigger than the declared level: raise the level in the spec and get it re-approved |
 | `diff_scope.py`: "dependencies changed without plan or ADR" | List the manifest in the approved plan or add an ADR in `docs/adr/` |
 | `diff_scope.py`: "tests approved: ... new Test-Lock commit after the approval" | The tests changed after your approval: read them again and approve the new `Test-Lock` commit |

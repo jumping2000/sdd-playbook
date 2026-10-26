@@ -22,6 +22,30 @@
 - Ambiguity or missing requirements: stop and ask, do not assume.
 - Behaviour changes: update the spec or the area page in `docs/system/`.
 
+## Decision rights
+A decision no line names counts as "Asks first". The "Never" list only grows: the plugin's rules apply even if a line is
+removed here.
+
+### Decides alone (record each one as a ruling in `progress.md`)
+- Internal names and structure within the conventions and the plan's interfaces
+- Library calls, algorithms and data structures the plan leaves open
+- Test data and test structure; log messages
+- <what the team adds>
+
+### Asks first (stop, write the question in `progress.md`, wait for the answer)
+- Anything a user can observe that the spec leaves open: values, limits, defaults, messages with business meaning
+- Data model or public interface changes beyond the plan
+- A new dependency, or a deviation from an ADR
+- A change to a file outside the plan
+- <what the team adds>
+
+### Never
+- Change spec, plan, `review.md` or `AGENTS.md`; write an approval (`Approved by`, `tests approved:`, `Decided by`)
+- Modify or weaken a locked test (`Test-Lock`), or any test, to make it pass
+- Push, merge, or commit on `main`/`master`
+- Set `Status: implemented` outside `sdd-sync`
+- <what the team adds>
+
 ## Documentation
 - Specs in `docs/specs/<id>/`. Read `spec.md` and `plan.md` before writing code.
 - Non-trivial bugs: `docs/bugs/`. Current behaviour per area: `docs/system/`.

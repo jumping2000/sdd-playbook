@@ -6,7 +6,8 @@ description: Use this skill at the start of work on an existing codebase (brownf
 # Codebase map (brownfield)
 
 Precondition: project initialized (`scripts/scan_repo.py` and `scripts/verify.py` exist). If they are missing, point to
-`sdd-init` (if only the scripts are missing, copy them from `../sdd-init/scripts/`).
+`sdd-init` (if only the scripts are missing, copy them from the `scripts/` folder of the `sdd-init` skill: search for
+`**/sdd-init/scripts/verify.py`).
 
 **Read-only on the code.** The only files you write are `docs/system/map.md` and, after confirmation, `AGENTS.md`.
 Playbook §5, steps 1-3.

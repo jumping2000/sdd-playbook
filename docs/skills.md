@@ -59,6 +59,8 @@ the diff.
   `state`. It also explains how to update an already initialized project.
 - **Rules:** never overwrites existing files (shows the difference, merges `tasks.json`); does not invent steps or
   tests; reports a red `verify` as it is.
+- **Also:** the **decision rights** section of `AGENTS.md` (decides alone / asks first / never), reviewed with the user;
+  `docs/glossary.md` only if the user wants it.
 - **Gate:** approval of `AGENTS.md`, constitution and `verify` steps.
 - **Declared limits:** the generated CI has never been run; the hooks are not enabled.
 
@@ -87,7 +89,8 @@ the diff.
   anything; plays the request back in its own words; **asks** one question per message, the one that would most change
   what gets built; offers 2-3 options when the request admits really different outcomes for the user; writes `spec.md`
   with a proposed level (S, M, L with the criteria of playbook §2.1), verifiable requirements, Given/when/then ACs,
-  mandatory non-scope, anti-goals, assumptions marked `[ASSUMPTION]`; `spec_lint.py` must pass; in brownfield it
+  mandatory non-scope, anti-goals, assumptions marked `[ASSUMPTION]`, open questions marked `blocking: yes|no` (only
+  non-blocking ones may stay open after approval), glossary terms and no vague words (warnings of `spec_lint.py`); `spec_lint.py` must pass; in brownfield it
   proposes `sdd-characterize` if the area has no tests.
 - **Approval:** only with explicit confirmation **and** the approver's name; then `Status: approved` and the hash.
 
@@ -127,8 +130,11 @@ the diff.
 - **Cycle:** first open `T-nn` or `T-Rnn` task → implement only that → `verify:` command and full `verify` → green:
   tick, commit with `Spec:` and `Agent:` trailers; red: at most 3 attempts, then stop and ask. Never modifies tests
   locked by a `Test-Lock` commit; stops if the change would exceed the spec level or needs an unplanned dependency.
-- **Rulings:** every decision taken within the latitude of spec and plan goes into `progress.md` (`- T-nn: what — why —
-  cost if wrong`); an ambiguous requirement is not a ruling, it stops the work.
+- **Decision rights:** follows the section of `AGENTS.md`: decides alone only what "Decides alone" lists and records it
+  as a ruling in `progress.md` (`- T-nn: what — why — cost if wrong`); stops on "Asks first", on a decision no line
+  names and on a task covering an AC named by a non-blocking open question; never does what "Never" lists.
+- **Tests after the code:** expected values from the ACs; a test that disagrees with code outside the task stays
+  failing and is reported.
 - **Task review:** at level L (optional at M with `- Task review: on`) every task is reviewed by `sdd-reviewer` on its
   package (`review_package.py <spec-dir> T-nn`) before the next one; high and medium problems are fixed in the same task
   (at most 2 rounds); the verdict goes into `## Task reviews` of `progress.md`. Commits carry `Task: T-nn`.

@@ -58,6 +58,8 @@ del diff.
   `.vscode/tasks.json`, `docs/constitution.md`, le cartelle `docs/*` e il workflow CI; esegue `verify` e `state`.
 - **Regole:** non sovrascrive mai file esistenti (mostra la differenza, fa il merge di `tasks.json`); non inventa
   step o test; riporta `verify` rosso così com'è.
+- **Inoltre:** la sezione **Decision rights** di `AGENTS.md` (decide da solo / chiede prima / mai), rivista con
+  l'utente; `docs/glossary.md` solo se l'utente lo vuole.
 - **Gate:** approvazione di `AGENTS.md`, constitution e step di `verify`.
 - **Limiti dichiarati:** la CI generata non è mai stata eseguita; gli hook non vengono attivati.
 
@@ -86,7 +88,9 @@ del diff.
   chiedere; riformula la richiesta con parole proprie; **pone** una domanda per messaggio, quella che cambierebbe di più
   ciò che si costruisce; propone 2-3 opzioni quando la richiesta ammette esiti davvero diversi per l'utente; scrive
   `spec.md` con livello proposto (S, M, L con i criteri del playbook §2.1), requisiti verificabili, AC
-  Dato/quando/allora, non-scope obbligatorio, anti-obiettivi (`Anti-goals`), assunzioni marcate `[ASSUMPTION]`; `spec_lint.py` deve passare; nel brownfield propone `sdd-characterize` se l'area non ha test.
+  Dato/quando/allora, non-scope obbligatorio, anti-obiettivi (`Anti-goals`), assunzioni marcate `[ASSUMPTION]`, domande
+  aperte marcate `blocking: yes|no` (dopo l'approvazione restano aperte solo quelle non bloccanti), termini del glossario
+  e nessuna parola vaga (avvisi di `spec_lint.py`); `spec_lint.py` deve passare; nel brownfield propone `sdd-characterize` se l'area non ha test.
 - **Approvazione:** solo con conferma esplicita **e** nome dell'approvatore; poi `Status: approved`.
 
 ### sdd-plan
@@ -124,8 +128,12 @@ del diff.
 - **Ciclo:** prima task `T-nn` aperta → implementa solo quella → comando di `verify:` e `verify` completo →
   verde: spunta, commit con trailer `Spec:` e `Agent:`; rosso: massimo 3 tentativi poi si ferma e chiede. Non modifica
   i test bloccati da un commit `Test-Lock`.
-- **Decisioni:** ogni decisione presa nei margini di spec e piano va in `progress.md`, sezione "Rulings"
-  (`- T-nn: cosa — perché — costo se sbagliata`); un requisito ambiguo non è una decisione, ferma il lavoro.
+- **Diritti decisionali:** segue la sezione di `AGENTS.md`: decide da solo solo ciò che elenca "Decides alone" e lo
+  registra in `progress.md`, sezione "Rulings" (`- T-nn: cosa — perché — costo se sbagliata`); si ferma su "Asks first",
+  su una decisione che nessuna riga nomina e su una task che copre un AC nominato da una domanda aperta non bloccante;
+  non fa mai ciò che elenca "Never".
+- **Test scritti dopo il codice:** valori attesi dagli AC; un test in disaccordo con codice esterno alla task resta
+  rosso e si segnala.
 - **Review per task:** nel livello L (facoltativa nel livello M con `- Task review: on`) ogni task è rivista da
   `sdd-reviewer` sul suo pacchetto (`review_package.py <spec-dir> T-nn`) prima della successiva; i problemi alti e medi si
   correggono nella stessa task (al massimo 2 giri); l'esito va in `## Task reviews` di `progress.md`. I commit portano

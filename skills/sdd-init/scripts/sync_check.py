@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# sdd-playbook: 0.15.0
+# sdd-playbook: 0.16.0
 """Closing check of a feature: spec, tasks, review, area page and traceability aligned.
 
 Usage:

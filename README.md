@@ -1,6 +1,6 @@
-# SDD Playbook (version 0.15.0)
+# SDD Playbook (version 0.16.0)
 
-[![Version](https://img.shields.io/badge/version-0.15.0-blue)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.16.0-blue)](CHANGELOG.md)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![CI](https://github.com/jumping2000/sdd-playbook/actions/workflows/ci.yml/badge.svg)](https://github.com/jumping2000/sdd-playbook/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/python-3.8%2B-3776AB?logo=python&logoColor=white)](docs/scripts.md)
@@ -146,8 +146,8 @@ templates, scripts, hooks, agent, tests) is entirely in English; the field names
 - The manifest is `.codex-plugin/plugin.json`. A Codex marketplace file is not included: its format must be checked
   against the documentation.
 - Documented alternative for the skills only: copy the folders of `skills/` into `.agents/skills/` of the repository or of
-  the home directory. Skills that cite `../sdd-init/scripts/` and `../sdd-sync/references/` require the folders to stay
-  siblings.
+  the home directory. A skill finds the files of another skill by search (`**/sdd-<name>/...`), not by a relative path,
+  so the skills also work when installed one by one or with a host prefix in the folder name.
 - Hooks and subagent are not provided for Codex: the independent review happens in a new session (see `sdd-review-diff`).
 
 **GitHub Copilot**

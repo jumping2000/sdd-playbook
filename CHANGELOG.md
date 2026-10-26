@@ -4,6 +4,26 @@
 
 Entries before 0.13.0 use the names of their time (`sdlc-*`, `SDLC_*`, Italian field names).
 
+## 0.16.0
+Ideas from the AI Unified Process marketplace (S2, S3, S4, S5, S8 of the comparative analysis), adapted to SDD Playbook.
+- **Portable skills (S2):** no skill reads another skill's files through `../`; it finds them by search
+  (`**/sdd-sync/references/area-template.md`), so skills also work when installed one by one or with a host prefix.
+  Coherence tests: no `../` in skill files, every cited path exists, `name` and `description` within the limits of the
+  Agent Skills format.
+- **Decision rights (S3):** new `## Decision rights` section in the `AGENTS.md` template (`Decides alone`, `Asks
+  first`, `Never`); `sdd-implement` and the loop prompt follow it, rulings record only "Decides alone" decisions, a
+  decision no line names is asked first, "Never" only grows; the reviewer checks the rulings against it.
+- **Open questions with `blocking` (S4):** `- <question> — blocking: yes|no — about: REQ-nnn, AC-nnn`. An approved spec
+  may keep non-blocking questions (warning); unmarked ones count as blocking; `about:` IDs must exist;
+  `spec_lint.py --tasks` warns when an open task covers an AC named by a non-blocking question, and the implementation
+  stops on it.
+- **Language (S5):** `spec_lint.py` warns on vague words in REQs and ACs and, when `docs/glossary.md` exists (new
+  optional template in `sdd-init`), on the synonyms its "Avoid" column lists.
+- **Tests written after the code (S8):** new section of the test conventions: the spec is the oracle, expected values
+  from the ACs, a test that disagrees with code outside the task stays failing and is reported; characterization tests
+  are the exception.
+- Playbook §3.1, §3.3, §6, skill and script references, architecture, quick guide updated; new tests.
+
 ## 0.15.0
 Review per task, from superpowers' "subagent-driven development", without a new agent.
 - **When:** mandatory at level L; at level M when `progress.md` says `- Task review: on` (asked at the start of the

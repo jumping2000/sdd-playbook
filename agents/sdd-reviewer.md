@@ -18,8 +18,8 @@ Proceed as follows:
    Actively look for a way to refute it: edge inputs, errors, uncovered paths, the review focus cases of the plan.
    Judge the tests with the anti-patterns of `skills/sdd-tests-from-ac/references/test-conventions.md` when present, or
    these: assertions on mocks instead of outcomes, weak assertions, production methods added only for tests.
-4. Check every ruling in `progress.md`: is the decision within the latitude the spec and the plan leave, or does it
-   change a requirement? A ruling that changes a requirement is a `high` problem.
+4. Check every ruling in `progress.md` against the "Decision rights" of `AGENTS.md`: a ruling outside "Decides alone"
+   is a `medium` problem, one that touches "Never" or changes a requirement is a `high` problem.
 5. Look for out-of-scope changes: files not in the plan, unrequested refactoring, behaviour changed without an AC,
    weakened or removed tests.
 6. Report dependencies, secrets or permissions added without the spec justifying them.

@@ -29,7 +29,10 @@ Playbook §4 (phase 6) and §6. Work only on numbered `T-nn` tasks: `T-DOC` and 
    wrong, do not change the code: record the evidence (file:line) in `progress.md`, section "Disputed review findings",
    and tell the user. No agreement for show, one finding at a time.
 2. If the task **writes tests from the ACs**, apply the `sdd-tests-from-ac` procedure (read it). Otherwise implement
-   **only that task**: do not touch the non-scope and do no unrequested refactoring.
+   **only that task**: do not touch the non-scope and do no unrequested refactoring. Tests you add after the code
+   (integration, end-to-end, fixes) follow "Tests written after the code" in the test conventions of
+   `sdd-tests-from-ac` (search for `**/sdd-tests-from-ac/references/test-conventions.md`): the spec is the oracle, and a
+   test that disagrees with code outside the task stays failing and is reported.
 3. Run the task's `verify:` command, then the full `python scripts/verify.py` (`--fast` is allowed only while working,
    never as the definition of done).
 4. **Red:** read the error, fix, retry. After **3 attempts** on the same task, stop: describe what you tried and ask
@@ -46,16 +49,23 @@ Playbook §4 (phase 6) and §6. Work only on numbered `T-nn` tasks: `T-DOC` and 
    and ask. Record the verdict in `progress.md`, section `## Task reviews`: `- T-<nn>: pass — <reviewer>` or
    `- T-<nn>: fix needed — <problems>`. `state.py`, `sync_check.py` and `loop.py` require `pass` for every closed
    `T-nn` task when the review applies.
-7. Update `progress.md` in the spec folder (create it from `../sdd-loop/references/progress.md.tmpl` if it is
-   missing): done, learned, blockers, and the **rulings**: every decision you took within the latitude of spec and plan
-   (names, library calls, data structures, messages), one per line as `- T-nn: <what> — <why> — <what it costs if
-   wrong>`. The review checks them. An ambiguous requirement is not a ruling: stop and ask.
+7. Update `progress.md` in the spec folder (create it from the template of the `sdd-loop` skill, found with a search
+   for `**/sdd-loop/references/progress.md.tmpl`, if it is missing): done, learned, blockers, and the **rulings**:
+   every decision you took alone under "Decides alone" of the decision rights, one per line as `- T-nn: <what> —
+   <why> — <what it costs if wrong>`. The review checks them. An ambiguous requirement is not a ruling: stop and ask.
 8. Move to the next task only if the user asked to proceed in sequence; otherwise stop and report.
 
 ## Stop rules
 
+- **Decision rights** (section of `AGENTS.md`, read from `main` when the branch changed it): decide alone only what
+  "Decides alone" lists, and record it as a ruling; for "Asks first", or a decision no line names, stop and ask; never
+  do what "Never" lists, even when a request implies it: report what would have to change and who changes it. These
+  plugin rules are "Never" whatever `AGENTS.md` says: changing spec, plan, review or `AGENTS.md`, writing an approval,
+  changing a test to make it pass, pushing or merging.
 - Ambiguous or missing requirement: **stop and ask**, do not assume (write the question in `progress.md`).
 - Something in the non-scope needs to change: stop and ask.
+- The task covers an AC named by a non-blocking open question of the spec (`spec_lint.py --tasks` warns): stop and ask;
+  the answer goes into the spec with a revision before the task.
 - A new or different dependency the plan does not list is needed: stop and ask (an ADR or an updated plan is needed;
   `diff_scope.py` reports a changed manifest without either as an error).
 - The change exceeds the spec level (more than 3 production files at S, a sensitive area of `AGENTS.md` below L, a

@@ -24,7 +24,10 @@ human reading of the diff. You propose it with the criteria, the user decides.
    you ask it. Use the user's words, not process jargon. Cover the ground without reading it out as a list: goal and
    success criterion, users, non-scope, **anti-goals** (what would make it a failure even if it works), constraints,
    error cases. Do not answer the questions yourself: a decision that belongs to the user stays open until they answer.
-   Stop asking when the remaining doubts would not change the requirements; they go into "Open questions".
+   Stop asking when the remaining doubts would not change the requirements; they go into "Open questions", each marked
+   `blocking: yes` (the answer would change a REQ or an AC the plan relies on) or `blocking: no`, with `about:` and the
+   REQ or AC it concerns. Only non-blocking questions may stay open in an approved spec; the tasks covering the ACs they
+   name wait for the answer, which goes into the spec with a revision (`Status: in-revision`).
 4. **Options, when the request admits really different outcomes for the user** (scope, behaviour, experience): present
    2-3 options with their trade-offs in a message of their own and let the user choose. Technical alternatives belong
    to the plan, not here.
@@ -38,6 +41,9 @@ human reading of the diff. You propose it with the criteria, the user decides.
    - the **anti-goals** record what the user said would make the feature a failure; `spec_lint.py` warns if they are
      missing;
    - every assumption is marked `[ASSUMPTION]`;
+   - verifiable words: `spec_lint.py` warns on vague words in REQs and ACs ("fast", "appropriate", "should", "etc") and,
+     if `docs/glossary.md` exists, on the synonyms it lists to avoid. Use the glossary's terms; propose new terms to
+     the user rather than inventing synonyms;
    - `- Level:` S, M or L with the criteria of playbook §2.1: S only if **all** true (at most 3 production files, no
      public interface or data format changed, no sensitive area of `AGENTS.md`, no dependency); L if it touches a
      sensitive area, a public interface or a data migration. When in doubt, the higher one. `diff_scope.py` will report
@@ -52,7 +58,7 @@ human reading of the diff. You propose it with the criteria, the user decides.
 
 Ask for explicit approval. Only after a clear confirmation **and** the approver's name:
 - fill in `Approved by / date` (name and today's date) and set `Status: approved`;
-- close or remove the resolved open questions (the section must contain only "none");
+- close or remove the resolved open questions: only `blocking: no` questions may stay, otherwise "- none";
 - compute the hash with `python scripts/spec_lint.py <spec> --hash` and write it in `- Hash:`;
 - rerun `spec_lint.py`: it must pass.
 

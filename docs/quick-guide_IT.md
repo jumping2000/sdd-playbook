@@ -134,6 +134,7 @@ Sono una rete di sicurezza, non un sandbox: la difesa vera sono permessi, isolam
 |---|---|
 | `state.py` dice `choose` | Più spec attive: lavora sul branch che contiene il nome della spec, o usa `--spec <id>` |
 | Un'approvazione "decade" | Il contenuto è cambiato dopo l'ok (l'hash non corrisponde): fai riapprovare e ricalcola l'hash |
+| `spec_lint.py`: "blocking open questions" | Rispondi, oppure marca `blocking: no` quelle la cui risposta non cambierebbe un REQ o un AC su cui si basa il piano |
 | `diff_scope.py`: "level underestimated" | La modifica è più grande del livello dichiarato: alza il livello nella spec e fai riapprovare |
 | `diff_scope.py`: "dependencies changed without plan or ADR" | Elenca il manifest nel piano approvato o aggiungi un ADR in `docs/adr/` |
 | `diff_scope.py`: "tests approved" | I test sono cambiati dopo la tua approvazione: rileggili e approva il nuovo commit `Test-Lock` |

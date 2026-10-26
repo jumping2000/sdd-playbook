@@ -2,7 +2,7 @@
 
 *Versione italiana: [architecture_IT.md](architecture_IT.md)*
 
-Design document **as built** (version 0.15.0): choices, structure, contracts between files and limits.
+Design document **as built** (version 0.16.0): choices, structure, contracts between files and limits.
 
 ## Goal and success criterion
 
@@ -22,7 +22,7 @@ The plugin is done well if:
 | Packaging | One repository, **three manifests** (`.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, root `plugin.json` in the Agent Plugins format for the Copilot CLI) on the same skills | One body of content, three entry points |
 | Checks | **Deterministic Python scripts** in the project's `scripts/` | A check that runs is worth more than a prose rule; CI and VS Code use them without the plugin |
 | Where scripts live | In `skills/sdd-init/scripts/`, copied into the project by `sdd-init`, with the plugin version on line 2 | Fixed path (`python scripts/...`) for both agents; the project stays verifiable without the plugin |
-| Portability | Standard library only, no shell commands, argument lists | Native Windows included |
+| Portability | Standard library only, no shell commands, argument lists; skills never read another skill's files through `../` but find them by search | Native Windows included; hosts that install skills one by one or rename their folders |
 | Context | `SKILL.md` under 150 lines; templates in `references/` | Context is a scarce resource |
 | Human gates | Every skill that produces a document to approve ends with **STOP**; approvals carry name, date and hash of the approved content (which lapses if the content changes); the real approval is merging the design PR into protected `main`, which the agent cannot do with a separate identity | Playbook principle 5; the agent can write text fields, not a merge |
 | Proportionality | Levels **S/M/L** declared in the spec (and in its hash), with criteria partly checked on the diff (`diff_scope.py`) | The same process for one line and for a migration creates ceremony on the former and too little attention on the latter (REVIEW A6) |
@@ -65,8 +65,9 @@ sdd-playbook/
 └── .github/workflows/ci.yml      tests on Ubuntu and Windows
 ```
 
-Some skills read files of other skills through relative paths (`../sdd-init/scripts/`, `../sdd-sync/references/`): the
-skill folders must stay siblings.
+A skill reads its own files with paths relative to its folder and finds the files of another skill by search
+(`**/sdd-sync/references/area-template.md`), never with `../`: a host may install skills one by one or add a prefix to
+the folder name. The coherence tests reject `../` in skill files and check every cited path.
 
 ## State machine (`state.py`)
 
@@ -107,7 +108,7 @@ changes, the script that reads it must change too (the tests check this).
 
 | File | Fields and structures read | Script |
 |---|---|---|
-| `spec.md` | title `# SPEC-<id>: ...` (date + slug equal to the folder, or a number); `- Level:` (`S`, `M`, `L`; M if missing; read from the header only; part of the hash); `- Status:` (`draft`, `approved`, `in-revision`, `implemented`, `superseded`); section `## Revisions` (mandatory with an entry if `in-revision`); `- Approved by / date:`; `- Hash: sha256:...` of the body (from the first `## ` section); sections `## Problem and goal`, `Scope`, `Requirements`, `Acceptance criteria`, `Open questions`; line `**Non-scope (explicit):**`; line `**Anti-goals:**` (warning if missing); `- REQ-nnn`; `- AC-nnn [REQ-nnn]`; marker `[ASSUMPTION]` | `spec_lint`, `state`, `trace_check`, `sync_check`, `diff_scope` |
+| `spec.md` | title `# SPEC-<id>: ...` (date + slug equal to the folder, or a number); `- Level:` (`S`, `M`, `L`; M if missing; read from the header only; part of the hash); `- Status:` (`draft`, `approved`, `in-revision`, `implemented`, `superseded`); section `## Revisions` (mandatory with an entry if `in-revision`); `- Approved by / date:`; `- Hash: sha256:...` of the body (from the first `## ` section); sections `## Problem and goal`, `Scope`, `Requirements`, `Acceptance criteria`, `Open questions`; line `**Non-scope (explicit):**`; line `**Anti-goals:**` (warning if missing); `- REQ-nnn`; `- AC-nnn [REQ-nnn]`; marker `[ASSUMPTION]`; open questions `- <question> — blocking: yes|no — about: REQ-nnn, AC-nnn` | `spec_lint`, `state`, `trace_check`, `sync_check`, `diff_scope` |
 | `plan.md` | `- Approved by / date:`; `- Based on spec:` (hash of the spec); `- Hash:` of the body; section `## Components and files to create/modify` with lines `- path: ...` (path = first word or text in backticks); section `## Test strategy ...` with the exact AC IDs and, if present, the `Where` column; section `## Review focus` (table with a `Where` column, or `- none`) | `spec_lint`, `state`, `diff_scope` |
 | `tasks.md` | `- Based on plan:` (hash of the plan); lines `- [ ] T-nn ...` with the fields `verify:` (command in backticks) and `covers:` (AC IDs), without placeholders; lines `- [ ] T-Rnn ...` from review problems (`verify:`, `covers:` optional); `T-DOC`, `T-SYNC`; `— tests approved: <name, yyyy-mm-dd, sha>` on closed test tasks (levels M and L; sha = approved `Test-Lock` commit); the marker `expected: red` (case-insensitive) on test tasks defines the **red phase** (last closed `T-nn` task with the marker, next one open) | `spec_lint`, `state`, `loop`, `sync_check`, `diff_scope`, `Stop` hook |
 | git commits | trailer `Test-Lock: T-nn` on the commit of the red tests: locks its test files and anchors the approval; trailer `Task: T-nn` on the implementation commits | `diff_scope`, `review_package` |
@@ -118,7 +119,8 @@ changes, the script that reads it must change too (the tests check this).
 | `docs/bugs/BUG-*.md` | `- Status:` (`open`, `diagnosed`, `fixed`, `verified`); sections of `bugfix-template.md`; tickable items in `## Closure` | `bug_lint`, `state` |
 | `docs/system/<area>.md` | `- Last aligned:`; `- Linked specs:`; sections `## Current behaviour`, `Constraints and delicate points`, `Characterization tests` | `sync_check` |
 | `docs/system/map.md` | presence only | `state` |
-| `AGENTS.md` | lines `- Do not modify: a, b` and `- Sensitive areas: a, b` (require level L), paths in backticks or first word; read from the merge-base | `diff_scope` |
+| `AGENTS.md` | lines `- Do not modify: a, b` and `- Sensitive areas: a, b` (require level L), paths in backticks or first word; read from the merge-base. Section `## Decision rights` with `### Decides alone`, `### Asks first`, `### Never` (read by the agents, not by the scripts) | `diff_scope`; `sdd-implement`, loop, `sdd-reviewer` |
+| `docs/glossary.md` (optional) | table with the columns `Term` and `Avoid` (synonyms, comma-separated) | `spec_lint` |
 | `PROMPT.md`, `progress.md` | `PROMPT.md` read in full and passed on stdin; `progress.md`: `- Task review: on` (level M), `## Task reviews` with `- T-nn: pass` per closed task (level L, or M when on), `## Rulings` and `## Disputed review findings` read by the reviewer | `loop`, `state`, `sync_check`, `review_package`, `sdd-reviewer` |
 | `scripts/verify.py` | list `STEPS` | (adapted by `sdd-init`) |
 | `scripts/*.py` | line 2 `# sdd-playbook: <version>` | `sdd-init` (update), coherence tests |

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# sdd-playbook: 0.15.0
+# sdd-playbook: 0.16.0
 """Deterministic checks on the playbook's spec, plan and tasks.
 
 Usage:
@@ -20,6 +20,12 @@ IDs and states (playbook §3.3): title "# SPEC-yyyy-mm-dd-slug: ..." with the ID
 "# SPEC-NNN: ..." is still valid). State in-revision: an approved spec being changed, with an entry in "## Revisions";
 it goes back to approved only with a new approval and a new hash.
 Spec content: requirements with ACs, a filled-in non-scope (error) and anti-goals (warning if missing).
+Open questions: "- <question> — blocking: yes|no — about: REQ-nnn, AC-nnn" (about optional, its IDs must exist). An
+approved spec may keep only non-blocking questions (warning); a question without "blocking: no" counts as blocking. A
+T-nn task covering an AC that a non-blocking question names (directly or through its REQ) waits for the answer
+(warning with --tasks).
+Language (warnings): vague words in REQ and AC lines ("fast", "appropriate", "should", "etc", ...) and, when
+docs/glossary.md exists, the synonyms its "Avoid" column lists.
 Plan content: every AC in the test strategy; a "## Review focus" section listing the input classes or failure modes the
 spec implies but no AC exercises, each with the test that pins it, or "- none" (placeholders: warning before approval,
 error once the plan is approved).
@@ -54,6 +60,9 @@ PLACEHOLDER = re.compile(r"<[^<>\n]{1,80}>")
 NONE_ITEM = re.compile(r"^[-*]\s*(none|n/a)\b", re.I)
 TEST_TASK = re.compile(r"^\s*-\s+\[[xX]\]\s+(T-\d+)\b(.*expected:\s*red.*)$", re.M | re.I)
 # "tests approved: Anna Smith, 2026-10-24, abc1234": name, date and SHA (7-40 hex digits) of the Test-Lock commit
+WEAK_WORDS = re.compile(r"\b(fast|quick(?:ly)?|appropriate(?:ly)?|adequate(?:ly)?|user-friendly|easy|easily|intuitive|"
+                        r"flexible|efficient(?:ly)?|robust|reasonable|as needed|if possible|as appropriate|etc|and/or|"
+                        r"should|some|several|various|normally|usually|approximately|TBD)\b", re.I)
 APPROVED = re.compile(r"tests approved:\s*([^,—\n<>]*\w[^,—\n<>]*),\s*(\d{4}-\d{2}-\d{2}),\s*([0-9a-f]{7,40})\b", re.I)
 
 
@@ -201,8 +210,70 @@ def filled_items(lines: list[str]) -> list[str]:
             and not NONE_ITEM.match(line.strip())]
 
 
-def lint_spec(text: str, folder: str | None = None) -> tuple[list[str], list[str]]:
-    """folder: name of the spec folder, which for date IDs must match the ID."""
+def open_questions(text: str) -> list[tuple[str, bool | None, list[str]]]:
+    """(line, blocking: True/False/None if not stated, REQ and AC IDs after "about:") of the open questions."""
+    out = []
+    for line in sections(text).get("Open questions", []):
+        line = line.strip()
+        if not line.startswith(("-", "*")) or NONE_ITEM.match(line):
+            continue
+        m = re.search(r"blocking:\s*(yes|no)\b", line, re.I)
+        about = re.findall(r"\b(?:REQ|AC)-\d+\b", line.split("about:", 1)[1]) if "about:" in line else []
+        out.append((line, (m.group(1).lower() == "yes") if m else None, about))
+    return out
+
+
+def waiting_acs(text: str) -> set[str]:
+    """ACs named by a non-blocking open question, directly or through the REQ they cite."""
+    _, acs = parse_spec(text)
+    out: set[str] = set()
+    for _, blocking, about in open_questions(text):
+        if blocking is False:
+            out |= {i for i in about if i.startswith("AC-")}
+            out |= {ac for ac, refs in acs.items() if any(r in refs for r in about)}
+    return out
+
+
+def glossary_avoid(glossary: str) -> dict[str, str]:
+    """Synonym to avoid -> preferred term, from the table of docs/glossary.md (columns "Term" and "Avoid")."""
+    out: dict[str, str] = {}
+    columns = None
+    for line in glossary.splitlines():
+        if not line.strip().startswith("|") or re.fullmatch(r"[|\s:-]+", line.strip()):
+            continue
+        cells = [c.strip() for c in line.strip().strip("|").split("|")]
+        if columns is None:
+            low = [c.lower() for c in cells]
+            columns = (low.index("term"), low.index("avoid")) if "term" in low and "avoid" in low else (-1, -1)
+            continue
+        term_i, avoid_i = columns
+        if min(term_i, avoid_i) < 0 or max(term_i, avoid_i) >= len(cells) or PLACEHOLDER.search(line):
+            continue
+        for synonym in cells[avoid_i].split(","):
+            if synonym.strip():
+                out[synonym.strip().lower()] = cells[term_i]
+    return out
+
+
+def language_warnings(text: str, glossary: str | None = None) -> list[str]:
+    """Vague words and synonyms to avoid in the REQ and AC lines."""
+    avoid = glossary_avoid(glossary) if glossary else {}
+    warn = []
+    for line in text.splitlines():
+        m = REQ_DEF.match(line) or AC_DEF.match(line)
+        if not m or PLACEHOLDER.search(line):
+            continue
+        vague = sorted({w.lower() for w in WEAK_WORDS.findall(line)})
+        if vague:
+            warn.append(f"{m.group(1)}: vague words ({', '.join(vague)}): replace them with something verifiable")
+        for synonym, term in avoid.items():
+            if re.search(rf"(?<![\w-]){re.escape(synonym)}(?![\w-])", line, re.I):
+                warn.append(f"{m.group(1)}: '{synonym}' is a synonym to avoid in docs/glossary.md: use '{term}'")
+    return warn
+
+
+def lint_spec(text: str, folder: str | None = None, glossary: str | None = None) -> tuple[list[str], list[str]]:
+    """folder: name of the spec folder, which for date IDs must match the ID; glossary: text of docs/glossary.md."""
     err: list[str] = []
     warn: list[str] = []
     state = clean(field(text, "Status")).split("|")[0].strip()
@@ -247,17 +318,26 @@ def lint_spec(text: str, folder: str | None = None) -> tuple[list[str], list[str
     m = re.search(r"Anti-goals[^:\n]*:\**[ \t]*(.*)", scope, re.I)
     if not m or not m.group(1).strip() or PLACEHOLDER.fullmatch(m.group(1).strip()):
         warn.append("Anti-goals missing or not filled in (what would make the feature a failure even if it works)")
+    warn += language_warnings(text, glossary)
+    questions = open_questions(text)
+    for line, _, about in questions:
+        for ref in about:
+            if ref not in reqs and ref not in acs and not PLACEHOLDER.search(line):
+                err.append(f"Open question about {ref}, which does not exist")
 
     if state in ("approved", "implemented"):
         approved = clean(field(text, "Approved by / date"))
         if not approved or PLACEHOLDER.search(approved):
             err.append("Spec approved but 'Approved by / date' not filled in")
         err += hash_problems(text, "Spec")
-        still_open = [line.strip() for line in sec.get("Open questions", [])
-                      if line.strip().startswith(("-", "*")) and not NONE_ITEM.match(line.strip())]
-        # here a placeholder also counts as an open question
-        if still_open:
-            err.append(f"Spec approved with {len(still_open)} open questions")
+        blocking = [q for q in questions if q[1] is not False]  # a placeholder also counts as an open question
+        if blocking:
+            err.append(f"Spec approved with {len(blocking)} blocking open questions (or without 'blocking: yes|no')")
+        non_blocking = [q for q in questions if q[1] is False]
+        if non_blocking:
+            named = sorted({i for q in non_blocking for i in q[2]})
+            warn.append(f"{len(non_blocking)} non-blocking open questions"
+                        + (f": the tasks covering {', '.join(named)} wait for the answer" if named else ""))
         if "[ASSUMPTION]" in text:
             warn.append("Assumptions marked [ASSUMPTION] remain: validate or rephrase them")
     return err, warn
@@ -326,7 +406,15 @@ def lint_tasks(spec: str, tasks: str) -> tuple[list[str], list[str]]:
     for ac in acs:
         if ac not in covered:
             err.append(f"{ac} is not covered by any task")
-    return err, []
+    warn = []
+    waiting = waiting_acs(spec)
+    for line in lines:
+        tid = re.search(r"\bT-[A-Z0-9]+\b", line).group(0)
+        cites = set(re.findall(r"AC-\d+", line.split("covers:")[-1])) if "covers:" in line else set()
+        if re.fullmatch(r"T-\d+", tid) and re.match(r"^\s*-\s+\[ \]", line) and cites & waiting:
+            warn.append(f"{tid} covers {', '.join(sorted(cites & waiting))}, named by a non-blocking open question: "
+                        "it waits for the answer")
+    return err, warn
 
 
 def test_approvals(tasks: str) -> dict[str, str | None]:
@@ -378,7 +466,9 @@ def main(argv: list[str]) -> int:
     if "--hash" in opts:
         print(fingerprint(spec))
         return 0
-    err, warn = lint_spec(spec, Path(spec_path).resolve().parent.name)
+    glossary_p = Path("docs/glossary.md")
+    glossary = glossary_p.read_text(encoding="utf-8") if glossary_p.is_file() else None
+    err, warn = lint_spec(spec, Path(spec_path).resolve().parent.name, glossary)
     to_compare = [spec_path]
     plan = tasks = None
     for i, o in enumerate(opts):

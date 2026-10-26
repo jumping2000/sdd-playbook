@@ -29,11 +29,14 @@ without the plugin. Playbook §1, §1.1, §3.1, §3.2.
    not register steps the project does not have and do not invent tests: if there are none, say so.
 5. **Create** (only if missing):
    - `AGENTS.md` from `references/AGENTS.md.tmpl`, filled in with what you verified (under 100 lines); the user gives
-     the `Sensitive areas` (level L, playbook §2.1);
+     the `Sensitive areas` (level L, playbook §2.1) and reviews the **Decision rights** (the defaults are a starting
+     point; the team may move lines between "Decides alone" and "Asks first", while "Never" only grows);
    - `CLAUDE.md` with the single line `@AGENTS.md` (no symlinks: on Windows they need privileges);
    - `.gitattributes` from `references/gitattributes.tmpl`; `reports/` and `__pycache__/` in `.gitignore` (JUnit
      report of the tests, see `references/stacks.md`; otherwise the loop mistakes them for progress);
    - `.vscode/tasks.json` from `references/vscode-tasks.json`;
+   - `docs/glossary.md` from `references/glossary.md.tmpl`, only if the user wants to fix the domain terms (optional;
+     `spec_lint.py` then warns on the synonyms to avoid);
    - `docs/constitution.md` from `references/constitution.md.tmpl`, and the folders `docs/specs/`, `docs/system/`,
      `docs/bugs/`, `docs/adr/` (with `.gitkeep`);
    - the CI workflow from `references/ci-github-actions.yml`, completing the toolchain setup; remove `windows-latest`
@@ -42,7 +45,7 @@ without the plugin. Playbook §1, §1.1, §3.1, §3.2.
    - `.github/CODEOWNERS` from `references/CODEOWNERS.tmpl` (ask who approves; the agent's identity must not be
      listed) and `.github/pull_request_template.md` from `references/pull_request_template.md`.
 6. **GitHub Copilot** (only if the team uses it outside the Copilot CLI plugin, e.g. cloud agent, VS Code, Visual
-   Studio): copy the plugin's `skills/` folders into the project's `.github/skills/`, keeping them siblings, and
+   Studio): copy the plugin's `skills/` folders into the project's `.github/skills/` (same folder names), and
    `references/copilot/sdd-reviewer.agent.md` into `.github/agents/`. Copilot reads `AGENTS.md` directly.
 7. **Run** `python scripts/verify.py` and report the result as it is. If it is red because tests are missing, it is not
    an initialization error: say so.

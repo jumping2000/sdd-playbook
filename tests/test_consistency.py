@@ -63,14 +63,25 @@ class TestMetadata(unittest.TestCase):
             text = f.read_text(encoding="utf-8")
             fm = dict(re.findall(r"^(\w+):\s*(.+)$", frontmatter(text), re.M))
             self.assertEqual(fm.get("name"), name)
+            # limits of the Agent Skills format: name up to 64 lower-case letters, digits and hyphens; description
+            # between 1 and 1024 characters
+            self.assertRegex(name, r"^[a-z0-9]+(-[a-z0-9]+)*$")
+            self.assertLessEqual(len(name), 64, name)
             self.assertGreater(len(fm.get("description", "")), 40, name)
+            self.assertLessEqual(len(fm.get("description", "")), 1024, name)
             self.assertLess(len(text.splitlines()), 150, name)
 
-    def test_template_references_exist(self):
+    def test_skill_references_stay_portable(self):
+        """A skill may be installed alone: it reads its own files and finds other skills by search, never by '../'."""
         for name in SKILLS:
+            for f in (ROOT / "skills" / name).rglob("*"):
+                if f.is_file() and f.suffix in (".md", ".tmpl", ".json", ".yml"):
+                    self.assertNotIn("../", f.read_text(encoding="utf-8"), f.relative_to(ROOT))
             text = (ROOT / "skills" / name / "SKILL.md").read_text(encoding="utf-8")
-            for rel in re.findall(r"`((?:\.\./sdd-[a-z-]+/)?references/[\w./\-]+\.[\w]+)`", text):
-                self.assertTrue((ROOT / "skills" / name / rel).resolve().is_file(), f"{name}: {rel}")
+            for rel in re.findall(r"(?<![/*\w])(references/[\w./\-]+\.\w+)", text):
+                self.assertTrue((ROOT / "skills" / name / rel).is_file(), f"{name}: {rel}")
+            for other, rel in re.findall(r"`\*\*/(sdd-[a-z-]+)/([\w./\-]+\.\w+)`", text):
+                self.assertTrue((ROOT / "skills" / other / rel).is_file(), f"{name}: **/{other}/{rel}")
 
     def test_manifests_and_versions(self):
         claude = json.loads(read(".claude-plugin/plugin.json"))
@@ -239,6 +250,15 @@ class TestPlaybook(unittest.TestCase):
             self.assertIn(field, review)
         for s in ("compliant", "compliant with reservations", "non-compliant"):
             self.assertIn(s, review)
+        agents = read("skills/sdd-init/references/AGENTS.md.tmpl")
+        for heading in ("## Decision rights", "### Decides alone", "### Asks first", "### Never"):
+            self.assertIn(heading, agents)
+        for rel in ("agents/sdd-reviewer.md", "skills/sdd-init/references/copilot/sdd-reviewer.agent.md",
+                    "skills/sdd-implement/SKILL.md", "skills/sdd-loop/references/PROMPT.md.tmpl"):
+            self.assertIn("Decides alone", read(rel), rel)
+        self.assertIn("# Tests written after the code", read("skills/sdd-tests-from-ac/references/test-conventions.md"))
+        self.assertIn("blocking: <yes | no>", spec)
+        self.assertEqual(spec_lint.glossary_avoid(read("skills/sdd-init/references/glossary.md.tmpl")), {})
         plan = read("skills/sdd-plan/references/plan-template.md")
         self.assertIn("## Review focus", plan)
         self.assertIn("produces", plan)

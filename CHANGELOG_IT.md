@@ -4,6 +4,27 @@
 
 Le voci precedenti alla 0.13.0 usano i nomi del loro tempo (`sdlc-*`, `SDLC_*`, campi in italiano).
 
+## 0.16.0
+Idee dal marketplace AI Unified Process (S2, S3, S4, S5, S8 dell'analisi comparativa), adattate a SDD Playbook.
+- **Skill portabili (S2):** nessuna skill legge i file di un'altra skill con `../`; li trova con una ricerca
+  (`**/sdd-sync/references/area-template.md`), così le skill funzionano anche installate una per una o con un prefisso
+  dell'host. Test di coerenza: nessun `../` nei file delle skill, ogni percorso citato esiste, `name` e `description`
+  nei limiti del formato Agent Skills.
+- **Diritti decisionali (S3):** nuova sezione `## Decision rights` nel template di `AGENTS.md` (`Decides alone`, `Asks
+  first`, `Never`); `sdd-implement` e il prompt del loop la seguono, le decisioni registrate sono solo quelle di
+  "Decides alone", una decisione che nessuna riga nomina si chiede prima, "Never" può solo crescere; il revisore
+  controlla le decisioni rispetto alla sezione.
+- **Domande aperte con `blocking` (S4):** `- <domanda> — blocking: yes|no — about: REQ-nnn, AC-nnn`. Una spec approvata
+  può tenere domande non bloccanti (avviso); quelle senza marcatore contano come bloccanti; gli ID di `about:` devono
+  esistere; `spec_lint.py --tasks` avvisa quando una task aperta copre un AC nominato da una domanda non bloccante, e
+  l'implementazione si ferma su quella task.
+- **Linguaggio (S5):** `spec_lint.py` avvisa sulle parole vaghe nei REQ e negli AC e, se esiste `docs/glossary.md`
+  (nuovo template facoltativo in `sdd-init`), sui sinonimi della sua colonna "Avoid".
+- **Test scritti dopo il codice (S8):** nuova sezione delle convenzioni dei test: l'oracolo è la spec, valori attesi
+  dagli AC, un test in disaccordo con codice esterno alla task resta rosso e si segnala; fanno eccezione i test di
+  caratterizzazione.
+- Playbook §3.1, §3.3, §6, riferimenti di skill e script, architettura e guida rapida aggiornati; nuovi test.
+
 ## 0.15.0
 Review per task, dal "subagent-driven development" di superpowers, senza un nuovo agente.
 - **Quando:** obbligatoria nel livello L; nel livello M se `progress.md` riporta `- Task review: on` (chiesto all'inizio

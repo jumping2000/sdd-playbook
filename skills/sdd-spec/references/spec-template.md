@@ -33,7 +33,10 @@
 - <mark every assumption as [ASSUMPTION] to validate>
 
 ## Open questions
-- <to close before the plan>
+<!-- One per line: - <question> — blocking: yes|no — about: REQ-nnn, AC-nnn (optional). Blocking: the answer would
+change a requirement or an AC the plan relies on. An approved spec keeps only non-blocking questions; the tasks
+covering the ACs they name wait for the answer. "- none" when there are none. -->
+- <question> — blocking: <yes | no> — about: <REQ-nnn, AC-nnn>
 
 ## Revisions
 - none <!-- spec in-revision: yyyy-mm-dd, what changes and why -->

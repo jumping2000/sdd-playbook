@@ -27,7 +27,8 @@ Playbook §5, step 4. **You do not modify production code** and you do not fix t
    check that they turn red, then restore with `git restore <file>` and check that `git diff` is empty on the
    production files. Show the evidence. If a test stays green, it is useless: strengthen it.
 6. **Record** the tests in `docs/system/<area>.md` ("Characterization tests" section); if the page does not exist
-   create it from `../sdd-sync/references/area-template.md`.
+   create it from the area template of the `sdd-sync` skill (search for `**/sdd-sync/references/area-template.md`:
+   skills may be installed one by one, or with a host prefix in the folder name).
 
 ## STOP
 
