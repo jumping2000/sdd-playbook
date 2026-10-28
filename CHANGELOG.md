@@ -22,6 +22,9 @@ Ideas from the AI Unified Process marketplace (S2, S3, S4, S5, S8 of the compara
 - **Tests written after the code (S8):** new section of the test conventions: the spec is the oracle, expected values
   from the ACs, a test that disagrees with code outside the task stays failing and is reported; characterization tests
   are the exception.
+- **Distribution:** `version`, `author`, `license` and `repository` in the plugin entry of
+  `.claude-plugin/marketplace.json` (a coherence test keeps the version equal to the manifests); git tags `vX.Y.Z` from
+  0.13.0 on, to pin a version; README with the installation commands tried with Claude Code.
 - `state.py` points to `sdd-spec` when the next task covers an AC named by a non-blocking open question;
   `sdd-tasks` places those ACs in tasks of their own, last; `sdd-sync` reports the non-blocking questions left at
   closure; `docs/glossary.md` does not count as out of plan in `diff_scope.py`; `sdd-init` explains how to bring an

@@ -92,6 +92,8 @@ class TestMetadata(unittest.TestCase):
             self.assertEqual((m["name"], m["version"]), (claude["name"], claude["version"]))
         self.assertEqual(claude["name"], "sdd-playbook")
         self.assertEqual(market["plugins"][0]["name"], claude["name"])
+        self.assertEqual(market["plugins"][0]["version"], claude["version"])  # shown by the marketplace listing
+        self.assertEqual(market["plugins"][0]["author"], claude["author"])
         self.assertNotIn("<", json.dumps(market))  # no placeholder left
         self.assertTrue((ROOT / codex["skills"]).is_dir())
         self.assertIn("agent-plugins.org", copilot["$schema"])

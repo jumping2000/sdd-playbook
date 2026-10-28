@@ -1,14 +1,21 @@
 {
   "name": "sdd-playbook-marketplace",
   "owner": {
-    "name": "jumping2000"
+    "name": "jumping2000",
+    "url": "https://github.com/jumping2000"
   },
   "description": "Marketplace of the SDD Playbook plugin: spec-driven development skills for coding agents",
   "plugins": [
     {
       "name": "sdd-playbook",
       "source": "./",
-      "description": "Skills, cross-platform checks and opt-in hooks for spec-driven development with coding agents"
+      "description": "Skills, cross-platform checks and opt-in hooks for spec-driven development with coding agents",
+      "version": "0.16.0",
+      "author": {
+        "name": "jumping2000"
+      },
+      "license": "MIT",
+      "repository": "https://github.com/jumping2000/sdd-playbook"
     }
   ]
 }

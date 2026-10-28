@@ -23,6 +23,9 @@ Idee dal marketplace AI Unified Process (S2, S3, S4, S5, S8 dell'analisi compara
 - **Test scritti dopo il codice (S8):** nuova sezione delle convenzioni dei test: l'oracolo è la spec, valori attesi
   dagli AC, un test in disaccordo con codice esterno alla task resta rosso e si segnala; fanno eccezione i test di
   caratterizzazione.
+- **Distribuzione:** `version`, `author`, `license` e `repository` nella voce del plugin di
+  `.claude-plugin/marketplace.json` (un test di coerenza tiene la versione uguale ai manifest); tag git `vX.Y.Z` dalla
+  0.13.0 in poi, per fissare una versione; README con i comandi di installazione provati con Claude Code.
 - `state.py` indica `sdd-spec` quando la task successiva copre un AC nominato da una domanda aperta non bloccante;
   `sdd-tasks` mette quegli AC in task proprie, in fondo; `sdd-sync` segnala le domande non bloccanti rimaste alla
   chiusura; `docs/glossary.md` non conta come fuori piano in `diff_scope.py`; `sdd-init` spiega come portare un progetto

@@ -136,10 +136,18 @@ templates, scripts, hooks, agent, tests) is entirely in English; the field names
 
 ## Installation
 
-**Claude Code**
-- Local trial: `claude --plugin-dir <path>/sdd-playbook`
-- Marketplace: `/plugin marketplace add jumping2000/sdd-playbook`, then
-  `/plugin install sdd-playbook@sdd-playbook-marketplace`.
+**Claude Code** (tried with Claude Code 2.1.312: the repository itself is the marketplace, `.claude-plugin/marketplace.json`)
+
+```
+/plugin marketplace add jumping2000/sdd-playbook
+/plugin install sdd-playbook@sdd-playbook-marketplace
+```
+
+- The same from a terminal: `claude plugin marketplace add jumping2000/sdd-playbook`, then
+  `claude plugin install sdd-playbook@sdd-playbook-marketplace`; `claude plugin list` shows the installed version.
+- **A fixed version:** add the marketplace with a git ref, `jumping2000/sdd-playbook#v0.16.0` (every release has a tag
+  `vX.Y.Z`). Without a ref the marketplace follows `main`; `/plugin marketplace update` fetches the latest.
+- Local trial of a checkout: `claude --plugin-dir <path>/sdd-playbook`.
 - Skills are invoked with the plugin prefix; hooks and subagent load with the plugin.
 
 **Codex**
@@ -187,13 +195,16 @@ the one from Git for Windows). In the red phase (last closed task "expected: red
   playbooks and documentation in both languages (§ references, skill and script names, no version references in the
   playbook, every document in two languages, links).
 - CI: `.github/workflows/ci.yml` runs the tests on Ubuntu and Windows.
+- Release: the same version in the three manifests, in the marketplace entry, on line 2 of every script, in both
+  changelogs and both READMEs (the coherence tests check it), then a git tag `vX.Y.Z` on the release commit.
 
 ## Verification status
 
 | What | Result |
 |---|---|
 | Test suite | Passes on Linux (includes loop with fake agent, hooks and `run.sh` launcher, scripts on temporary git repositories). On Windows 11 verified up to 0.8.0; from 0.9.0 only the `windows-latest` CI matrix covers it, and its result must be checked |
-| `claude plugin validate .` | Passed on 0.4.0 (Claude Code 2.1.303, warnings on `author`); **not rerun** since 0.5.0 with the new `hooks.json` |
+| `claude plugin validate .` | Passed on 0.16.0 (Claude Code 2.1.312); only warning: no icon, needed just for the official plugin directory |
+| Installation from the GitHub marketplace (Claude Code) | **Done** on 0.16.0: marketplace added from `jumping2000/sdd-playbook`, plugin installed and enabled; a git ref after `#` pins the version (tried with a branch) |
 | Codex manifest | **Not validated** with a Codex tool |
 | GitHub Copilot (`plugin.json`, `.github/skills/`, custom agent) | **Not tried**: built from the public documentation and examples (the GitHub docs site was not reachable from the build environment) |
 | Python version | 3.8+ from code analysis (standard library only); CI runs 3.12 |

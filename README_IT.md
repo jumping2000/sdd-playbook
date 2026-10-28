@@ -139,10 +139,19 @@ proprio (skill, template, script, hook, agente, test) è interamente in inglese;
 
 ## Installazione
 
-**Claude Code**
-- Prova locale: `claude --plugin-dir <percorso>/sdd-playbook`
-- Marketplace: `/plugin marketplace add jumping2000/sdd-playbook`, poi
-  `/plugin install sdd-playbook@sdd-playbook-marketplace`.
+**Claude Code** (provato con Claude Code 2.1.312: il repository stesso è il marketplace, `.claude-plugin/marketplace.json`)
+
+```
+/plugin marketplace add jumping2000/sdd-playbook
+/plugin install sdd-playbook@sdd-playbook-marketplace
+```
+
+- Lo stesso da terminale: `claude plugin marketplace add jumping2000/sdd-playbook`, poi
+  `claude plugin install sdd-playbook@sdd-playbook-marketplace`; `claude plugin list` mostra la versione installata.
+- **Una versione fissa:** aggiungi il marketplace con un riferimento git, `jumping2000/sdd-playbook#v0.16.0` (ogni
+  rilascio ha un tag `vX.Y.Z`). Senza riferimento il marketplace segue `main`; `/plugin marketplace update` scarica
+  l'ultima versione.
+- Prova locale di una copia del repository: `claude --plugin-dir <percorso>/sdd-playbook`.
 - Le skill sono richiamabili con il prefisso del plugin; gli hook e il subagent si caricano con il plugin.
 
 **Codex**
@@ -192,13 +201,16 @@ di Git for Windows). In fase rossa (ultima task chiusa "expected: red") l'hook `
   documentazione in entrambe le lingue (riferimenti a §, nomi di skill e script, assenza di riferimenti a versioni nel
   playbook, ogni documento in due lingue, link).
 - CI: `.github/workflows/ci.yml` esegue i test su Ubuntu e Windows.
+- Rilascio: la stessa versione nei tre manifest, nella voce del marketplace, nella seconda riga di ogni script, nei due
+  changelog e nei due README (lo controllano i test di coerenza), poi un tag git `vX.Y.Z` sul commit di rilascio.
 
 ## Stato della verifica
 
 | Cosa | Esito |
 |---|---|
 | Suite di test | Passa su Linux (comprende loop con agente finto, hook e launcher `run.sh`, script su repository git temporanei). Su Windows 11 verificata fino alla 0.8.0; dalla 0.9.0 la copre solo la matrice CI `windows-latest`, il cui esito va controllato |
-| `claude plugin validate .` | Passava sulla 0.4.0 (Claude Code 2.1.303, avvisi su `author`); **non rieseguito** dalla 0.5.0 con il nuovo `hooks.json` |
+| `claude plugin validate .` | Passa sulla 0.16.0 (Claude Code 2.1.312); unico avviso: manca l'icona, che serve solo per la directory ufficiale dei plugin |
+| Installazione dal marketplace su GitHub (Claude Code) | **Fatta** sulla 0.16.0: marketplace aggiunto da `jumping2000/sdd-playbook`, plugin installato e attivo; un riferimento git dopo `#` fissa la versione (provato con un branch) |
 | Manifest Codex | **Non validato** con uno strumento Codex |
 | GitHub Copilot (`plugin.json`, `.github/skills/`, custom agent) | **Non provato**: costruito dalla documentazione pubblica e da esempi (il sito di documentazione di GitHub non era raggiungibile dall'ambiente di build) |
 | Versione di Python | 3.8+ dall'analisi del codice (solo libreria standard); la CI usa la 3.12 |
