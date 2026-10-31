@@ -5,8 +5,7 @@
 Le voci precedenti alla 0.13.0 usano i nomi del loro tempo (`sdlc-*`, `SDLC_*`, campi in italiano).
 
 ## 0.20.0
-Dalla prima prova reale (uno stack Docker per Langfuse, con la 0.17.0): troppo processo per un compito semplice, troppi
-passaggi manuali, approvazioni a testo libero e git a mano. Il numero salta alla 0.20.0 per segnare il cambio di approccio.
+Dalla prima prova reale: troppo processo per un compito semplice, troppi passaggi manuali, approvazioni a testo libero e git a mano. Il numero salta alla 0.20.0 per segnare il cambio di approccio.
 - **Livello scelto dall'utente:** `sdd-spec` propone il livello più basso consentito dai criteri vincolanti e mostra S, M
   e L come opzioni; sparisce "nel dubbio, il più alto". `diff_scope.py` impone solo i criteri vincolanti (area sensibile
   → L, manifest o lockfile delle dipendenze → M); più di 3 file di produzione nel livello S ora sono un avviso, e gli
@@ -33,7 +32,7 @@ passaggi manuali, approvazioni a testo libero e git a mano. Il numero salta alla
 - **Documentazione:** playbook §1.2 (profili), §2.1 (livello), §4 (diagramma di sequenza con opzioni, `approve.py` e i
   due profili), README, guida rapida, skill, script e architettura nelle due lingue; README e architettura registrano la
   prova e il nuovo limite (nel profilo solo la prova di un'approvazione è la selezione dell'utente).
-- **Test:** `approve.py` su repository temporanei, il caso Langfuse in `diff_scope`, la proporzione degli AC e un flusso
+- **Test:** `approve.py` su repository temporanei, la proporzione degli AC e un flusso
   solo end-to-end (spec approvata e committata, `state.py` chiede il fast-forward, `spec_lint --base main` passa,
   `diff_scope` accetta il livello S con un avviso).
 - **Revisione della documentazione:** le sorgenti del playbook sono passate in `tools/playbook-src/`, così `docs/`

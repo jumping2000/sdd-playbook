@@ -150,8 +150,7 @@ Sono una rete di sicurezza, non un sandbox: la difesa vera sono permessi, isolam
 
 ## Percorso di prova consigliato
 
-1. **Greenfield giocattolo, profilo solo:** una feature di livello S, poi una di livello M, tutto in modalità
-   interattiva (lo stack Langfuse provato con la 0.17.0 è un buon banco di prova per il livello S).
+1. **Greenfield giocattolo, profilo solo:** una feature di livello S, poi una di livello M, tutto in modalità interattiva.
 2. **Brownfield:** un repository reale ma non critico, un'area mappata e caratterizzata, una modifica di livello M.
 3. **Il loop per ultimo**, in un container senza rete e con `settings.loop.json`.
 

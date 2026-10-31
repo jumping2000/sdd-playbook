@@ -5,8 +5,7 @@
 Entries before 0.13.0 use the names of their time (`sdlc-*`, `SDLC_*`, Italian field names).
 
 ## 0.20.0
-From the first real trial (a Docker stack for Langfuse, with 0.17.0): too much process for a simple task, too many
-manual steps, free-text approvals and git by hand. The number jumps to 0.20.0 to mark the change of approach.
+From the first real trial: too much process for a simple task, too many manual steps, free-text approvals and git by hand. The number jumps to 0.20.0 to mark the change of approach.
 - **Level chosen by the user:** `sdd-spec` proposes the lowest level the hard criteria allow and shows S, M and L as
   options; "when in doubt, the higher one" is gone. `diff_scope.py` enforces only the hard criteria (sensitive area → L,
   dependency manifest or lockfile → M); more than 3 production files at level S is now a warning, and the process
@@ -33,7 +32,7 @@ manual steps, free-text approvals and git by hand. The number jumps to 0.20.0 to
 - **Documentation:** playbook §1.2 (profiles), §2.1 (level), §4 (sequence diagram with options, `approve.py` and the two
   profiles), README, quick guide, skills, scripts and architecture in both languages; the README and the architecture
   record the trial and the new limit (in the solo profile the evidence of an approval is the user's selection).
-- **Tests:** `approve.py` on temporary repositories, the Langfuse case in `diff_scope`, AC proportion, and an end-to-end
+- **Tests:** `approve.py` on temporary repositories, AC proportion, and an end-to-end
   solo flow (spec approved and committed, `state.py` asks for the fast-forward, `spec_lint --base main` passes,
   `diff_scope` accepts level S with a warning).
 - **Documentation pass:** the playbook sources moved to `tools/playbook-src/`, so `docs/` holds one playbook per

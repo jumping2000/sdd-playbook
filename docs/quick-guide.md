@@ -150,8 +150,7 @@ They are a safety net, not a sandbox: the real defence is permissions, isolation
 
 ## Recommended trial path
 
-1. **Toy greenfield, solo profile:** one level-S feature, then one level-M feature, everything interactive (the
-   Langfuse stack tried with 0.17.0 is a good level-S benchmark).
+1. **Toy greenfield, solo profile:** one level-S feature, then one level-M feature, everything interactive.
 2. **Brownfield:** a real but non-critical repository, one mapped and characterized area, one level-M change.
 3. **The loop last**, in a container without network and with `settings.loop.json`.
 

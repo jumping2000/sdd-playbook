@@ -100,7 +100,7 @@ class TestDiffScopeLevels(unittest.TestCase):
             self.assertNotIn("outside the plan", r.stdout)
 
     def test_s_with_more_files_is_a_warning(self):
-        with TmpDir() as d:  # the Langfuse case: a compose stack chosen as S by the approver
+        with TmpDir() as d:  # compose stack chosen as S by the approver
             self.prepare(d, "S", plan=False)
             for f in ("compose.yaml", ".env.example", "clickhouse/users.xml", "clickhouse/config.xml"):
                 write(d, f, "x\n")

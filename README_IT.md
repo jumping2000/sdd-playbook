@@ -239,7 +239,7 @@ di Git for Windows). In fase rossa (ultima task chiusa "expected: red") l'hook `
 | Manifest Codex | **Non validato** con uno strumento Codex |
 | GitHub Copilot (`plugin.json`, `.github/skills/`, custom agent) | **Non provato**: costruito dalla documentazione pubblica e da esempi (il sito di documentazione di GitHub non era raggiungibile dall'ambiente di build) |
 | Versione di Python | 3.8+ dall'analisi del codice (solo libreria standard); la CI usa la 3.12 |
-| Skill eseguite da un agente reale su un progetto | **Una volta**, con la 0.17.0 su un piccolo greenfield (stack Docker per Langfuse): il risultato era troppo pesante per il compito; la 0.20.0 affronta i rilievi e non è ancora stata provata su un progetto |
+| Skill eseguite da un agente reale su un progetto | **Una volta**, con la 0.17.0 su un piccolo greenfield: il risultato era troppo pesante per il compito; la 0.20.0 affronta i rilievi e non è ancora stata provata su un progetto |
 | Hook in una sessione reale di Claude Code | **Non fatto**: provati solo come script con l'input JSON atteso |
 | `loop.py` con `claude -p` reale | **Non fatto**: provato con un agente finto |
 | Workflow CI generato da `sdd-init` | **Non eseguito** (YAML validato, step dei controlli di processo mai eseguito su una PR reale) |
