@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# sdd-playbook: 0.17.0
+# sdd-playbook: 0.20.0
 """Deterministic inventory of an existing codebase (starting point for the map, brownfield).
 
 Usage: python scripts/scan_repo.py [root] [--json]

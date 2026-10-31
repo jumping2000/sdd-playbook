@@ -31,5 +31,6 @@ Playbook §6 and §4 (phase 8). The source is **the spec and the real code**, no
 
 ## STOP
 
-List the documentation files touched and the examples run with their results. Ask for a review.
+List the documentation files touched and the examples run with their results. Ask for the review with options
+(guide: search for `**/sdd-init/references/interaction.md`): `Docs are fine`, `Change them`, `Stop here`.
 Next step: `sdd-sync`.

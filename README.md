@@ -1,6 +1,6 @@
-# SDD Playbook (version 0.17.0)
+# SDD Playbook (version 0.20.0)
 
-[![Version](https://img.shields.io/badge/version-0.17.0-blue)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.20.0-blue)](CHANGELOG.md)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![CI](https://github.com/jumping2000/sdd-playbook/actions/workflows/ci.yml/badge.svg)](https://github.com/jumping2000/sdd-playbook/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/python-3.8%2B-3776AB?logo=python&logoColor=white)](docs/scripts.md)
@@ -16,8 +16,9 @@
 
 *Versione italiana: [README_IT.md](README_IT.md)*
 
-> **Status: in design.** The plugin has not yet been used on a real project: skills, hooks and loop are tested only with
-> automated tests and fake agents. Formats and contracts may still change without compatibility.
+> **Status: in design.** The plugin has been tried once on a small real project (a Docker stack, with 0.17.0): its
+> feedback (too much ceremony, too many manual steps) shaped 0.20.0. Formats and contracts may still change without
+> compatibility.
 
 **SDD Playbook** (`sdd-playbook`) is a spec-driven development plugin for Claude Code, Codex and GitHub Copilot that guides the developer through the whole software lifecycle described in the
 [playbook](docs/playbook-ai-software-lifecycle.md): spec, plan, tasks, tests, implementation, review, documentation,
@@ -53,8 +54,9 @@ Coding agents fail in recurring ways. Each skill and script exists to counter on
 | It writes tests that confirm its own bugs | Tests from the ACs, red for the right reason, locked by a `Test-Lock` commit and approved by a human; traceability AC → executed test | `sdd-tests-from-ac`, `trace_check.py --junit`, `diff_scope.py` |
 | It changes or "improves" things outside the scope | Approved plan with the files to touch; forbidden zones and sensitive areas in `AGENTS.md`; diff checked against plan and level | `sdd-plan`, `diff_scope.py` |
 | It breaks existing behaviour in a legacy codebase | Map and baseline first, characterization tests that can fail, spec of the delta only | `sdd-map-codebase`, `sdd-characterize` |
-| It approves its own work (approvals are just text) | Hash of the approved content; the real approval is a merge into protected `main` by a separate identity; process checks in CI on the PR | `spec_lint.py --base`, CI template, `CODEOWNERS` |
-| Same heavy process for one line and for a migration | Levels S, M, L declared in the spec, part of its hash, checked against the real diff | playbook §2.1, `diff_scope.py` |
+| It approves its own work (approvals are just text) | Approvals selected by the user among options and written by a script with name, date and hash; team profile: the real approval is a merge into protected `main` by a separate identity, with process checks in CI on the PR | `approve.py`, `spec_lint.py --base`, CI template, `CODEOWNERS` |
+| Same heavy process for one line and for a migration | Levels S, M, L chosen by the user among options (the lowest the hard criteria allow is recommended), part of the spec hash; size is a warning, sensitive areas and dependencies are errors; few ACs for small changes | playbook §2.1, `diff_scope.py`, `spec_lint.py` |
+| Too many manual steps, free-text approvals, git by hand | Questions in rounds of options; every gate an option with the approver's name; solo profile: the agent does branch, commits and fast-forward of `main` after the selected approval | `interaction.md` of `sdd-init`, `approve.py` |
 | Review by the same session that wrote the code | Fresh-context reviewer, read-only by construction, that tries to refute; the human decides | `sdd-review-diff`, `sdd-reviewer` |
 | Specs that rot after delivery | Closing task that reconciles spec, area page and code | `sdd-sync`, `sync_check.py` |
 | Bugs fixed "by intuition", breaking something else | Reproduction, behaviour that must NOT change, red test, minimal fix | `sdd-bugfix`, `bug_lint.py` |
@@ -67,8 +69,9 @@ Coding agents fail in recurring ways. Each skill and script exists to counter on
   scripts are deterministic, standard-library Python, copied into the project so that CI and VS Code use them without
   the plugin.
 - **The human approves, the platform enforces.** Every text field can be written by the agent; a merge into a protected
-  branch, done by a separate identity, cannot. That is why the approval is the merge of the design PR, and why the CI
-  template runs the process checks on PRs.
+  branch, done by a separate identity, cannot. That is why, in the team profile, the approval is the merge of the design
+  PR and the CI template runs the process checks on PRs. In the solo profile (one person) the agent does the git steps
+  right after an approval the user selected: simpler, with the limit stated in playbook §1.2.
 - **Proportional, not uniform.** Levels S/M/L remove ceremony from small changes and add attention to risky ones.
 - **State in files.** Specs, plans, tasks and reviews are versioned files; the chat is not a source of truth.
 - **One content, three agents, two operating systems.** The Agent Skills format is shared by Claude Code, Codex and
@@ -82,7 +85,7 @@ the agent's permissions (it provides an example), cover release, infrastructure 
 | Part | Content | Details |
 |---|---|---|
 | 14 skills | `sdd-next`, `sdd-init`, `sdd-map-codebase`, `sdd-characterize`, `sdd-spec`, `sdd-plan`, `sdd-tasks`, `sdd-tests-from-ac`, `sdd-implement`, `sdd-bugfix`, `sdd-review-diff`, `sdd-docs`, `sdd-sync`, `sdd-loop` | [docs/skills.md](docs/skills.md) |
-| 12 Python scripts | `verify`, `state`, `spec_lint`, `trace_check`, `bug_lint`, `diff_scope`, `scan_repo`, `docs_check`, `sync_check`, `loop`, `secrets_check`, `review_package` | [docs/scripts.md](docs/scripts.md) |
+| 13 Python scripts | `verify`, `state`, `spec_lint`, `trace_check`, `bug_lint`, `diff_scope`, `scan_repo`, `docs_check`, `sync_check`, `loop`, `secrets_check`, `review_package`, `approve` | [docs/scripts.md](docs/scripts.md) |
 | 2 optional hooks | `Stop` (verify mandatory) and `PreToolUse` (guard), Claude Code only | [docs/scripts.md](docs/scripts.md#optional-hooks-claude-code-only) |
 | 1 reviewer agent | `sdd-reviewer`, independent reviewer with read-only tools: Claude Code subagent and GitHub Copilot custom agent | [docs/architecture.md](docs/architecture.md) |
 | Playbook | The process, with templates and scripts identical to the plugin's | [docs/playbook-ai-software-lifecycle.md](docs/playbook-ai-software-lifecycle.md) |
@@ -102,7 +105,7 @@ flowchart TD
     impl --> lvl2{level}
     lvl2 -- S --> docs
     lvl2 -- M or L --> review[sdd-review-diff] --> g4{{you decide on the review}} --> docs[sdd-docs]
-    docs --> sync[sdd-sync] --> pr([PR: merge into main])
+    docs --> sync[sdd-sync] --> pr([main: fast-forward if solo, PR merge if team])
     bug[sdd-bugfix] -. defects, alongside the flow .-> impl
 ```
 
@@ -111,14 +114,18 @@ flowchart TD
 [architecture](docs/architecture.md).
 
 The process is proportional to risk: the spec declares a **level** S, M or L (playbook §2.1). S skips plan and
-`review.md`; L adds an ADR and the human reading of the diff; `diff_scope.py` reports a diff that exceeds the declared
-level. Tests written from the ACs are locked by a `Test-Lock` commit and, at levels M and L, approved by the human before
+`review.md`; L adds an ADR and the human reading of the diff. The user chooses the level among options; `diff_scope.py`
+reports a diff that breaks its hard criteria (sensitive area, dependencies) and warns on the size. Tests written from the ACs are locked by a `Test-Lock` commit and, at levels M and L, approved by the human before
 implementation, with the SHA of the approved commit; with the JUnit report from `verify`, `trace_check.py --junit` counts
 only executed, passing tests. Basic security: `secrets_check.py` as a `verify` step, new dependencies only in the plan or
 with an ADR (`diff_scope.py`), example permissions for the loop (`skills/sdd-loop/references/settings.loop.json`).
 
 Every skill that produces a document to approve ends with a **STOP**: the agent does not move on and does not approve by
-itself. Approvals (spec, plan, tests, review decision) carry name and date and are checked by the scripts.
+itself. Every choice and every gate is asked as options to select (`Approve as <name>`, `Request changes`, `Stop
+here`); the selected approval is written by `approve.py` (name, date, hashes, checked by the lint) and committed. Then,
+by profile (`- Profile:` in `AGENTS.md`): **solo**, the agent moves `main` forward by fast-forward; **team**, the merge
+of the PR into protected `main` is the approval, and the agent may offer to open or merge it with your explicit
+approval.
 
 ## Quick start
 
@@ -160,7 +167,7 @@ templates, scripts, hooks, agent, tests) is entirely in English; the field names
 
 - The same from a terminal: `claude plugin marketplace add jumping2000/sdd-playbook`, then
   `claude plugin install sdd-playbook@sdd-playbook-marketplace`; `claude plugin list` shows the installed version.
-- **A fixed version:** add the marketplace with a git ref, `jumping2000/sdd-playbook#v0.17.0` (every release has a tag
+- **A fixed version:** add the marketplace with a git ref, `jumping2000/sdd-playbook#v0.20.0` (every release has a tag
   `vX.Y.Z`). Without a ref the marketplace follows `main`; `/plugin marketplace update` fetches the latest.
 - Local trial of a checkout: `claude --plugin-dir <path>/sdd-playbook`.
 - Skills are invoked with the plugin prefix; hooks and subagent load with the plugin.
@@ -193,7 +200,8 @@ templates, scripts, hooks, agent, tests) is entirely in English; the field names
 | `SDD_STOP_MAX` | How many times in a row the `Stop` hook blocks in the same session before letting the agent stop | 3 |
 | `SDD_GUARD=1` | Enables the `PreToolUse` hook: blocks risky commands and reads (fail-closed) | off |
 
-**Approvals.** For a control the agent cannot bypass, give it a separate identity (no push rights, or a bot account or
+**Approvals.** Profile **solo**: nothing to configure, the agent does the git steps after the approval you select.
+Profile **team**: for a control the agent cannot bypass, give it a separate identity (no push rights, or a bot account or
 token without merge rights) and protect `main` with required PRs, code-owner review and CI. `sdd-init` creates
 `.github/CODEOWNERS`, the PR template and the CI with process checks on PRs; you set the branch rules. Details:
 playbook §1.2.
@@ -218,12 +226,12 @@ the one from Git for Windows). In the red phase (last closed task "expected: red
 | What | Result |
 |---|---|
 | Test suite | Passes on Linux (includes loop with fake agent, hooks and `run.sh` launcher, scripts on temporary git repositories). On Windows 11 verified up to 0.8.0; from 0.9.0 only the `windows-latest` CI matrix covers it, and its result must be checked |
-| `claude plugin validate .` | Passed on 0.17.0 (Claude Code 2.1.312); only warning: no icon, needed just for the official plugin directory |
+| `claude plugin validate .` | Passed on 0.20.0 (Claude Code 2.1.312); only warning: no icon, needed just for the official plugin directory |
 | Installation from the GitHub marketplace (Claude Code) | **Done** on 0.16.0: marketplace added from `jumping2000/sdd-playbook`, plugin installed and enabled; a git ref after `#` pins the version (tried with a branch) |
 | Codex manifest | **Not validated** with a Codex tool |
 | GitHub Copilot (`plugin.json`, `.github/skills/`, custom agent) | **Not tried**: built from the public documentation and examples (the GitHub docs site was not reachable from the build environment) |
 | Python version | 3.8+ from code analysis (standard library only); CI runs 3.12 |
-| Skills run by a real agent on a project | **Not done**: to be tried on a sample greenfield and brownfield |
+| Skills run by a real agent on a project | **Once**, with 0.17.0 on a small greenfield (Docker stack for Langfuse): the result was too heavy for the task; 0.20.0 addresses the findings and has not been tried on a project yet |
 | Hooks in a real Claude Code session | **Not done**: tested only as scripts with the expected JSON input |
 | `loop.py` with a real `claude -p` | **Not done**: tested with a fake agent |
 | CI workflow generated by `sdd-init` | **Not run** (YAML validated, process-check step never executed on a real PR) |

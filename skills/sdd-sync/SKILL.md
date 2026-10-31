@@ -35,4 +35,7 @@ Playbook §3.7 and §4 (phase 9). A spec not reconciled with the code stops bein
 
 ## STOP
 
-Report the `sync_check.py` result, the gaps found and the proposed lessons. Then the PR belongs to the user.
+Report the `sync_check.py` result, the gaps found and the proposed lessons (as options: `Apply`, `Skip`). Then close by
+profile (guide: search for `**/sdd-init/references/interaction.md`): **solo**, after the user selects `Close the
+feature`, move `main` forward with `git fetch . HEAD:main`, switch to it and delete the branch; **team**, offer `Open the
+PR`, `Merge now, I approve as <name>` (only if your identity may merge) or `I will merge it myself`.

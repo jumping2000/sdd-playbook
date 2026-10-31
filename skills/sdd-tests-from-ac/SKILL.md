@@ -49,7 +49,9 @@ Show the AC → test list, the failure messages and the SHA of the `Test-Lock` c
 see `sdd-implement`): the reviewer checks that the tests derive from the ACs and avoid the anti-patterns, and its
 verdict goes to the user together with the tests. At levels M and L ask the user to
 **read the locked tests** (the diff of that commit), with the approval checklist of `references/test-conventions.md`:
-they define "done" for the implementation. Only after their explicit confirmation, with their name, append to the task line `— tests approved: <name, yyyy-mm-dd, sha>` with the
-short SHA of the `Test-Lock` commit the user read (a new `Test-Lock` commit for the same task voids the approval:
-`diff_scope.py`); until then `state.py` does not point to implementation and `loop.py` stops. Never write it on your
-own initiative. At level S a spot check is enough.
+they define "done" for the implementation. Ask it as a gate with options (guide: search for
+`**/sdd-init/references/interaction.md`); only after the user selects an approval, record it with
+`python scripts/approve.py tests <spec-dir> T-<nn> --by "<selected name>" --commit`, which appends
+`— tests approved: <name, yyyy-mm-dd, sha>` with the SHA of the task's last `Test-Lock` commit (a new `Test-Lock`
+commit for the same task voids the approval: `diff_scope.py`); until then `state.py` does not point to implementation
+and `loop.py` stops. Never record it on your own initiative. At level S a spot check is enough.

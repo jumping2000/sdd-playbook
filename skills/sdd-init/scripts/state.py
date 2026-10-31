@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# sdd-playbook: 0.17.0
+# sdd-playbook: 0.20.0
 """Project state according to the playbook and suggested next phase.
 
 Usage: python scripts/state.py [--json] [--spec <id>] [root]
@@ -12,7 +12,9 @@ diff ("- Human diff review:" in review.md). At levels M and L the locked tests o
 approved by the human ("tests approved:" on the task line) before moving on. At level L (or M with "- Task review: on"
 in progress.md) every closed T-nn task needs a passed task review in progress.md before the final review. When the
 next open T-nn task covers an AC named by a non-blocking open question of the spec, the next step is sdd-spec (the
-answer enters the spec with a revision).
+answer enters the spec with a revision). Profile solo ("- Profile: solo" in AGENTS.md): when the design is approved
+(spec, and plan and tasks at levels M and L) but main does not hold it yet, the next step is to move main forward
+(git fetch . HEAD:main); in the team profile that is the merge of the design PR, which `--base` checks.
 Standard library only (+ git for the branch name, if present), cross-platform.
 """
 from __future__ import annotations
@@ -49,6 +51,22 @@ def _filled(text: str, name: str) -> bool:
 
 def _read(p: Path) -> str:
     return p.read_text(encoding="utf-8") if p.is_file() else ""
+
+
+def profile(root: Path) -> str:
+    """'solo' or 'team' from "- Profile:" in AGENTS.md (team when missing or not filled in)."""
+    v = _field(_read(root / "AGENTS.md"), "Profile").lower()
+    return "solo" if v.startswith("solo") else "team"
+
+
+def on_main(root: Path, rel: str) -> bool:
+    """The file exists on main (or master) with the same content as the working copy."""
+    for ref in ("main", "master"):
+        r = subprocess.run(["git", "-C", str(root), "show", f"{ref}:{rel}"], capture_output=True, text=True,
+                           encoding="utf-8", errors="replace")
+        if r.returncode == 0:
+            return r.stdout.replace("\r\n", "\n") == _read(root / rel).replace("\r\n", "\n")
+    return False
 
 
 def has_code(root: Path, threshold: int = 3) -> bool:
@@ -116,6 +134,12 @@ def analyze_spec(d: Path) -> dict:
     }
 
 
+def move_main(s: dict) -> dict:
+    return {"skill": "sdd-tasks", "spec": s["id"],
+            "reason": "profile solo: design approved but not on main yet; move main forward with `git fetch . HEAD:main` "
+                      "(fast-forward only)"}
+
+
 def next_for_spec(s: dict) -> dict:
     i = s["id"]
     if s["status"] == "in-revision":
@@ -137,6 +161,8 @@ def next_for_spec(s: dict) -> dict:
         return {"skill": "sdd-tasks", "spec": i, "reason": "tasks missing"}
     if s["tasks_on_other_plan"]:
         return {"skill": "sdd-tasks", "spec": i, "reason": "tasks based on another version of the plan: review them"}
+    if s.get("design_off_main") and not s["tasks_closed"]:
+        return move_main(s)
     if s["tests_to_approve"]:
         return {"skill": "sdd-tests-from-ac", "spec": i,
                 "reason": f"locked tests of {', '.join(s['tests_to_approve'])} to be approved by the human "
@@ -186,6 +212,8 @@ def next_level_s(s: dict) -> dict:
     i = s["id"]
     if not s["tasks"]:
         return {"skill": "sdd-tasks", "spec": i, "reason": "level S: minimal tasks, without a plan"}
+    if s.get("design_off_main") and not s["tasks_closed"]:
+        return move_main(s)
     if s["next_task_waits_for"]:
         return waiting_task(s)
     if s["numbered_tasks_open"]:
@@ -221,8 +249,12 @@ def analyze(root: Path, choice: str | None = None) -> dict:
     }
     base = root / "docs" / "specs"
     specs = [analyze_spec(d) for d in sorted(p for p in base.glob("*") if p.is_dir())] if base.is_dir() else []
+    solo = profile(root) == "solo"
     for s in specs:
         if s["status"] not in CLOSED:
+            design = [f"docs/specs/{s['id']}/{n}" for n in ("spec.md", "plan.md", "tasks.md")
+                      if (base / s["id"] / n).is_file()]
+            s["design_off_main"] = solo and not all(on_main(root, rel) for rel in design)
             s["next"] = next_for_spec(s)
     bugs_dir = root / "docs" / "bugs"
     open_bugs = []

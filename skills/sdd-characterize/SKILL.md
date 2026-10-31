@@ -32,5 +32,6 @@ Playbook §5, step 4. **You do not modify production code** and you do not fix t
 
 ## STOP
 
-Report tests written, behaviours pinned, defects noted and the failure proof. Ask for a spot check.
+Report tests written, behaviours pinned, defects noted and the failure proof. Ask for a spot check with options
+(guide: search for `**/sdd-init/references/interaction.md`): `Tests are right`, `Change them`, `Stop here`.
 Next step: `sdd-spec` to describe only the delta.

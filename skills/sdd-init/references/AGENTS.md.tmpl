@@ -14,6 +14,13 @@
 - <style, naming, folder structure: only what cannot be inferred from the code>
 - No shell-specific commands in scripts: they must run on Windows and Linux.
 
+## Process
+- Profile: <solo | team>
+- Approvers: <names that may approve, comma-separated, e.g. Anna Smith>
+<!-- solo: one person; the agent does the git steps and moves main forward by fast-forward right after an approval the
+user selected. team: the approval is the merge of the PR into protected main. Choices and approvals are always asked as
+options (sdd-init/references/interaction.md). -->
+
 ## Rules
 - Do not modify: <paths in backticks, e.g. `migrations/applied/`, `src/generated/`>
 - Sensitive areas: <paths in backticks that require level L, e.g. `src/auth/`, `src/payments/`, `migrations/`>
@@ -40,9 +47,11 @@ removed here.
 - <what the team adds>
 
 ### Never
-- Change spec, plan, `review.md` or `AGENTS.md`; write an approval (`Approved by`, `tests approved:`, `Decided by`)
+- Change spec, plan, `review.md` or `AGENTS.md` while implementing; write an approval (`Approved by`, `tests approved:`,
+  `Decided by`) except with `scripts/approve.py` right after the user selected it
 - Modify or weaken a locked test (`Test-Lock`), or any test, to make it pass
-- Push, merge, or commit on `main`/`master`
+- Push without the user selecting it; commit a feature on `main`/`master`; move `main` except as the profile allows (solo:
+  `git fetch . HEAD:main` after a selected approval; team: merge of the approved PR)
 - Set `Status: implemented` outside `sdd-sync`
 - <what the team adds>
 

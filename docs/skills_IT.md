@@ -11,10 +11,16 @@ Skill e template sono in inglese, come ogni parte del plugin.
 - Gli script si chiamano come `python scripts/<nome>.py` dalla radice del progetto: li copia `sdd-init`.
   Se un progetto è stato inizializzato con una versione precedente, copia lo script mancante da
   `skills/sdd-init/scripts/`.
-- Ogni skill che produce un documento da approvare termina con **STOP**: chiede l'approvazione con nome e data,
-  registra l'hash del contenuto approvato (`spec_lint.py --hash`) e non avvia la fase successiva. Spec, piano e task
-  vanno poi nella PR di design: il merge su `main`, che fa solo l'umano, è l'approvazione (playbook §1.2).
-- Le skill non committano senza autorizzazione dell'utente e mai su `main`/`master`.
+- Ogni scelta e ogni gate si chiedono come **opzioni da selezionare** (guida `references/interaction.md` di
+  `sdd-init`): giri di massimo 4 domande, prima l'opzione consigliata, sempre una risposta libera; i gate come
+  `Approve as <name>` (nomi da `- Approvers:` in `AGENTS.md`), `Request changes`, `Stop here`.
+- Ogni skill che produce un documento da approvare termina con **STOP**: dopo che l'utente ha selezionato
+  un'approvazione la registra con `approve.py` (nome, data, hash, controllati dal lint) e non avvia da sola la fase
+  successiva.
+- Git secondo il profilo (`- Profile:` in `AGENTS.md`, playbook §1.2): **solo**, le skill creano il branch di feature,
+  committano e fanno avanzare `main` in fast-forward subito dopo un gate selezionato; **team**, il merge della PR su
+  `main` protetto è l'approvazione, e le skill propongono di aprirla o di farne il merge con l'approvazione esplicita
+  dell'utente. Mai un commit di feature su `main`/`master`.
 - Quando un requisito è ambiguo, si fermano e chiedono: non assumono.
 
 **Ordine tipico:** `sdd-init` → (`sdd-map-codebase` → `sdd-characterize`) → `sdd-spec` → `sdd-plan` →
@@ -52,10 +58,11 @@ del diff.
 ### sdd-init
 
 - **Quando:** una volta per progetto, prima di spec o codice.
-- **Cosa fa:** rileva sistema operativo, stack e se c'è già codice; chiede in un solo messaggio ciò che non
-  rileva (comandi reali, Windows sì/no, provider CI); copia i 12 script in `scripts/` (ognuno con la versione del plugin in seconda riga, per gli aggiornamenti); adatta `STEPS` di
+- **Cosa fa:** rileva sistema operativo, stack e se c'è già codice; chiede in un giro di opzioni ciò che non
+  rileva (profilo solo o team, nomi degli approvatori, comandi reali, Windows sì/no); copia i 13 script in `scripts/` (ognuno con la versione del plugin in seconda riga, per gli aggiornamenti); adatta `STEPS` di
   `verify.py` provando ogni comando; crea `AGENTS.md`, `CLAUDE.md` (`@AGENTS.md`), `.gitattributes`,
-  `.vscode/tasks.json`, `docs/constitution.md`, le cartelle `docs/*` e il workflow CI; esegue `verify` e `state`.
+  `.vscode/tasks.json`, `docs/constitution.md`, le cartelle `docs/*` e, nel profilo team, il workflow CI, `CODEOWNERS`
+  e il template della PR (solo: CI solo se c'è un remote); esegue `verify` e `state`.
 - **Regole:** non sovrascrive mai file esistenti (mostra la differenza, fa il merge di `tasks.json`); non inventa
   step o test; riporta `verify` rosso così com'è.
 - **Inoltre:** la sezione **Decision rights** di `AGENTS.md` (decide da solo / chiede prima / mai), rivista con
@@ -86,13 +93,14 @@ del diff.
 
 - **Quando:** dall'idea a una specifica approvabile; anche per completare una bozza.
 - **Cosa fa:** legge `AGENTS.md`, constitution, il codice coinvolto e (brownfield) mappa e pagina d'area prima di
-  chiedere; riformula la richiesta con parole proprie; **pone** una domanda per messaggio, quella che cambierebbe di più
-  ciò che si costruisce; propone 2-3 opzioni quando la richiesta ammette esiti davvero diversi per l'utente; scrive
-  `spec.md` con livello proposto (S, M, L con i criteri del playbook §2.1), requisiti verificabili, AC
-  Dato/quando/allora, non-scope obbligatorio, anti-obiettivi (`Anti-goals`), assunzioni marcate `[ASSUMPTION]`, domande
+  chiedere; riformula la richiesta con parole proprie; **chiede a giri di opzioni** (massimo 4 domande, prima la
+  consigliata), compresi gli esiti diversi per l'utente; l'utente **sceglie il livello** tra S, M, L (consigliato il più
+  basso consentito dai criteri vincolanti); scrive `spec.md` con requisiti verificabili, pochi AC
+  Dato/quando/allora (3-6 nel livello S), non-scope obbligatorio, anti-obiettivi (`Anti-goals`), assunzioni marcate `[ASSUMPTION]`, domande
   aperte marcate `blocking: yes|no` (dopo l'approvazione restano aperte solo quelle non bloccanti), termini del glossario
   e nessuna parola vaga (avvisi di `spec_lint.py`); `spec_lint.py` deve passare; nel brownfield propone `sdd-characterize` se l'area non ha test.
-- **Approvazione:** solo con conferma esplicita **e** nome dell'approvatore; poi `Status: approved`.
+- **Approvazione:** un gate a opzioni; dopo che l'utente seleziona `Approve as <name>`, `approve.py spec --commit`
+  scrive `Status: approved`, nome, data e hash. Poi `main` secondo il profilo (solo: fast-forward; team: PR di design).
 
 ### sdd-plan
 

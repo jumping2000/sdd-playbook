@@ -47,8 +47,10 @@ Playbook §4 (phase 7), §5 (step 8) and §3.8. A context **independent** of the
 
 ## STOP
 
-Present the report. **The decision belongs to the user:** ask for their name and confirmation and fill in "Decided by".
-Without this decision `sync_check.py` will not pass. **Level L:** the user also reads the diff (the files of the
-sensitive areas first); fill in `- Human diff review:` only when they confirm they did it, with name and date. Do not
-modify code in this skill.
+Present the report in a few lines. **The decision belongs to the user:** ask it as a gate with options (guide: search
+for `**/sdd-init/references/interaction.md`), with the findings to turn into `T-R` tasks as a multiple choice when the
+outcome is `non-compliant`. After the user selects an approval, record it with
+`python scripts/approve.py review <spec-dir> --by "<selected name>" --commit`. Without this decision `sync_check.py`
+will not pass. **Level L:** the user also reads the diff (the files of the sensitive areas first); add `--diff-read`
+only when they select the option `I read the diff`. Do not modify code in this skill.
 Next step if the outcome is accepted: `sdd-docs`, then `sdd-sync`.

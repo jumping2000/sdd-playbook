@@ -51,7 +51,8 @@ Playbook §3.4 and §4 (phase 3).
 
 ## STOP
 
-Summarize the plan and ask for explicit approval with the approver's name. Only then fill in `Approved by / date`, write
-in `- Hash:` the output of `python scripts/spec_lint.py <plan> --hash` and rerun the lint with `--plan` (the warning must
-disappear). If the spec changes, the plan lapses and must be re-approved. Do not write tasks or code without this step.
+Summarize the plan in a few lines and ask for the approval as a gate with options (guide: search for
+`**/sdd-init/references/interaction.md`). Only after the user selects an approval, record it with
+`python scripts/approve.py plan <plan> --by "<selected name>" --commit` (name, date, `Based on spec`, hash, lint
+checked). If the spec changes, the plan lapses and must be re-approved. Do not write tasks or code without this step.
 Next step: `sdd-tasks`.

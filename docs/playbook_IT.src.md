@@ -159,6 +159,20 @@ Flusso di una feature: **PR di design** (spec, piano e task approvati in convers
 approvazione → branch di implementazione da `main` → `spec_lint.py <spec> --plan <plan> --base main` deve passare prima
 del codice → **PR di implementazione**, in cui chi approva rilegge per primi i commit `Test-Lock`.
 
+**Profili: solo e team.** `sdd-init` chiede quale vale e lo registra in `AGENTS.md` (`- Profile:`), con i nomi di chi può
+approvare (`- Approvers:`).
+
+| | **solo** (una persona, con o senza remote) | **team** |
+|---|---|---|
+| Chi fa git | L'agente: branch di feature, commit, fast-forward di `main` (`git fetch . HEAD:main`) subito dopo un gate selezionato dall'utente | L'agente committa sui branch; l'approvazione è il merge della PR su `main` protetto |
+| Generato da `sdd-init` | Niente `CODEOWNERS` né template della PR; CI solo se c'è un remote | Tutto: CI con i controlli di processo, `CODEOWNERS`, template della PR |
+| Cosa l'agente non può aggirare | Niente di tecnico: la prova è la selezione dell'utente e il commit che la segue | Il merge su `main` protetto con review dei code owner |
+
+In entrambi i profili ogni scelta e ogni gate si chiedono come **opzioni da selezionare** (`Approve as <name>`,
+`Request changes`, `Stop here`) e l'approvazione la scrive `approve.py` (nome, data, hash, controllati dal lint), mai a
+mano. Nel profilo team l'agente può proporre di aprire la PR o di farne il merge con l'approvazione esplicita
+dell'utente: la piattaforma applica comunque review e CI.
+
 ---
 
 ## 2. Documenti: minimo raccomandato
@@ -180,19 +194,24 @@ del codice → **PR di implementazione**, in cui chi approva rilegge per primi i
 
 ### 2.1 Livelli S, M, L
 
-Non tutte le modifiche meritano lo stesso processo. La spec dichiara il livello (`- Level: S | M | L`) e lo approva
-insieme al resto: il livello entra nell'hash, quindi abbassarlo dopo l'approvazione la fa decadere. `diff_scope.py`
-controlla che il diff reale non superi il livello dichiarato.
+Non tutte le modifiche meritano lo stesso processo. La spec dichiara il livello (`- Level: S | M | L`), **scelto
+dall'utente** tra le opzioni che l'agente propone (il più basso consentito dai criteri vincolanti, consigliato per primo),
+e lo approva insieme al resto: il livello entra nell'hash, quindi abbassarlo dopo l'approvazione la fa decadere.
+`diff_scope.py` controlla i criteri vincolanti sul diff reale.
 
 | Livello | Quando | Documenti | Review |
 |---|---|---|---|
-| **S** | Tutti veri: al massimo 3 file di produzione (test, `docs/` e `*.md` esclusi), nessuna interfaccia pubblica o formato dati cambiato, nessuna area sensibile, nessuna dipendenza nuova o modificata | `spec.md` e `tasks.md` (senza piano; `T-DOC` facoltativa), test dagli AC | Controlli deterministici e review della PR; niente `review.md`, pagina d'area facoltativa |
+| **S** | Una modifica piccola: circa 3 file di produzione (test, `docs/`, `*.md` e strumenti del processo esclusi), nessuna interfaccia pubblica o formato dati cambiato, nessuna area sensibile, nessuna dipendenza nuova o modificata | `spec.md` e `tasks.md` (senza piano; `T-DOC` facoltativa), test dagli AC | Controlli deterministici e review della PR; niente `review.md`, pagina d'area facoltativa |
 | **M** | Il caso normale: tutto ciò che non è S né L | Tutti quelli del §2 | `review.md` con revisore a contesto fresco e decisione umana; review per task facoltativa (`- Task review: on`) |
 | **L** | Almeno uno: area sensibile (`- Sensitive areas:` in `AGENTS.md`: autenticazione, pagamenti, dati personali, migrazioni), interfaccia pubblica o formato dati cambiato in modo incompatibile, migrazione di dati | Come M, più un ADR per le decisioni prese | Come M, più la **review per task** (obbligatoria) e la **revisione umana del diff** (`- Human diff review:` in `review.md`) |
 
-Criteri controllati da `diff_scope.py`: un file in un'area sensibile richiede L; una modifica a un manifest o lockfile
-delle dipendenze, o più di 3 file di produzione, richiedono almeno M. Interfacce pubbliche e formati dati non si
-riconoscono da uno script: li valuta chi approva la spec. Nel dubbio, il livello più alto.
+Criteri vincolanti, controllati da `diff_scope.py` (errore): un file in un'area sensibile richiede L; una modifica a un
+manifest o lockfile delle dipendenze richiede almeno M. La dimensione è una valutazione: più di 3 file di produzione nel
+livello S sono un avviso, perché chi approva ha scelto S conoscendo la modifica. Gli strumenti del processo (gli script
+del playbook in `scripts/`, `AGENTS.md`, `CLAUDE.md`, `.github/`, `.vscode/`, i file di git) non contano mai. Interfacce
+pubbliche e formati dati non si riconoscono da uno script: li valuta chi approva la spec. Non alzare il livello "per
+sicurezza": nel dubbio l'agente chiede con opzioni. La proporzione vale anche per gli AC: una modifica di livello S ne
+richiede di solito 3-6 (`spec_lint.py` avvisa sopra 6 nel livello S e sopra 15 nel livello M).
 
 Dopo `implemented` la spec diventa archivio: la fonte viva del comportamento sono la pagina d'area e i test.
 
@@ -299,7 +318,7 @@ L'esito è uno tra `compliant`, `compliant with reservations`, `non-compliant`. 
 
 `sdd-next` indica in ogni momento la fase corrente e il passo successivo. Nel livello S (§2.1) la fase 3 si salta e la 7 è la review della PR; nel livello L la fase 7 include la revisione umana del diff.
 
-I gate umani di una feature di livello M o L, in ordine:
+I gate umani di una feature di livello M o L, in ordine (ognuno una scelta tra opzioni):
 
 ```mermaid
 sequenceDiagram
@@ -308,22 +327,34 @@ sequenceDiagram
     participant S as Script
     participant G as Git e CI
     A->>S: spec_lint.py (spec, poi piano)
-    A->>H: STOP: approva spec e piano
-    H->>G: merge della PR di design in main
+    A->>H: STOP: opzioni per approvare spec e piano
+    H->>A: seleziona Approva come nome
+    A->>S: approve.py spec, plan, tasks --commit
+    alt profilo solo
+        A->>G: git fetch . HEAD:main
+    else profilo team
+        H->>G: merge della PR di design in main
+    end
     A->>G: commit Test-Lock: T-nn (test rossi)
     A->>H: STOP: leggi i test bloccati
-    H->>A: tests approved: nome, data, sha
+    H->>A: seleziona Approva come nome
+    A->>S: approve.py tests T-nn
     loop ogni task
         A->>S: verify.py
         A->>G: commit Task: T-nn
     end
     A->>S: diff_scope, trace_check --junit, secrets_check
     A->>H: review.md da un revisore a contesto fresco
-    H->>A: Decided by: nome, data
+    H->>A: seleziona la decisione
+    A->>S: approve.py review
     A->>S: docs_check, sync_check
-    A->>G: apre la PR di implementazione
-    G->>G: controlli di processo in CI
-    H->>G: merge
+    alt profilo solo
+        A->>G: git fetch . HEAD:main, cancella il branch
+    else profilo team
+        A->>G: apre la PR di implementazione
+        G->>G: controlli di processo in CI
+        H->>G: merge
+    end
 ```
 
 ---
@@ -516,7 +547,7 @@ a ogni punto di approvazione) e **script** (controlli deterministici copiati nel
 | Setup (§1) | `sdd-init` | `verify.py` e tutti gli altri (copiati nel progetto) | Principi e stack |
 | Mappa e baseline (§5, passi 1-3) | `sdd-map-codebase` | `scan_repo.py`, `verify.py` | Mappa verificata a campione |
 | Caratterizzazione (§5, passo 4) | `sdd-characterize` | `verify.py` | Spot check |
-| Spec (§3.3) | `sdd-spec` | `spec_lint.py` | **Approvazione della spec** |
+| Spec (§3.3) | `sdd-spec` | `spec_lint.py`, `approve.py` | **Approvazione della spec** |
 | Piano (§3.4) | `sdd-plan` | `spec_lint.py --plan` | **Approvazione del piano** |
 | Task (§3.5) | `sdd-tasks` | `spec_lint.py --tasks` | Controllo rapido |
 | Test dagli AC (§6) | `sdd-tests-from-ac` | `trace_check.py` | **Approvazione dei test bloccati** (M, L) |
@@ -537,11 +568,12 @@ a ogni punto di approvazione) e **script** (controlli deterministici copiati nel
 | `scan_repo.py` | Inventario deterministico di una codebase (stack, linguaggi, test, CI, entry point) |
 | `trace_check.py` | Ogni AC citato in almeno un test della sua spec (`SPEC-nnn/AC-nnn` o file dichiarato); con `--junit` anche eseguito e passato nel report; requisiti senza test; citazioni ambigue |
 | `bug_lint.py` | Completezza del file di un bug in funzione del suo stato |
-| `diff_scope.py` | File modificati: zone vietate (`Do not modify:` in `AGENTS.md`), test bloccati (`Test-Lock`) modificati dopo il blocco, approvazioni dei test superate da un nuovo `Test-Lock`, livello sottostimato rispetto al diff, dipendenze senza piano né ADR, file fuori piano, file pianificati non toccati |
+| `diff_scope.py` | File modificati: zone vietate (`Do not modify:` in `AGENTS.md`), test bloccati (`Test-Lock`) modificati dopo il blocco, approvazioni dei test superate da un nuovo `Test-Lock`, criteri vincolanti del livello violati dal diff (avviso per la dimensione nel livello S), dipendenze senza piano né ADR, file fuori piano, file pianificati non toccati |
 | `docs_check.py` | Link relativi validi; tipi di diagramma Mermaid noti; i cinque diagrammi in ogni pagina di `docs/system/`; esempi Python marcati eseguiti con successo |
 | `sync_check.py` | Chiusura: spec `implemented`, task chiuse, test approvati, review con decisione umana, pagina d'area con i suoi diagrammi, tracciabilità (con il report JUnit nel livello L) |
 | `secrets_check.py` | Chiavi e token con formato noto e file `.env` nei file del ramo (o in tutto il repository con `--all`) |
 | `loop.py` | Loop esterno con tetto, rilevamento dello stallo, timeout per iterazione, baseline, branch protetto, pausa per l'approvazione dei test, review per task nel livello L e dry run |
+| `approve.py` | Non è un controllo: registra un'approvazione selezionata dall'utente (spec, piano, task, test bloccati, decisione sulla review) con nome, data e hash, rifiuta se il risultato non passa il lint e la committa con `--commit` |
 | `review_package.py` | Non è un controllo: scrive in un solo file ciò che serve a un revisore indipendente per una task (commit con `Task:`/`Test-Lock:`, AC coperti, interfacce, diagrammi e review focus del piano, decisioni, patch) o per l'intero branch |
 
 **Hook opzionali (solo Claude Code; non portati su Codex e GitHub Copilot)**, inattivi se non abilitati con una variabile d'ambiente. Partono da `hooks/run.sh`, che esce subito se l'hook non è abilitato e altrimenti usa il primo tra `python3`, `python` e `py -3` che sia Python 3; senza Python l'errore è visibile ma non bloccante:

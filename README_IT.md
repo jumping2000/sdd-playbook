@@ -1,6 +1,6 @@
-# SDD Playbook (versione 0.17.0)
+# SDD Playbook (versione 0.20.0)
 
-[![Version](https://img.shields.io/badge/version-0.17.0-blue)](CHANGELOG_IT.md)
+[![Version](https://img.shields.io/badge/version-0.20.0-blue)](CHANGELOG_IT.md)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![CI](https://github.com/jumping2000/sdd-playbook/actions/workflows/ci.yml/badge.svg)](https://github.com/jumping2000/sdd-playbook/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/python-3.8%2B-3776AB?logo=python&logoColor=white)](docs/scripts_IT.md)
@@ -16,8 +16,9 @@
 
 *English version: [README.md](README.md)*
 
-> **Stato: in progettazione.** Il plugin non è ancora stato usato su un progetto reale: skill, hook e loop sono
-> provati solo con test automatici e agenti finti. Formati e contratti possono ancora cambiare senza compatibilità.
+> **Stato: in progettazione.** Il plugin è stato provato una volta su un piccolo progetto reale (uno stack Docker, con
+> la 0.17.0): il riscontro (troppa cerimonia, troppi passaggi manuali) ha dato forma alla 0.20.0. Formati e contratti
+> possono ancora cambiare senza compatibilità.
 
 **SDD Playbook** (`sdd-playbook`) è un plugin di spec-driven development per Claude Code, Codex e GitHub Copilot che accompagna lo sviluppatore lungo tutto il ciclo di vita descritto nel
 [playbook](docs/playbook-ai-software-lifecycle_IT.md): spec, piano, task, test, implementazione, review,
@@ -53,8 +54,9 @@ I coding agent sbagliano in modi ricorrenti. Ogni skill e ogni script esiste per
 | Scrive test che confermano i propri bug | Test dagli AC, rossi per il motivo giusto, bloccati da un commit `Test-Lock` e approvati da una persona; tracciabilità AC → test eseguito | `sdd-tests-from-ac`, `trace_check.py --junit`, `diff_scope.py` |
 | Modifica o "migliora" ciò che è fuori scope | Piano approvato con i file da toccare; zone vietate e aree sensibili in `AGENTS.md`; diff confrontato con piano e livello | `sdd-plan`, `diff_scope.py` |
 | Rompe comportamenti esistenti in un codice legacy | Prima mappa e baseline, test di caratterizzazione che sanno fallire, spec del solo delta | `sdd-map-codebase`, `sdd-characterize` |
-| Si approva da solo (le approvazioni sono testo) | Hash del contenuto approvato; l'approvazione vera è un merge su `main` protetto da parte di un'identità separata; controlli di processo in CI sulla PR | `spec_lint.py --base`, template CI, `CODEOWNERS` |
-| Stesso processo pesante per una riga e per una migrazione | Livelli S, M, L dichiarati nella spec, inclusi nel suo hash, controllati sul diff reale | playbook §2.1, `diff_scope.py` |
+| Si approva da solo (le approvazioni sono testo) | Approvazioni selezionate dall'utente tra opzioni e scritte da uno script con nome, data e hash; profilo team: l'approvazione vera è un merge su `main` protetto da parte di un'identità separata, con controlli di processo in CI sulla PR | `approve.py`, `spec_lint.py --base`, template CI, `CODEOWNERS` |
+| Stesso processo pesante per una riga e per una migrazione | Livelli S, M, L scelti dall'utente tra opzioni (consigliato il più basso consentito dai criteri vincolanti), inclusi nell'hash della spec; la dimensione è un avviso, aree sensibili e dipendenze sono errori; pochi AC per le modifiche piccole | playbook §2.1, `diff_scope.py`, `spec_lint.py` |
+| Troppi passaggi manuali, approvazioni a testo libero, git a mano | Domande a giri di opzioni; ogni gate un'opzione con il nome dell'approvatore; profilo solo: l'agente fa branch, commit e fast-forward di `main` dopo l'approvazione selezionata | `interaction.md` di `sdd-init`, `approve.py` |
 | Review fatta dalla stessa sessione che ha scritto il codice | Revisore a contesto fresco, in sola lettura per costruzione, che prova a confutare; decide l'umano | `sdd-review-diff`, `sdd-reviewer` |
 | Spec che invecchiano dopo la consegna | Task di chiusura che riconcilia spec, pagina d'area e codice | `sdd-sync`, `sync_check.py` |
 | Bug corretti "a intuito", rompendo altro | Riproduzione, comportamento da NON cambiare, test rosso, fix minimo | `sdd-bugfix`, `bug_lint.py` |
@@ -67,8 +69,9 @@ I coding agent sbagliano in modi ricorrenti. Ogni skill e ogni script esiste per
   approvazione; gli script sono Python deterministico con sola libreria standard, copiati nel progetto perché CI e VS Code
   li usino senza il plugin.
 - **L'umano approva, la piattaforma fa rispettare.** Ogni campo di testo può scriverlo l'agente; un merge su un branch
-  protetto, fatto da un'identità separata, no. Per questo l'approvazione è il merge della PR di design, e per questo il
-  template della CI esegue i controlli di processo sulle PR.
+  protetto, fatto da un'identità separata, no. Per questo, nel profilo team, l'approvazione è il merge della PR di design
+  e il template della CI esegue i controlli di processo sulle PR. Nel profilo solo (una persona) l'agente fa i passi git
+  subito dopo un'approvazione selezionata dall'utente: più semplice, con il limite indicato nel playbook §1.2.
 - **Proporzionato, non uniforme.** I livelli S/M/L tolgono cerimonia alle modifiche piccole e aggiungono attenzione a
   quelle rischiose.
 - **Stato su file.** Spec, piani, task e review sono file versionati; la chat non è una fonte di verità.
@@ -84,7 +87,7 @@ permessi dell'agente (ne fornisce un esempio), non copre rilascio, sicurezza del
 | Parte | Contenuto | Dettaglio |
 |---|---|---|
 | 14 skill | `sdd-next`, `sdd-init`, `sdd-map-codebase`, `sdd-characterize`, `sdd-spec`, `sdd-plan`, `sdd-tasks`, `sdd-tests-from-ac`, `sdd-implement`, `sdd-bugfix`, `sdd-review-diff`, `sdd-docs`, `sdd-sync`, `sdd-loop` | [docs/skills_IT.md](docs/skills_IT.md) |
-| 12 script Python | `verify`, `state`, `spec_lint`, `trace_check`, `bug_lint`, `diff_scope`, `scan_repo`, `docs_check`, `sync_check`, `loop`, `secrets_check`, `review_package` | [docs/scripts_IT.md](docs/scripts_IT.md) |
+| 13 script Python | `verify`, `state`, `spec_lint`, `trace_check`, `bug_lint`, `diff_scope`, `scan_repo`, `docs_check`, `sync_check`, `loop`, `secrets_check`, `review_package`, `approve` | [docs/scripts_IT.md](docs/scripts_IT.md) |
 | 2 hook opzionali | `Stop` (verify obbligatorio) e `PreToolUse` (guard), solo Claude Code | [docs/scripts_IT.md](docs/scripts_IT.md#hook-opzionali-solo-claude-code) |
 | 1 agente revisore | `sdd-reviewer`, revisore indipendente con soli strumenti di lettura: subagent di Claude Code e custom agent di GitHub Copilot | [docs/architecture_IT.md](docs/architecture_IT.md) |
 | Playbook | Il processo, con template e script identici a quelli del plugin | [docs/playbook-ai-software-lifecycle_IT.md](docs/playbook-ai-software-lifecycle_IT.md) |
@@ -104,7 +107,7 @@ flowchart TD
     impl --> lvl2{livello}
     lvl2 -- S --> docs
     lvl2 -- M o L --> review[sdd-review-diff] --> g4{{decidi sulla review}} --> docs[sdd-docs]
-    docs --> sync[sdd-sync] --> pr([PR: merge in main])
+    docs --> sync[sdd-sync] --> pr([main: fast-forward se solo, merge della PR se team])
     bug[sdd-bugfix] -. difetti, in parallelo al flusso .-> impl
 ```
 
@@ -113,14 +116,19 @@ flowchart TD
 nell'[architettura](docs/architecture_IT.md).
 
 Il processo è proporzionato al rischio: la spec dichiara un **livello** S, M o L (playbook §2.1). S salta piano e
-`review.md`; L aggiunge ADR e revisione umana del diff; `diff_scope.py` segnala un diff che supera il livello dichiarato.
+`review.md`; L aggiunge ADR e revisione umana del diff. L'utente sceglie il livello tra opzioni; `diff_scope.py` segnala un
+diff che ne viola i criteri vincolanti (area sensibile, dipendenze) e avvisa sulla dimensione.
 I test scritti dagli AC si bloccano con un commit `Test-Lock` e, nei livelli M e L, li approva l'umano prima
 dell'implementazione, con lo SHA del commit approvato; con il report JUnit di `verify`, `trace_check.py --junit` conta
 solo i test eseguiti e passati. Sicurezza di base: `secrets_check.py` come step di `verify`, dipendenze nuove solo nel
 piano o con un ADR (`diff_scope.py`), permessi d'esempio per il loop (`skills/sdd-loop/references/settings.loop.json`).
 
 Ogni skill che produce un documento da approvare termina con uno **STOP**: l'agente non avanza e non approva da solo.
-Le approvazioni (spec, piano, test, decisione sulla review) portano nome e data e sono controllate dagli script.
+Ogni scelta e ogni gate si chiedono come opzioni da selezionare (`Approve as <name>`, `Request changes`, `Stop here`);
+l'approvazione selezionata la scrive `approve.py` (nome, data, hash, controllati dal lint) e la committa. Poi, secondo il
+profilo (`- Profile:` in `AGENTS.md`): **solo**, l'agente fa avanzare `main` in fast-forward; **team**, il merge della PR
+su `main` protetto è l'approvazione, e l'agente può proporre di aprirla o di farne il merge con la tua approvazione
+esplicita.
 
 ## Avvio rapido
 
@@ -163,7 +171,7 @@ proprio (skill, template, script, hook, agente, test) è interamente in inglese;
 
 - Lo stesso da terminale: `claude plugin marketplace add jumping2000/sdd-playbook`, poi
   `claude plugin install sdd-playbook@sdd-playbook-marketplace`; `claude plugin list` mostra la versione installata.
-- **Una versione fissa:** aggiungi il marketplace con un riferimento git, `jumping2000/sdd-playbook#v0.17.0` (ogni
+- **Una versione fissa:** aggiungi il marketplace con un riferimento git, `jumping2000/sdd-playbook#v0.20.0` (ogni
   rilascio ha un tag `vX.Y.Z`). Senza riferimento il marketplace segue `main`; `/plugin marketplace update` scarica
   l'ultima versione.
 - Prova locale di una copia del repository: `claude --plugin-dir <percorso>/sdd-playbook`.
@@ -199,7 +207,8 @@ proprio (skill, template, script, hook, agente, test) è interamente in inglese;
 | `SDD_STOP_MAX` | Quante volte di fila l'hook `Stop` blocca nella stessa sessione prima di lasciar fermare l'agente | 3 |
 | `SDD_GUARD=1` | Abilita l'hook `PreToolUse`: blocca comandi e letture a rischio (fail-closed) | spento |
 
-**Approvazioni.** Per un controllo che l'agente non può aggirare, dagli un'identità separata (nessun diritto di push,
+**Approvazioni.** Profilo **solo**: niente da configurare, l'agente fa i passi git dopo l'approvazione che selezioni.
+Profilo **team**: per un controllo che l'agente non può aggirare, dagli un'identità separata (nessun diritto di push,
 oppure un account bot o token senza diritti di merge) e proteggi `main` con PR, review dei code owner e CI obbligatorie.
 `sdd-init` crea `.github/CODEOWNERS`, il template della PR e la CI con i controlli di processo sulle PR; le regole del
 branch le imposti tu. Dettagli: playbook §1.2.
@@ -224,12 +233,12 @@ di Git for Windows). In fase rossa (ultima task chiusa "expected: red") l'hook `
 | Cosa | Esito |
 |---|---|
 | Suite di test | Passa su Linux (comprende loop con agente finto, hook e launcher `run.sh`, script su repository git temporanei). Su Windows 11 verificata fino alla 0.8.0; dalla 0.9.0 la copre solo la matrice CI `windows-latest`, il cui esito va controllato |
-| `claude plugin validate .` | Passa sulla 0.17.0 (Claude Code 2.1.312); unico avviso: manca l'icona, che serve solo per la directory ufficiale dei plugin |
+| `claude plugin validate .` | Passa sulla 0.20.0 (Claude Code 2.1.312); unico avviso: manca l'icona, che serve solo per la directory ufficiale dei plugin |
 | Installazione dal marketplace su GitHub (Claude Code) | **Fatta** sulla 0.16.0: marketplace aggiunto da `jumping2000/sdd-playbook`, plugin installato e attivo; un riferimento git dopo `#` fissa la versione (provato con un branch) |
 | Manifest Codex | **Non validato** con uno strumento Codex |
 | GitHub Copilot (`plugin.json`, `.github/skills/`, custom agent) | **Non provato**: costruito dalla documentazione pubblica e da esempi (il sito di documentazione di GitHub non era raggiungibile dall'ambiente di build) |
 | Versione di Python | 3.8+ dall'analisi del codice (solo libreria standard); la CI usa la 3.12 |
-| Skill eseguite da un agente reale su un progetto | **Non fatto**: va provato su un greenfield e su un brownfield di esempio |
+| Skill eseguite da un agente reale su un progetto | **Una volta**, con la 0.17.0 su un piccolo greenfield (stack Docker per Langfuse): il risultato era troppo pesante per il compito; la 0.20.0 affronta i rilievi e non è ancora stata provata su un progetto |
 | Hook in una sessione reale di Claude Code | **Non fatto**: provati solo come script con l'input JSON atteso |
 | `loop.py` con `claude -p` reale | **Non fatto**: provato con un agente finto |
 | Workflow CI generato da `sdd-init` | **Non eseguito** (YAML validato, step dei controlli di processo mai eseguito su una PR reale) |

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# sdd-playbook: 0.17.0
+# sdd-playbook: 0.20.0
 """Compare the changed files with the plan, the forbidden zones and the locked tests.
 
 Usage:
@@ -15,10 +15,12 @@ Usage:
 - Approved tests: "tests approved: <name, date, sha>" in tasks.md ties the approval to the Test-Lock commit sha; a SHA
   that is not a Test-Lock commit of the branch for that task, or a later Test-Lock commit for the same task, is an
   error (exit 1): the tests changed after the approval and must be approved again.
-- Level (playbook §2.1): the diff must not exceed the spec's "- Level:" -> error (exit 1). A file in the
-  "- Sensitive areas: a, b" lines of AGENTS.md requires L; a change to a dependency manifest or lockfile, or more than
-  3 production files (excluding tests, docs/, *.md and generated files such as __pycache__/ and reports/), require at
-  least M. A level-S spec has no plan: the plan comparison is skipped.
+- Level (playbook §2.1): the level is chosen by the approver; the diff must not break its hard criteria -> error
+  (exit 1). A file in the "- Sensitive areas: a, b" lines of AGENTS.md requires L; a change to a dependency manifest or
+  lockfile requires at least M. More than 3 production files at level S is a warning (the approver chose S knowing the
+  size). Production files exclude tests, docs/, *.md, generated files (__pycache__/, reports/) and the process tooling
+  (the playbook scripts in scripts/, AGENTS.md, CLAUDE.md, .github/, .vscode/, .gitattributes, .gitignore,
+  .secrets-ignore). A level-S spec has no plan: the plan comparison is skipped.
   AGENTS.md and the level are read from the merge-base when they exist there: the branch cannot loosen them. AGENTS.md
   entries count as paths (first word or text in backticks); the others are reported.
 - Dependencies (playbook §8): a changed manifest or lockfile must be in the approved plan (a lockfile counts if the plan
@@ -55,7 +57,13 @@ MANIFEST = {"package.json", "package-lock.json", "yarn.lock", "pnpm-lock.yaml", 
             "Cargo.lock", "pom.xml", "build.gradle", "build.gradle.kts", "packages.lock.json",
             "Directory.Packages.props", "Gemfile", "Gemfile.lock", "composer.json", "composer.lock"}
 MANIFEST_GLOB = ("requirements*.txt", "*.csproj", "*.fsproj", "*.vbproj")
-MAX_FILES_S = 3
+MAX_FILES_S = 3  # beyond this, level S is a warning: the approver decides
+# Process tooling: it serves the playbook, not the product, so it never counts toward the level.
+SDD_SCRIPTS = {"verify.py", "state.py", "spec_lint.py", "trace_check.py", "bug_lint.py", "diff_scope.py",
+               "docs_check.py", "sync_check.py", "scan_repo.py", "loop.py", "secrets_check.py", "review_package.py",
+               "approve.py"}
+TOOLING_FILES = {"AGENTS.md", "CLAUDE.md", ".gitattributes", ".gitignore", ".secrets-ignore"}
+TOOLING_DIRS = (".github/", ".vscode/")
 ORDER = {"S": 0, "M": 1, "L": 2}
 
 
@@ -157,25 +165,36 @@ def is_manifest(path: str) -> bool:
     return name in MANIFEST or any(fnmatch.fnmatch(name, g) for g in MANIFEST_GLOB)
 
 
+def is_tooling(path: str) -> bool:
+    p = normalize(path)
+    return (p in TOOLING_FILES or p.startswith(TOOLING_DIRS)
+            or (p.startswith("scripts/") and p.count("/") == 1 and p.split("/")[1] in SDD_SCRIPTS))
+
+
 def is_production(path: str) -> bool:
     p = normalize(path)
-    return not (is_test(p) or p.startswith("docs/") or p.lower().endswith(".md") or NOISE.search(p))
+    return not (is_test(p) or p.startswith("docs/") or p.lower().endswith(".md") or NOISE.search(p) or is_tooling(p))
 
 
 def required_level(changed: list[str], agents: str) -> tuple[str, list[str]]:
-    """Minimum level the diff requires, with the reasons (playbook §2.1)."""
+    """Minimum level the hard criteria of the diff require, with the reasons (playbook §2.1)."""
     sensitive = agents_entries(agents, "Sensitive areas")
     touched = [f for f in changed if any(matches(f, s) for s in sensitive)]
     if touched:
         return "L", [f"sensitive area (AGENTS.md): {', '.join(touched)}"]
-    reasons = []
     manifests = [f for f in changed if is_manifest(f)]
     if manifests:
-        reasons.append(f"dependencies changed: {', '.join(manifests)}")
+        return "M", [f"dependencies changed: {', '.join(manifests)}"]
+    return "S", []
+
+
+def size_warnings(changed: list[str], declared: str) -> list[str]:
+    """Level S with more production files than MAX_FILES_S: a warning, the approver chose the level."""
     production = [f for f in changed if is_production(f)]
-    if len(production) > MAX_FILES_S:
-        reasons.append(f"{len(production)} production files (S: at most {MAX_FILES_S})")
-    return ("M" if reasons else "S"), reasons
+    if declared == "S" and len(production) > MAX_FILES_S:
+        return [f"level S with {len(production)} production files (usually at most {MAX_FILES_S}): the approver "
+                f"chose S; if the change is riskier than its size suggests, raise the level"]
+    return []
 
 
 def is_test(path: str) -> bool:
@@ -361,6 +380,11 @@ def main(argv: list[str]) -> int:
         print(f"[WARN] AGENTS.md entry that does not look like a path, ignored: '{v}' (use `path/` in backticks)")
     for e in underestimated:
         print(f"[ERROR] {e}")
+    for w in size_warnings(changed, level):
+        print(f"[WARN] {w}")
+    if not underestimated and ORDER[level] > ORDER[required_level(changed, agents)[0]]:
+        print(f"[INFO] level {level} declared; the hard criteria of this diff would allow "
+              f"{required_level(changed, agents)[0]}")
     dependencies = undecided_dependencies(changed, plan, added_files(mb))
     for f in dependencies:
         print(f"[ERROR] dependencies changed without plan or ADR: {f} (new dependencies only in the approved plan or "

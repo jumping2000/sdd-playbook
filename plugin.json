@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "sdd-playbook",
-  "version": "0.17.0",
+  "version": "0.20.0",
   "description": "SDD Playbook: spec-driven development for coding agents (Claude Code, Codex, GitHub Copilot). Skills, cross-platform checks and opt-in hooks: specs with acceptance criteria, approved plans, locked tests, verify, review, reconciliation.",
   "author": {
     "name": "jumping2000"

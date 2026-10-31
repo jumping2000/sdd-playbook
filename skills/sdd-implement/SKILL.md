@@ -11,10 +11,10 @@ Playbook §4 (phase 6) and §6. Work only on numbered `T-nn` tasks: `T-DOC` and 
 
 - Spec approved, plan approved (there is none at level S), `tasks.md` valid, and spec and plan **already merged into
   `main`** with the design PR (`python scripts/spec_lint.py <spec> --plan <plan> --tasks <tasks> --base main`: no
-  errors). If `--base` fails, the approval is not there yet: stop. Without a design PR (a project that does not use
-  it), the user says so explicitly and `--base` is omitted.
-- You are on a **feature branch**, not on `main`/`master`/a protected branch. Otherwise propose to create one and wait
-  for confirmation.
+  errors). If `--base` fails, the approval is not there yet: stop. In the solo profile the design gate moved `main`
+  forward (`git fetch . HEAD:main`), so `--base main` passes the same way.
+- You are on a **feature branch**, not on `main`/`master`/a protected branch. In the solo profile create
+  `feat/<spec id>` yourself; in the team profile propose it as an option and wait.
 - Run `python scripts/verify.py` **before starting**: a baseline is needed. If it is already red, tell the user: it is
   not caused by your changes and must not be hidden. The exception is the **red phase** (the last closed task is
   "expected: red"): there the red tests are the starting point of the implementation task.
@@ -53,15 +53,17 @@ Playbook §4 (phase 6) and §6. Work only on numbered `T-nn` tasks: `T-DOC` and 
    for `**/sdd-loop/references/progress.md.tmpl`, if it is missing): done, learned, blockers, and the **rulings**:
    every decision you took alone under "Decides alone" of the decision rights, one per line as `- T-nn: <what> —
    <why> — <what it costs if wrong>`. The review checks them. An ambiguous requirement is not a ruling: stop and ask.
-8. Move to the next task only if the user asked to proceed in sequence; otherwise stop and report.
+8. Move to the next task only if the user asked to proceed in sequence; otherwise stop, report and offer the options
+   `Next task`, `Run the rest in sequence`, `Stop here` (search for `**/sdd-init/references/interaction.md`).
 
 ## Stop rules
 
 - **Decision rights** (section of `AGENTS.md`, read from `main` when the branch changed it): decide alone only what
   "Decides alone" lists, and record it as a ruling; for "Asks first", or a decision no line names, stop and ask; never
   do what "Never" lists, even when a request implies it: report what would have to change and who changes it. These
-  plugin rules are "Never" whatever `AGENTS.md` says: changing spec, plan, review or `AGENTS.md`, writing an approval,
-  changing a test to make it pass, pushing or merging.
+  plugin rules are "Never" whatever `AGENTS.md` says: changing spec, plan, review or `AGENTS.md`, writing an approval
+  (only `approve.py`, right after the user selected it), changing a test to make it pass, pushing, moving `main`
+  outside what the profile allows.
 - Ambiguous or missing requirement: **stop and ask**, do not assume (write the question in `progress.md`).
 - Something in the non-scope needs to change: stop and ask.
 - The task covers an AC named by a non-blocking open question of the spec (`spec_lint.py --tasks` warns): stop and ask;

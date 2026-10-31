@@ -14,7 +14,8 @@ If the cause is obvious and the diff is one line, that is enough: red test, fix,
    with minimal steps. **If you cannot, stop and ask for data**: no fix by intuition.
 2. **Definition.** Fill in actual and expected behaviour (with reference to REQ/AC; if the spec did not cover it,
    propose a new AC) and **"Behaviour that must NOT change"**, which is the non-regression net. **STOP:** the user
-   confirms expected and unchanged behaviour. If the spec was silent or wrong, say so: it is also a spec bug.
+   confirms expected and unchanged behaviour, as options (`Confirm`, `Correct it`, `Stop here`; search for
+   `**/sdd-init/references/interaction.md`). If the spec was silent or wrong, say so: it is also a spec bug.
 3. **Red test.** Write a test that fails for the bug's reason and give its path in "Fix and tests". Run it and show the
    failure.
 4. **Diagnosis** (`diagnosed`). Read-only until the cause is clear, with the techniques of `references/debugging.md`:

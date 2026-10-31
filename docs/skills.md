@@ -10,10 +10,15 @@ templates are in English, like every part of the plugin.
 **Common conventions**
 - Scripts are called as `python scripts/<name>.py` from the project root: `sdd-init` copies them there.
   If a project was initialized with an earlier version, copy the missing script from `skills/sdd-init/scripts/`.
-- Every skill that produces a document to approve ends with a **STOP**: it asks for approval with name and date,
-  records the hash of the approved content (`spec_lint.py --hash`) and does not start the next phase. Spec, plan and
-  tasks then go into the design PR: the merge into `main`, which only the human performs, is the approval (playbook §1.2).
-- Skills never commit without the user's authorization and never on `main`/`master`.
+- Every choice and every gate is asked as **options to select** (guide `references/interaction.md` of `sdd-init`):
+  rounds of up to 4 questions, the recommended option first, always a free answer; gates as `Approve as <name>` (names
+  from `- Approvers:` in `AGENTS.md`), `Request changes`, `Stop here`.
+- Every skill that produces a document to approve ends with a **STOP**: after the user selects an approval it records
+  it with `approve.py` (name, date, hashes, checked by the lint) and does not start the next phase on its own.
+- Git by profile (`- Profile:` in `AGENTS.md`, playbook §1.2): **solo**, the skills create the feature branch, commit
+  and move `main` by fast-forward right after a selected gate; **team**, the merge of the PR into protected `main` is the
+  approval, and the skills offer to open or merge it with the user's explicit approval. Never a feature commit on
+  `main`/`master`.
 - When a requirement is ambiguous, they stop and ask: they do not assume.
 
 **Typical order:** `sdd-init` → (`sdd-map-codebase` → `sdd-characterize`) → `sdd-spec` → `sdd-plan` →
@@ -51,11 +56,12 @@ the diff.
 ### sdd-init
 
 - **When:** once per project, before specs or code.
-- **What it does:** detects operating system, stack and existing code; asks in a single message for what it cannot
-  detect (real commands, Windows yes/no, CI provider); copies the 12 scripts into `scripts/` (each with the plugin
+- **What it does:** detects operating system, stack and existing code; asks in one round of options for what it cannot
+  detect (profile solo or team, approvers' names, real commands, Windows yes/no); copies the 13 scripts into `scripts/` (each with the plugin
   version on line 2, for updates); adapts `STEPS` in `verify.py`, trying every command; creates `AGENTS.md`, `CLAUDE.md`
   (`@AGENTS.md`), `.gitattributes`, `.gitignore` entries, `.vscode/tasks.json`, `docs/constitution.md`, the `docs/*`
-  folders, the CI workflow (with the PR "process checks" step), `CODEOWNERS` and the PR template; runs `verify` and
+  folders and, in the team profile, the CI workflow (with the PR "process checks" step), `CODEOWNERS` and the PR
+  template (solo: CI only if there is a remote); runs `verify` and
   `state`. It also explains how to update an already initialized project.
 - **Rules:** never overwrites existing files (shows the difference, merges `tasks.json`); does not invent steps or
   tests; reports a red `verify` as it is.
@@ -87,13 +93,14 @@ the diff.
 
 - **When:** from an idea to an approvable specification; also to complete a draft.
 - **What it does:** reads `AGENTS.md`, constitution, the code involved and (brownfield) map and area page before asking
-  anything; plays the request back in its own words; **asks** one question per message, the one that would most change
-  what gets built; offers 2-3 options when the request admits really different outcomes for the user; writes `spec.md`
-  with a proposed level (S, M, L with the criteria of playbook §2.1), verifiable requirements, Given/when/then ACs,
+  anything; plays the request back in its own words; **asks in rounds of options** (up to 4 questions, recommended
+  first), different outcomes for the user included; the user **chooses the level** among S, M, L (the lowest the hard
+  criteria allow is recommended); writes `spec.md` with verifiable requirements, few Given/when/then ACs (3-6 at S),
   mandatory non-scope, anti-goals, assumptions marked `[ASSUMPTION]`, open questions marked `blocking: yes|no` (only
   non-blocking ones may stay open after approval), glossary terms and no vague words (warnings of `spec_lint.py`); `spec_lint.py` must pass; in brownfield it
   proposes `sdd-characterize` if the area has no tests.
-- **Approval:** only with explicit confirmation **and** the approver's name; then `Status: approved` and the hash.
+- **Approval:** a gate with options; after the user selects `Approve as <name>`, `approve.py spec --commit` writes
+  `Status: approved`, name, date and hash. Then `main` by profile (solo: fast-forward; team: design PR).
 
 ### sdd-plan
 

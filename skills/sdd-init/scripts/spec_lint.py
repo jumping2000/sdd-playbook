@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# sdd-playbook: 0.17.0
+# sdd-playbook: 0.20.0
 """Deterministic checks on the playbook's spec, plan and tasks.
 
 Usage:
@@ -32,7 +32,8 @@ error once the plan is approved). A "## Diagrams" section with the five subsecti
 of its type or "- n/a: <reason>" (the flowchart always applies): same rule as the review focus.
 Tasks: T-nn from the plan (verify: and covers: mandatory), T-Rnn from review problems (covers: optional).
 Level (playbook §2.1): "- Level: S | M | L" in the spec header; without the field it counts as M (warning). The level
-is part of the hash: lowering it after approval voids the approval. Level S: no plan, T-DOC optional.
+is part of the hash: lowering it after approval voids the approval. Level S: no plan, T-DOC optional. Proportion
+(warning): more than 6 ACs at level S, more than 15 at level M.
 Approved tests (playbook §6): at levels M and L a closed "expected: red" test task carries "tests approved: <name,
 yyyy-mm-dd, sha>", written after the human has read the locked tests; sha is the approved Test-Lock commit (diff_scope
 reports any later Test-Lock commit for the same task). tests_to_approve() lists the tasks without it.
@@ -51,6 +52,7 @@ from pathlib import Path
 
 STATES = ("draft", "approved", "in-revision", "implemented", "superseded")
 LEVELS = ("S", "M", "L")
+AC_CAP = {"S": 6, "M": 15}  # proportion (warning): more ACs than this usually means ceremony, not safety
 SECTIONS = ("Problem and goal", "Scope", "Requirements", "Acceptance criteria", "Open questions")
 # Spec ID: date + slug (2026-10-24-export-csv, equal to the folder name) or the old number (001).
 ID_DATE = r"\d{4}-\d{2}-\d{2}-[a-z0-9]+(?:-[a-z0-9]+)*"
@@ -310,6 +312,10 @@ def lint_spec(text: str, folder: str | None = None, glossary: str | None = None)
     ac_lines = [m.group(1) for line in text.splitlines() if (m := AC_DEF.match(line))]
     if len(ac_lines) != len(set(ac_lines)):
         err.append("Duplicate AC IDs")
+    cap = AC_CAP.get(level(text))
+    if cap and len(set(ac_lines)) > cap:
+        warn.append(f"{len(set(ac_lines))} acceptance criteria for level {level(text)} (usually at most {cap}): keep "
+                    "the ACs that would catch a real defect, merge or drop the others")
     for ac, refs in acs.items():
         if not refs:
             err.append(f"{ac} cites no REQ")

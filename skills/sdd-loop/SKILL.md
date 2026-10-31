@@ -20,7 +20,8 @@ the user launches it, in a terminal and an isolated environment.
   `T-nn` task lacks `- T-nn: pass` in `progress.md`. The agent launched by the loop must be able to use the reviewer
   (Claude Code subagent, Copilot custom agent); otherwise it records "not reviewed" and the review is done by hand.
 - At levels M and L the loop stops (exit 1) after every "expected: red" test task: the user reads the locked tests,
-  writes `tests approved:` on the task line and relaunches. It does not start if an approval is already pending.
+  selects the approval (recorded with `approve.py tests`) and relaunches. It does not start if an approval is already
+  pending. The loop itself never approves.
 - You are on a **feature branch** (the loop refuses main/master) and `verify` is green on the baseline, or you are in
   the red phase (the last closed task is "expected: red"). With a baseline red for other reasons the loop refuses to
   start, unless the user decides on `--allow-red-baseline`.
@@ -53,7 +54,8 @@ the user launches it, in a terminal and an isolated environment.
 
 ## STOP
 
-Show the command, `--max`, `--stall` and the checklist, and ask for **explicit approval**. The command is:
+Show the command, `--max`, `--stall` and the checklist, and ask for **explicit approval** with options (guide: search for `**/sdd-init/references/interaction.md`): `Launch
+it` (the user runs it, or you do if they select so), `Change the limits`, `Stop here`. The command is:
 
 ```
 python scripts/loop.py docs/specs/<id> --max <N> --stall <K> --timeout <seconds> [--junit reports/junit.xml]

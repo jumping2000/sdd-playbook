@@ -74,9 +74,13 @@ class TestDiffScopeLevels(unittest.TestCase):
 
     def test_required_level(self):
         self.assertEqual(diff_scope.required_level(["src/a.py", "tests/test_a.py", "README.md"], ""), ("S", []))
-        lvl, reasons = diff_scope.required_level([f"src/m{i}.py" for i in range(4)], "")
-        self.assertEqual(lvl, "M")
-        self.assertIn("4 production files", reasons[0])
+        self.assertEqual(diff_scope.required_level([f"src/m{i}.py" for i in range(4)], ""), ("S", []))  # size: warning
+        self.assertIn("level S with 4 production files", diff_scope.size_warnings([f"src/m{i}.py" for i in range(4)], "S")[0])
+        self.assertEqual(diff_scope.size_warnings([f"src/m{i}.py" for i in range(4)], "M"), [])
+        tooling = ["scripts/verify.py", "AGENTS.md", "CLAUDE.md", ".github/workflows/ci.yml", ".vscode/tasks.json",
+                   ".gitignore", ".gitattributes"]
+        self.assertFalse(any(diff_scope.is_production(f) for f in tooling))
+        self.assertTrue(diff_scope.is_production("scripts/deploy.py"))  # a project script is product code
         lvl, reasons = diff_scope.required_level(["requirements-dev.txt", "web/package-lock.json"], "")
         self.assertEqual(lvl, "M")
         self.assertIn("dependencies changed", reasons[0])
@@ -95,11 +99,20 @@ class TestDiffScopeLevels(unittest.TestCase):
             self.assertIn("plan comparison skipped", r.stdout)
             self.assertNotIn("outside the plan", r.stdout)
 
-    def test_s_underestimated(self):
+    def test_s_with_more_files_is_a_warning(self):
+        with TmpDir() as d:  # the Langfuse case: a compose stack chosen as S by the approver
+            self.prepare(d, "S", plan=False)
+            for f in ("compose.yaml", ".env.example", "clickhouse/users.xml", "clickhouse/config.xml"):
+                write(d, f, "x\n")
+            write(d, "scripts/verify.py", "x\n")
+            r = cli(d, "diff_scope", "docs/specs/001-x")
+            self.assertEqual(r.returncode, 0, r.stdout)
+            self.assertIn("[WARN] level S with 4 production files", r.stdout)
+
+    def test_s_underestimated_by_a_dependency(self):
         with TmpDir() as d:
             self.prepare(d, "S", plan=False)
-            for i in range(4):
-                write(d, f"src/m{i}.py", "x\n")
+            write(d, "requirements.txt", "requests\n")
             r = cli(d, "diff_scope", "docs/specs/001-x")
             self.assertEqual(r.returncode, 1, r.stdout)
             self.assertIn("level underestimated: the spec declares S, the diff requires at least M", r.stdout)

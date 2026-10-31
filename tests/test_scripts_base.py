@@ -111,6 +111,13 @@ class TestSpecLint(unittest.TestCase):
         empty = PLAN_OK.replace("## Review focus\n- none\n", "## Review focus\n")
         self.assertTrue(spec_lint.review_focus_problems(empty))
 
+    def test_proportion_of_the_acceptance_criteria(self):
+        many = SPEC_OK.replace("## Open questions", "".join(f"- AC-{i:03d} [REQ-001]: Given x, when y, then z{i}\n"
+                                                           for i in range(3, 8)) + "\n## Open questions")
+        s_level = many.replace("- Status:", "- Level: S\n- Status:")
+        self.assertTrue(any("7 acceptance criteria for level S" in w for w in spec_lint.lint_spec(s_level)[1]))
+        self.assertFalse(any("acceptance criteria for level" in w for w in spec_lint.lint_spec(many)[1]))  # M: 7 ok
+
     def test_diagrams(self):
         self.assertEqual(spec_lint.diagram_problems(PLAN_OK), [])
         drawn = "```mermaid\nerDiagram\n    REPORT ||--o{ ROW : has\n```"

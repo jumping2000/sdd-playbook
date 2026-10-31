@@ -24,6 +24,7 @@ The file formats the scripts read are described in [architecture.md](architectur
 | `secrets_check.py` | review-diff, loop, `verify` | secrets in files |
 | `loop.py` | loop | external autonomous loop |
 | `review_package.py` | implement, review-diff, loop | review package for one task or the whole branch |
+| `approve.py` | spec, plan, tasks, tests-from-ac, review-diff | records an approval the user selected |
 
 ---
 
@@ -60,6 +61,11 @@ if `T-DOC` is open and `sdd-sync`; `review.md` counts only if present and `non-c
 `- Human diff review:` is also required in `review.md`, otherwise `sdd-review-diff`. Without
 the `- Level:` field the spec counts as M.
 
+**Profile solo.** With `- Profile: solo` in `AGENTS.md`, when the design is approved (spec, and plan and tasks at levels
+M and L) but `main` does not hold the same files yet, `NEXT` is `sdd-tasks` with the instruction to move `main` forward
+(`git fetch . HEAD:main`). In the team profile that step is the merge of the design PR, which `spec_lint.py --base`
+checks.
+
 **Several active specs.** `NEXT` refers to the spec given with `--spec <id>` (folder name or title ID), the one whose
 folder name appears in the current branch (`feat/2026-10-24-export-csv`), or the only active one. Otherwise it reports
 `choose` (choose) with the list of specs and their step: the choice belongs to the user.
@@ -85,7 +91,7 @@ to the working copy: merging the design PR into a protected branch is the approv
 
 | Mode | Errors detected |
 |---|---|
-| spec | invalid state (`draft`, `approved`, `in-revision`, `implemented`, `superseded`); level other than S, M, L (warning if missing: counts as M); title without ID `# SPEC-<id>:`, invalid date or ID different from the folder name; `in-revision` without an entry in `## Revisions`; missing sections; duplicate REQ/AC IDs; REQ without AC; AC citing a non-existent REQ; non-scope missing or a placeholder (warning for missing anti-goals); if `approved`/`implemented`: missing approver, missing or mismatching hash, blocking open questions or questions without `blocking: yes|no` (warning for non-blocking ones and if `[ASSUMPTION]` remain); in any state an open question `about:` a REQ or AC that does not exist; warnings for vague words in REQs and ACs and, when `docs/glossary.md` exists, for the synonyms its "Avoid" column lists |
+| spec | warning above 6 ACs at level S or 15 at level M (proportion); invalid state (`draft`, `approved`, `in-revision`, `implemented`, `superseded`); level other than S, M, L (warning if missing: counts as M); title without ID `# SPEC-<id>:`, invalid date or ID different from the folder name; `in-revision` without an entry in `## Revisions`; missing sections; duplicate REQ/AC IDs; REQ without AC; AC citing a non-existent REQ; non-scope missing or a placeholder (warning for missing anti-goals); if `approved`/`implemented`: missing approver, missing or mismatching hash, blocking open questions or questions without `blocking: yes|no` (warning for non-blocking ones and if `[ASSUMPTION]` remain); in any state an open question `about:` a REQ or AC that does not exist; warnings for vague words in REQs and ACs and, when `docs/glossary.md` exists, for the synonyms its "Avoid" column lists |
 | `--plan` | missing `## Test strategy` section; spec ACs missing from that section (exact ID: `AC-001` does not match `AC-0011`); missing `## Review focus` section; review focus with placeholders or empty (warning before approval, error once approved; `- none` is valid); `## Diagrams` section missing, or one of its subsections `### Flowchart`, `### Sequence diagram`, `### State diagram`, `### Class diagram`, `### ER diagram` missing (error); a subsection without a Mermaid block of its type (`flowchart`/`graph`, `sequenceDiagram`, `stateDiagram-v2`, `classDiagram`, `erDiagram`) or `- n/a: <reason>`, an empty block, an `n/a` flowchart (warning before approval, error once approved); approved plan with invalid hash or based on another version of the spec; warning if the plan is not approved |
 | `--base` | spec or plan missing on `<ref>` or different from the version on `<ref>` |
 | `--tasks` | no tasks; `T-nn` tasks without `verify:` or `covers:` or with `<...>` placeholders; `T-Rnn` tasks without `verify:` or with placeholders (`covers:` optional); duplicate IDs; missing `T-SYNC`, or missing `T-DOC` except at level S; AC not covered by any task; warning for an open `T-nn` task covering an AC named by a non-blocking open question |
@@ -156,11 +162,14 @@ look like paths are reported and ignored. It reports:
 - **warning** (error with `--strict`): files outside the plan (excluding `docs/specs/<this spec>/`, `docs/system/`,
   `docs/bugs/`, `docs/adr/`, `docs/glossary.md`). The plan includes the lines of "Components and files" (path = first word or text in backticks,
   so `- src/a.py (new): ...` means `src/a.py`) and the "Where" column of the test strategy and of the review focus;
-- **error** (exit 1): **underestimated level** (playbook §2.1). A file in the `- Sensitive areas:` lines of `AGENTS.md`
-  requires L; a change to a dependency manifest or lockfile (`package.json`, `pyproject.toml`, `requirements*.txt`,
-  `go.mod`, `*.csproj`, the lockfiles, ...) or more than 3 production files (tests, `docs/` and `*.md` excluded) require
-  at least M. The declared level comes from the spec's `- Level:` (M if missing); at level S without a plan, the plan
-  comparison is skipped;
+- **error** (exit 1): **level below its hard criteria** (playbook §2.1). A file in the `- Sensitive areas:` lines of
+  `AGENTS.md` requires L; a change to a dependency manifest or lockfile (`package.json`, `pyproject.toml`,
+  `requirements*.txt`, `go.mod`, `*.csproj`, the lockfiles, ...) requires at least M. The declared level comes from the
+  spec's `- Level:` (M if missing); at level S without a plan, the plan comparison is skipped;
+- **warning**: level S with more than 3 production files. Tests, `docs/`, `*.md`, generated files and the process
+  tooling (the playbook scripts in `scripts/`, `AGENTS.md`, `CLAUDE.md`, `.github/`, `.vscode/`, `.gitattributes`,
+  `.gitignore`, `.secrets-ignore`) do not count. The approver chose the level: the size alone does not overrule them;
+  `[INFO]` when the declared level is higher than the hard criteria require;
 - **error** (exit 1): **dependencies without a decision**: a changed manifest or lockfile that the plan does not list (a
   lockfile counts if the plan lists its manifest in the same folder), in a diff that does not **add** an ADR in
   `docs/adr/` (README and index files do not count). Playbook §8: new dependencies only with an ADR or in the approved plan;
@@ -289,6 +298,26 @@ Both start from `hooks/run.sh` (`sh run.sh <script.py> <variable>`). The launche
 not `1`, so an inactive hook does not need Python. When active it uses the first of `python3`, `python` and `py -3` that
 really is Python 3.8+ (it discards the Microsoft Store aliases and Python 2): on a clean Ubuntu only `python3` exists.
 Without Python 3 it exits `1` with a message, i.e. a visible but non-blocking error.
+
+### approve.py
+
+```
+python scripts/approve.py spec   docs/specs/<id>/spec.md  --by "<name>" [--commit]
+python scripts/approve.py plan   docs/specs/<id>/plan.md  --by "<name>" [--commit]
+python scripts/approve.py tasks  docs/specs/<id>/tasks.md [--commit]
+python scripts/approve.py tests  docs/specs/<id> T-01     --by "<name>" [--base main] [--commit]
+python scripts/approve.py review docs/specs/<id>          --by "<name>" [--diff-read] [--commit]
+```
+
+Not a check: it records the approval the user **selected** among the options of a gate (guide `interaction.md` of
+`sdd-init`), so that nobody types names, dates and hashes by hand. `spec` sets `Status: approved`, `Approved by / date`
+and `Hash`; `plan` sets `Approved by / date`, `Based on spec` (the approved spec next to it) and `Hash`; `tasks` sets
+`Based on plan` (no name: the tasks are checked, not approved); `tests` appends `— tests approved: <name, date, sha>` to
+the closed "expected: red" task, with the SHA of its last `Test-Lock` commit in the branch; `review` sets `Decided by`
+and, with `--diff-read`, `Human diff review`. The new text must pass `spec_lint.py` (or, for the review, have a valid
+outcome): otherwise nothing is written and the errors are listed (exit 1). `--commit` commits only that file with the
+message `<spec id>: approve <what> (<name>)` and the trailers `Spec:` and `Approved-by:`. The agent runs it only in the
+turn where the user selected the approval, with the selected name; the loop never does.
 
 ### `Stop` hook — `hooks/stop_verify.py`
 

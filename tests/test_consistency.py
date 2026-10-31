@@ -253,8 +253,16 @@ class TestPlaybook(unittest.TestCase):
         for s in ("compliant", "compliant with reservations", "non-compliant"):
             self.assertIn(s, review)
         agents = read("skills/sdd-init/references/AGENTS.md.tmpl")
-        for heading in ("## Decision rights", "### Decides alone", "### Asks first", "### Never"):
+        for heading in ("## Decision rights", "### Decides alone", "### Asks first", "### Never", "## Process",
+                        "- Profile:", "- Approvers:", "scripts/approve.py"):
             self.assertIn(heading, agents)
+        guide = read("skills/sdd-init/references/interaction.md")
+        for text in ("approve.py", "git fetch . HEAD:main", "Approve as <name>", "Request changes"):
+            self.assertIn(text, guide)
+        for skill in (ROOT / "skills").glob("*/SKILL.md"):  # every gate is asked with options
+            body = skill.read_text(encoding="utf-8")
+            if "STOP" in body:
+                self.assertIn("interaction.md", body, skill.parent.name)
         for rel in ("agents/sdd-reviewer.md", "skills/sdd-init/references/copilot/sdd-reviewer.agent.md",
                     "skills/sdd-implement/SKILL.md", "skills/sdd-loop/references/PROMPT.md.tmpl"):
             self.assertIn("Decides alone", read(rel), rel)

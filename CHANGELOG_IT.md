@@ -4,6 +4,39 @@
 
 Le voci precedenti alla 0.13.0 usano i nomi del loro tempo (`sdlc-*`, `SDLC_*`, campi in italiano).
 
+## 0.20.0
+Dalla prima prova reale (uno stack Docker per Langfuse, con la 0.17.0): troppo processo per un compito semplice, troppi
+passaggi manuali, approvazioni a testo libero e git a mano. Il numero salta alla 0.20.0 per segnare il cambio di approccio.
+- **Livello scelto dall'utente:** `sdd-spec` propone il livello più basso consentito dai criteri vincolanti e mostra S, M
+  e L come opzioni; sparisce "nel dubbio, il più alto". `diff_scope.py` impone solo i criteri vincolanti (area sensibile
+  → L, manifest o lockfile delle dipendenze → M); più di 3 file di produzione nel livello S ora sono un avviso, e gli
+  strumenti del processo (gli script del playbook in `scripts/`, `AGENTS.md`, `CLAUDE.md`, `.github/`, `.vscode/`, i file
+  di git) non contano mai. `[INFO]` quando il livello dichiarato è più alto del necessario.
+- **Proporzione degli AC:** `spec_lint.py` avvisa sopra 6 AC nel livello S e sopra 15 nel livello M; `sdd-spec` tiene solo
+  gli AC che scoprirebbero un difetto reale.
+- **Scelte e gate a opzioni:** nuova guida `sdd-init/references/interaction.md`. Le domande arrivano a giri (massimo 4,
+  2-4 opzioni ciascuna, prima la consigliata, sempre una risposta libera) invece che una per messaggio; ogni gate (spec,
+  piano, task, test bloccati, decisione sulla review, lettura umana del diff, init, mappa, caratterizzazione, docs,
+  sync, bugfix, avvio del loop) è `Approve as <name>` / `Approve as another person` / `Request changes` / `Stop here`.
+  Test di coerenza: ogni skill con uno STOP cita la guida.
+- **`approve.py` (nuovo script):** registra in un passo l'approvazione selezionata (`spec`, `plan`, `tasks`, `tests`,
+  `review`): nome, data, hash, `Based on spec`/`Based on plan`, lo SHA dell'ultimo commit `Test-Lock`; rifiuta e non
+  scrive nulla se il risultato non passa il lint; `--commit` committa solo quel file con un messaggio standard e i
+  trailer `Spec:` e `Approved-by:`. La regola del plugin diventa "scrivi un'approvazione solo con `approve.py`, subito
+  dopo che l'utente l'ha selezionata"; il loop non approva mai.
+- **Profili solo e team:** `## Process` in `AGENTS.md` con `- Profile:` e `- Approvers:`, chiesti da `sdd-init` (solo
+  consigliato senza remote). **solo**: niente CODEOWNERS né template della PR, CI solo con un remote, l'agente crea il
+  branch, committa e fa avanzare `main` in fast-forward (`git fetch . HEAD:main`) subito dopo il gate di design e alla
+  chiusura; niente stash, cherry-pick o merge commit; `state.py` indica quel passo quando il design è approvato ma non è
+  su `main`. **team**: il merge della PR su `main` protetto resta l'approvazione; l'agente propone di aprire la PR o di
+  farne il merge con l'approvazione esplicita dell'utente.
+- **Documentazione:** playbook §1.2 (profili), §2.1 (livello), §4 (diagramma di sequenza con opzioni, `approve.py` e i
+  due profili), README, guida rapida, skill, script e architettura nelle due lingue; README e architettura registrano la
+  prova e il nuovo limite (nel profilo solo la prova di un'approvazione è la selezione dell'utente).
+- **Test:** `approve.py` su repository temporanei, il caso Langfuse in `diff_scope`, la proporzione degli AC e un flusso
+  solo end-to-end (spec approvata e committata, `state.py` chiede il fast-forward, `spec_lint --base main` passa,
+  `diff_scope` accetta il livello S con un avviso).
+
 ## 0.17.0
 Diagrammi Mermaid, nella documentazione del plugin e in quella delle applicazioni costruite con esso.
 - **Diagrammi nelle applicazioni:** `plan.md`, le pagine d'area (`docs/system/<area>.md`) e la mappa della codebase

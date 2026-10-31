@@ -2,7 +2,7 @@
 
 *English version: [architecture.md](architecture.md)*
 
-Documento di progetto **come costruito** (versione 0.17.0): scelte, struttura, contratti tra i file e limiti.
+Documento di progetto **come costruito** (versione 0.20.0): scelte, struttura, contratti tra i file e limiti.
 
 ## Obiettivo e criterio di successo
 
@@ -24,8 +24,9 @@ Il plugin è fatto bene se:
 | Dove vivono gli script | In `skills/sdd-init/scripts/`, copiati nel progetto da `sdd-init`, con la versione del plugin in seconda riga | Percorso fisso (`python scripts/...`) uguale in entrambi gli agenti; il progetto resta verificabile senza il plugin |
 | Portabilità | Solo libreria standard, nessun comando di shell, liste di argomenti; le skill non leggono mai i file di un'altra skill con `../` ma li trovano con una ricerca | Windows nativo incluso |
 | Contesto | `SKILL.md` sotto le 150 righe; template in `references/` | Il contesto è una risorsa scarsa |
-| Gate umani | Ogni skill che produce un documento da approvare termina con **STOP**; le approvazioni portano nome, data e hash del contenuto approvato (che decade se il contenuto cambia); l'approvazione vera è il merge della PR di design su `main` protetto, che l'agente non può fare con un'identità separata | Principio 5 del playbook; i campi testuali li può scrivere l'agente, il merge no |
-| Proporzionalità | Livelli **S/M/L** dichiarati nella spec (e nel suo hash), con criteri in parte controllati sul diff (`diff_scope.py`) | Lo stesso processo per una riga e per una migrazione genera cerimonia sulle prime e poca attenzione sulle seconde (REVIEW A6) |
+| Gate umani | Ogni skill che produce un documento da approvare termina con **STOP**; ogni scelta e ogni gate si chiedono come opzioni da selezionare (`interaction.md` di `sdd-init`); l'approvazione selezionata la scrive `approve.py` con nome, data e hash del contenuto approvato (che decade se il contenuto cambia) | Principio 5 del playbook; approvazioni a testo libero e hash calcolati a mano hanno causato errori nella prima prova reale |
+| Profili | `- Profile: solo \| team` in `AGENTS.md`. **solo**: l'agente fa branch, commit e fast-forward di `main` (`git fetch . HEAD:main`) subito dopo un gate selezionato; niente CODEOWNERS né template della PR. **team**: l'approvazione vera è il merge della PR su `main` protetto, che l'agente non può fare con un'identità separata | Una regola da team (PR, CODEOWNERS, mai toccare `main`) su un progetto di una persona senza remote ha prodotto solo passaggi git manuali ed errori; in un team la piattaforma resta il controllo che l'agente non può aggirare |
+| Proporzionalità | Livelli **S/M/L** scelti dall'utente tra opzioni e dichiarati nella spec (e nel suo hash); `diff_scope.py` impone solo i criteri vincolanti (area sensibile → L, dipendenze → M) e avvisa sulla dimensione; gli strumenti del processo non contano mai; `spec_lint.py` avvisa se gli AC sono troppi | Lo stesso processo per una riga e per una migrazione genera cerimonia sulle prime e poca attenzione sulle seconde (REVIEW A6) |
 | Controllo esterno | La CI generata da `sdd-init` esegue sulle PR i controlli di processo (`spec_lint --base`, `diff_scope`, `trace_check --junit`, `secrets_check`) con script e `AGENTS.md` protetti da CODEOWNERS | Ogni input del ramo è modificabile dall'agente; la CI sulla PR gira fuori dalla sua portata |
 | Review indipendente | Per task nel livello L (facoltativa nel livello M, `- Task review: on`) e per feature, sempre con lo stesso `sdd-reviewer` in sola lettura; `review_package.py` mette in un solo file ciò che serve al revisore; le review per task superate sono controllate da `state.py`, `sync_check.py` e `loop.py` | Una sola review alla fine di un diff grande trova gli errori tardi e perde i dettagli (REVIEW, sezione C); una review per task li ferma prima che la task successiva ci costruisca sopra, senza aggiungere un secondo agente da mantenere |
 | Skill con effetti | `sdd-loop` prepara ma non lancia; i commit solo se autorizzati, mai su `main` | Limitare i danni di un agente autonomo |
@@ -43,7 +44,7 @@ sdd-playbook/
 ├── .codex-plugin/         plugin.json
 ├── plugin.json            manifest per la Copilot CLI (formato Agent Plugins)
 ├── skills/
-│   ├── sdd-init/         SKILL.md, scripts/ (12 script), references/ (template, CI, tasks.json, stack, copilot/)
+│   ├── sdd-init/         SKILL.md, scripts/ (13 script), references/ (template, CI, tasks.json, stack, interaction, copilot/)
 │   ├── sdd-map-codebase/ SKILL.md, references/map-template.md
 │   ├── sdd-characterize/ SKILL.md
 │   ├── sdd-spec/         SKILL.md, references/spec-template.md
@@ -105,6 +106,10 @@ classDiagram
         +context()
         +task_commits()
     }
+    class approve {
+        +approve_spec()
+        +approve_tests()
+    }
     class loop {
         +final_checks()
     }
@@ -128,6 +133,8 @@ classDiagram
     loop --> secrets_check : esegue
     verify --> secrets_check : step
     stop_verify --> verify : esegue
+    approve ..> spec_lint : importa
+    approve ..> diff_scope : importa
 ```
 
 ## Macchina a stati (`state.py`)
@@ -183,7 +190,7 @@ Gli script leggono pochi campi con convenzioni fisse. I nomi dei campi sono in i
 | `docs/bugs/BUG-*.md` | `- Status:` (`open`, `diagnosed`, `fixed`, `verified`); sezioni di `bugfix-template.md`; voci spuntabili in `## Closure` | `bug_lint`, `state` |
 | `docs/system/<area>.md` | `- Last aligned:`; `- Linked specs:`; sezioni `## Current behaviour`, `Constraints and delicate points`, `Characterization tests`; sezione `## Diagrams` come in `plan.md` | `sync_check`, `docs_check` |
 | `docs/system/map.md` | presenza; sezione `## Diagrams` come in `plan.md` | `state`, `docs_check` |
-| `AGENTS.md` | righe `- Do not modify: a, b` e `- Sensitive areas: a, b` (richiedono il livello L), percorsi tra backtick o prima parola; lette dal merge-base. Sezione `## Decision rights` con `### Decides alone`, `### Asks first`, `### Never` (letta dagli agenti, non dagli script) | `diff_scope`; `sdd-implement`, loop, `sdd-reviewer` |
+| `AGENTS.md` | righe `- Do not modify: a, b` e `- Sensitive areas: a, b` (richiedono il livello L), percorsi tra backtick o prima parola; lette dal merge-base. Sezione `## Decision rights` con `### Decides alone`, `### Asks first`, `### Never` (letta dagli agenti, non dagli script). Sezione `## Process` con `- Profile: solo \| team` (team se manca) e `- Approvers:` (nomi proposti nei gate) | `diff_scope`, `state` (profilo); `sdd-implement`, loop, `sdd-reviewer`, ogni gate |
 | `docs/glossary.md` (facoltativo) | tabella con le colonne `Term` e `Avoid` (sinonimi separati da virgola) | `spec_lint` |
 | `PROMPT.md`, `progress.md` | `PROMPT.md` letto per intero e passato da stdin; in `progress.md`: `- Task review: on` (livello M), `## Task reviews` con `- T-nn: pass` per ogni task chiusa (livello L, o M se attiva), `## Rulings` e `## Disputed review findings` lette dal revisore | `loop`, `state`, `sync_check`, `review_package`, `sdd-reviewer` |
 | `scripts/verify.py` | lista `STEPS` | (modificata da `sdd-init`) |
@@ -262,12 +269,12 @@ erDiagram
 
 ## Limiti e punti non verificati
 
-- **Stato:** il plugin è in progettazione e non è stato usato su un progetto reale; formati e contratti possono ancora
-  cambiare senza compatibilità.
+- **Stato:** il plugin è in progettazione; è stato provato una volta su un piccolo progetto reale (0.17.0, uno stack
+  Docker) e la 0.20.0 risponde a quella prova; formati e contratti possono ancora cambiare senza compatibilità.
 - **Windows:** suite eseguita su Windows 11 (Python 3.13, console cp1252) fino alla 0.8.0, poi solo nella matrice CI; i test di `run.sh` con PATH
   minimo e interpreti finti girano solo su POSIX.
-- **Agenti reali:** le skill non sono state eseguite da un agente reale su un progetto; i controlli deterministici sì (test su repository
-  temporanei, loop con agente finto, hook con l'input JSON atteso).
+- **Agenti reali:** una prova con Claude Code su un piccolo greenfield (0.17.0); opzioni, profili e `approve.py` (0.20.0)
+  sono provati solo dalla suite (repository temporanei, un flusso solo end-to-end) e non ancora da un agente reale.
 - **Codex:** manifest e invocazione delle skill non validati con strumenti Codex; supporto dei subagent non verificato.
 - **GitHub Copilot:** `plugin.json` nella radice, skill in `.github/skills/` e custom agent costruiti dalla documentazione
   pubblica e da esempi (il sito di documentazione di GitHub non era raggiungibile dall'ambiente di build); nessuno è stato
@@ -278,7 +285,10 @@ erDiagram
   (Git for Windows); non verificato in una sessione reale.
 - **Approvazioni:** l'hash ferma la deriva involontaria, non un agente che ricalcola l'hash e riscrive il campo. Contro
   questo servono il merge su `main` protetto con un'identità separata (`spec_lint.py --base`) e i controlli di processo in CI: la protezione del branch e
-  CODEOWNERS vanno configurati sulla piattaforma, il plugin fornisce solo i template.
+  CODEOWNERS vanno configurati sulla piattaforma, il plugin fornisce solo i template. **Profilo solo:** niente di tecnico
+  impedisce a un agente di lanciare da solo `approve.py` o `git fetch . HEAD:main`; la prova è la selezione dell'utente
+  nello strumento di domande dell'host e il commit che la segue. È accettato per i progetti di una persona; con un remote
+  condiviso, usa il profilo team.
 - **Fase rossa, `Test-Lock` e `tests approved:`:** si basano su convenzioni (marcatura nelle task, trailer nei commit) che
   l'agente potrebbe usare a sproposito; `diff_scope.py` lega l'approvazione allo SHA `Test-Lock`, ma `tests approved:` resta
   testo che l'agente può scrivere: il controllo che non può aggirare è la review dei code owner su `tests/` nella PR di implementazione.

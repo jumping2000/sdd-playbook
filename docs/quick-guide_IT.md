@@ -14,8 +14,9 @@ che ordine**; il perché e i dettagli stanno nel [playbook](playbook-ai-software
 
 ## In una frase
 
-Tu decidi **cosa** costruire e approvi i punti chiave; l'agente scrive spec, piano, test e codice; gli script controllano
-che ogni passo sia stato fatto davvero. In qualsiasi momento `sdd-next` (o `python scripts/state.py`) ti dice dove sei e
+Tu decidi **cosa** costruire e approvi i punti chiave, sempre **selezionando un'opzione** (`Approve as <name>`,
+`Request changes`, `Stop here`); l'agente scrive spec, piano, test e codice, registra le tue approvazioni con
+`approve.py` e, nel profilo solo, fa i passi git; gli script controllano che ogni passo sia stato fatto davvero. In qualsiasi momento `sdd-next` (o `python scripts/state.py`) ti dice dove sei e
 qual è la prossima skill.
 
 ## Prima di iniziare (una volta)
@@ -24,18 +25,18 @@ qual è la prossima skill.
 |---|---|
 | Installa il plugin: `claude --plugin-dir <percorso>/sdd-playbook` per provarlo (Codex e GitHub Copilot: vedi il README) | Rende disponibili le 14 skill |
 | Python 3 e git sulla macchina | Gli script sono Python con sola libreria standard |
-| Un'**identità separata** per l'agente: il caso più semplice è che l'agente committi solo in locale e che i branch li pubblichi tu | Le approvazioni sono testo che l'agente può scrivere; il merge su `main` no |
-| Sulla piattaforma: `main` protetto con PR obbligatoria, CI obbligatoria, review dei code owner obbligatoria | È l'unico controllo che l'agente non può aggirare. Il plugin crea i template, le regole le imposti tu |
+| Scegli il **profilo**: `solo` (una persona, anche senza remote) o `team` | `sdd-init` lo chiede come opzione. Solo: l'agente fa branch, commit e fast-forward di `main` dopo l'approvazione che selezioni; niente da configurare |
+| Solo team: un'**identità separata** per l'agente e, sulla piattaforma, `main` protetto con PR, CI e review dei code owner obbligatorie | Il merge su `main` protetto è l'unico controllo che l'agente non può aggirare. Il plugin crea i template, le regole le imposti tu |
 
 Le skill si richiamano chiedendo all'agente di usarle, per esempio *"usa sdd-spec per una funzione di export CSV"*.
 
 ## Greenfield (repository vuoto)
 
-1. **`sdd-init`**. L'agente rileva l'ambiente e ti chiede in un solo messaggio stack, comandi reali di
-   format/lint/tipi/test, se il team usa Windows. Copia gli script in `scripts/`, crea `AGENTS.md`, `CLAUDE.md`,
-   `docs/`, `.gitignore`, `.gitattributes`, il task VS Code, la CI, `CODEOWNERS` e il template della PR.
-   **Gate:** approvi principi, stack e step di `verify`.
-2. Configura sulla piattaforma la protezione di `main` (vedi sopra) e indica chi approva in `.github/CODEOWNERS`.
+1. **`sdd-init`**. L'agente rileva l'ambiente e ti chiede, in un giro di opzioni, profilo, nomi degli approvatori,
+   stack, comandi reali di format/lint/tipi/test e se qualcuno usa Windows. Copia gli script in `scripts/`, crea
+   `AGENTS.md`, `CLAUDE.md`, `docs/`, `.gitignore`, `.gitattributes` e il task VS Code; nel profilo team anche la CI,
+   `CODEOWNERS` e il template della PR. **Gate:** approvi principi, stack e step di `verify`.
+2. Solo nel profilo team: configura sulla piattaforma la protezione di `main` (vedi sopra).
 3. Per ogni funzionalità, il **ciclo per feature** descritto sotto.
 
 ## Brownfield (codice esistente)
@@ -61,15 +62,15 @@ Ripeti i passi 2-4 un'area alla volta, solo dove stai per intervenire: non serve
 
 | # | Skill | Cosa ottieni | Il tuo ruolo |
 |---|---|---|---|
-| 1 | `sdd-spec` | `docs/specs/<data-slug>/spec.md`: requisiti, acceptance criteria, non-scope, **livello** | Rispondi alle domande aperte, poi **approvi** (nome e data) |
+| 1 | `sdd-spec` | `docs/specs/<data-slug>/spec.md`: requisiti, acceptance criteria, non-scope, **livello** | Rispondi ai giri di opzioni (livello compreso), poi **selezioni** `Approve as <name>` |
 | 2 | `sdd-plan` (non nel livello S) | `plan.md`: file da toccare, diagrammi Mermaid (flowchart, sequenza, stato, classi, ER), strategia di test, dipendenze, rischi | **Approvi** |
 | 3 | `sdd-tasks` | `tasks.md`: task piccole, ognuna con un comando di verifica | Controllo rapido |
-| — | **PR di design** | spec, piano e task su un branch | **Il tuo merge su `main` è l'approvazione** |
-| 4 | `sdd-tests-from-ac` (la richiama `sdd-implement`) | Test rossi scritti dagli AC, bloccati con un commit `Test-Lock` | **Rileggi i test** e approvi: `tests approved: <name, date, sha>` (livelli M e L) |
+| — | **Design su `main`** | spec, piano e task approvati | Solo: l'agente fa avanzare `main` in fast-forward. Team: **il tuo merge della PR di design è l'approvazione** (l'agente può aprirla o farne il merge se lo selezioni) |
+| 4 | `sdd-tests-from-ac` (la richiama `sdd-implement`) | Test rossi scritti dagli AC, bloccati con un commit `Test-Lock` | **Rileggi i test** e selezioni l'approvazione: `approve.py` scrive `tests approved: <name, date, sha>` (livelli M e L) |
 | 5 | `sdd-implement`, oppure `sdd-loop` per molte task indipendenti | Il codice che fa passare i test senza modificarli | — |
 | 6 | `sdd-review-diff` (non nel livello S) | `review.md`, da un revisore a contesto fresco che prova a confutare | **Decidi**; nel livello L rileggi anche il diff |
 | 7 | `sdd-docs` | README, documentazione API, esempi eseguiti | Review |
-| 8 | `sdd-sync` | Spec `implemented`, pagina d'area in `docs/system/` con i diagrammi ridisegnati dal codice | Review, poi **PR di implementazione** |
+| 8 | `sdd-sync` | Spec `implemented`, pagina d'area in `docs/system/` con i diagrammi ridisegnati dal codice | Review; poi solo: fast-forward di `main`; team: **PR di implementazione** |
 
 Se la review è `non-compliant`, i problemi diventano task `T-R01`, `T-R02`… che si implementano come le altre; poi la
 review si ripete. `sdd-next` te lo indica.
@@ -78,12 +79,14 @@ review si ripete. `sdd-next` te lo indica.
 
 | Livello | Quando | Cosa cambia |
 |---|---|---|
-| **S** | Tutti veri: al massimo 3 file di produzione, nessuna area sensibile, nessuna dipendenza, nessuna interfaccia pubblica | Niente piano né `review.md`; la review è quella della PR |
+| **S** | Una modifica piccola: circa 3 file di produzione (strumenti del processo esclusi), nessuna area sensibile, nessuna dipendenza, nessuna interfaccia pubblica; di solito 3-6 AC | Niente piano né `review.md`; la review è quella della PR |
 | **M** | Il caso normale | Il ciclo completo; a scelta una review di ogni task (`- Task review: on` in `progress.md`) |
 | **L** | Aree sensibili, interfacce pubbliche, migrazioni di dati | Più un ADR per le decisioni, una review di ogni task e la tua **rilettura del diff** |
 
-Il livello si approva con la spec e fa parte del suo hash. Se il diff reale lo supera, `diff_scope.py` lo segnala come
-errore. Nel dubbio, il livello più alto.
+Scegli il livello tra le opzioni che l'agente propone (consigliato il più basso consentito dai criteri vincolanti); si
+approva con la spec e fa parte del suo hash. `diff_scope.py` segnala un errore solo per un'area sensibile (serve L) o una
+modifica alle dipendenze (serve M); più file del solito nel livello S sono un avviso. Non alzare il livello "per
+sicurezza".
 
 ## Bug
 
@@ -112,7 +115,7 @@ permessi d'esempio `skills/sdd-loop/references/settings.loop.json`.
 | `python scripts/state.py` | Dove sono, qual è il prossimo passo |
 | `python scripts/verify.py` | Format, lint, tipi, test e segreti: il criterio di "fatto" |
 | `python scripts/spec_lint.py <spec> --plan <plan> --tasks <tasks> --base main` | Spec, piano e task validi e già approvati con il merge |
-| `python scripts/spec_lint.py <file> --hash` | L'hash da scrivere in `- Hash:` dopo un'approvazione |
+| `python scripts/approve.py spec <spec> --by "<nome>" --commit` | Registra l'approvazione che hai selezionato (anche `plan`, `tasks`, `tests`, `review`): nome, data e hash, controllati dal lint |
 | `python scripts/trace_check.py <spec> --junit reports/junit.xml` | Ogni AC ha un test eseguito e passato |
 | `python scripts/diff_scope.py docs/specs/<id>` | Zone vietate, test bloccati, livello, dipendenze, file fuori piano |
 | `python scripts/sync_check.py docs/specs/<id> --junit reports/junit.xml` | Feature chiusa e riconciliata |

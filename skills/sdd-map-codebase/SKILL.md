@@ -31,5 +31,6 @@ Playbook §5, steps 1-3.
 
 ## STOP
 
-Present the map and the baseline result. Ask the user to spot-check it. Do not write specs.
+Present the map and the baseline result. Ask for the spot check with options (guide: search for `**/sdd-init/references/interaction.md`): `Map is right`, `Correct it`
+(they say what), `Stop here`. Do not write specs.
 Next step: `sdd-characterize` on the area to change, then `sdd-spec`.

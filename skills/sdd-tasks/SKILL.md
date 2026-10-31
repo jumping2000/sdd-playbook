@@ -49,5 +49,8 @@ Playbook §3.5 and §4 (phase 4).
 
 ## STOP
 
-Show the list and ask the user for a quick check. Do not start the implementation without their go-ahead.
+Show the list and ask for a quick check with options (`Tasks are fine`, `Change them`, `Stop here`). When they are
+fine, record `- Based on plan:` with `python scripts/approve.py tasks <tasks> --commit` (level S: no plan, it only
+checks the tasks). This closes the design gate: move `main` as the profile says (guide: search for
+`**/sdd-init/references/interaction.md`). Do not start the implementation without the user's go-ahead.
 Next step: `sdd-implement` (or `sdd-loop` if the tasks are many and independent).

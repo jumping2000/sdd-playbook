@@ -14,8 +14,9 @@ in the [skill reference](skills.md), the scripts in the [script reference](scrip
 
 ## In one sentence
 
-You decide **what** to build and approve the key points; the agent writes spec, plan, tests and code; the scripts check
-that every step was really done. At any time `sdd-next` (or `python scripts/state.py`) tells you where you are and which
+You decide **what** to build and approve the key points, always by **selecting an option** (`Approve as <name>`,
+`Request changes`, `Stop here`); the agent writes spec, plan, tests and code, records your approvals with `approve.py`
+and, in the solo profile, does the git steps; the scripts check that every step was really done. At any time `sdd-next` (or `python scripts/state.py`) tells you where you are and which
 skill comes next.
 
 ## Before you start (once)
@@ -24,18 +25,19 @@ skill comes next.
 |---|---|
 | Install the plugin: `claude --plugin-dir <path>/sdd-playbook` to try it (Codex and GitHub Copilot: see the README) | Makes the 14 skills available |
 | Python 3 and git on the machine | The scripts are Python, standard library only |
-| A **separate identity** for the agent: the simplest setup is that the agent commits only locally and you push the branches | Approvals are text the agent can write; a merge into `main` is not |
-| On the platform: protected `main` with required PRs, required CI, required code-owner review | It is the only control the agent cannot bypass. The plugin creates the templates, you set the rules |
+| Choose the **profile**: `solo` (one person, also without a remote) or `team` | `sdd-init` asks it as an option. Solo: the agent does branch, commits and fast-forward of `main` after your selected approval; nothing to configure |
+| Team only: a **separate identity** for the agent, and on the platform protected `main` with required PRs, CI and code-owner review | The merge into protected `main` is the only control the agent cannot bypass. The plugin creates the templates, you set the rules |
 
 You invoke a skill by asking the agent to use it, for example *"use sdd-spec for a CSV export feature"*.
 
 ## Greenfield (empty repository)
 
-1. **`sdd-init`**. The agent detects the environment and asks, in a single message, for the stack, the real
-   format/lint/type/test commands and whether the team uses Windows. It copies the scripts into `scripts/` and creates
-   `AGENTS.md`, `CLAUDE.md`, `docs/`, `.gitignore`, `.gitattributes`, the VS Code task, CI, `CODEOWNERS` and the PR
-   template. **Gate:** you approve principles, stack and `verify` steps.
-2. Configure branch protection for `main` on the platform (see above) and list the approvers in `.github/CODEOWNERS`.
+1. **`sdd-init`**. The agent detects the environment and asks, in one round of options, for the profile, the
+   approvers' names, the stack, the real format/lint/type/test commands and whether anyone uses Windows. It copies the
+   scripts into `scripts/` and creates `AGENTS.md`, `CLAUDE.md`, `docs/`, `.gitignore`, `.gitattributes` and the VS Code
+   task; in the team profile also CI, `CODEOWNERS` and the PR template. **Gate:** you approve principles, stack and
+   `verify` steps.
+2. Team profile only: configure branch protection for `main` on the platform (see above).
 3. For every feature, the **feature cycle** below.
 
 ## Brownfield (existing code)
@@ -61,15 +63,15 @@ Repeat steps 2-4 one area at a time, only where you are about to work: there is 
 
 | # | Skill | What you get | Your role |
 |---|---|---|---|
-| 1 | `sdd-spec` | `docs/specs/<date-slug>/spec.md`: requirements, acceptance criteria, non-scope, **level** | Answer the open questions, then **approve** (name and date) |
+| 1 | `sdd-spec` | `docs/specs/<date-slug>/spec.md`: requirements, acceptance criteria, non-scope, **level** | Answer the rounds of options (level included), then **select** `Approve as <name>` |
 | 2 | `sdd-plan` (not at level S) | `plan.md`: files to touch, Mermaid diagrams (flowchart, sequence, state, class, ER), test strategy, dependencies, risks | **Approve** |
 | 3 | `sdd-tasks` | `tasks.md`: small tasks, each with a verification command | Quick check |
-| — | **Design PR** | spec, plan and tasks on a branch | **Your merge into `main` is the approval** |
-| 4 | `sdd-tests-from-ac` (called by `sdd-implement`) | Red tests written from the ACs, locked by a `Test-Lock` commit | **Read the tests** and approve: `tests approved: <name, date, sha>` (levels M and L) |
+| — | **Design on `main`** | spec, plan and tasks approved | Solo: the agent moves `main` by fast-forward. Team: **your merge of the design PR is the approval** (the agent can open it or merge it if you select so) |
+| 4 | `sdd-tests-from-ac` (called by `sdd-implement`) | Red tests written from the ACs, locked by a `Test-Lock` commit | **Read the tests** and select the approval: `approve.py` writes `tests approved: <name, date, sha>` (levels M and L) |
 | 5 | `sdd-implement`, or `sdd-loop` for many independent tasks | The code that makes the tests pass without changing them | — |
 | 6 | `sdd-review-diff` (not at level S) | `review.md`, from a fresh-context reviewer that tries to refute the result | **Decide**; at level L also read the diff |
 | 7 | `sdd-docs` | README, API docs, executed examples | Review |
-| 8 | `sdd-sync` | Spec `implemented`, area page in `docs/system/` with its diagrams redrawn from the code | Review, then the **implementation PR** |
+| 8 | `sdd-sync` | Spec `implemented`, area page in `docs/system/` with its diagrams redrawn from the code | Review; then solo: fast-forward of `main`; team: **implementation PR** |
 
 If the review is `non-compliant` (not compliant), the problems become tasks `T-R01`, `T-R02`… implemented like the others;
 then the review is repeated. `sdd-next` tells you so.
@@ -78,12 +80,13 @@ then the review is repeated. `sdd-next` tells you so.
 
 | Level | When | What changes |
 |---|---|---|
-| **S** | All true: at most 3 production files, no sensitive area, no dependency, no public interface | No plan and no `review.md`; the review is the PR review |
+| **S** | A small change: about 3 production files (process tooling excluded), no sensitive area, no dependency, no public interface; usually 3-6 ACs | No plan and no `review.md`; the review is the PR review |
 | **M** | The normal case | The full cycle; optionally a review of every task (`- Task review: on` in `progress.md`) |
 | **L** | Sensitive areas, public interfaces, data migrations | Plus an ADR for the decisions, a review of every task and your **reading of the diff** |
 
-The level is approved with the spec and is part of its hash. If the real diff exceeds it, `diff_scope.py` reports an
-error. When in doubt, pick the higher level.
+You choose the level among the options the agent proposes (the lowest its hard criteria allow is recommended); it is
+approved with the spec and is part of its hash. `diff_scope.py` reports an error only for a sensitive area (needs L) or
+a dependency change (needs M); more files than usual at level S is a warning. Do not raise the level "to be safe".
 
 ## Bugs
 
@@ -112,7 +115,7 @@ permissions file `skills/sdd-loop/references/settings.loop.json`.
 | `python scripts/state.py` | Where am I, what is the next step |
 | `python scripts/verify.py` | Format, lint, types, tests and secrets: the definition of "done" |
 | `python scripts/spec_lint.py <spec> --plan <plan> --tasks <tasks> --base main` | Spec, plan and tasks valid and already approved by the merge |
-| `python scripts/spec_lint.py <file> --hash` | The hash to write in `- Hash:` after an approval |
+| `python scripts/approve.py spec <spec> --by "<name>" --commit` | Records the approval you selected (also `plan`, `tasks`, `tests`, `review`): name, date and hash, checked by the lint |
 | `python scripts/trace_check.py <spec> --junit reports/junit.xml` | Every AC has an executed, passing test |
 | `python scripts/diff_scope.py docs/specs/<id>` | Forbidden zones, locked tests, level, dependencies, out-of-plan files |
 | `python scripts/sync_check.py docs/specs/<id> --junit reports/junit.xml` | Feature closed and reconciled |

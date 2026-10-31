@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# sdd-playbook: 0.17.0
+# sdd-playbook: 0.20.0
 """Review package: everything an independent reviewer needs for one task (or the whole branch), in one file.
 
 Usage:
