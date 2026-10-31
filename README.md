@@ -211,8 +211,9 @@ the one from Git for Windows). In the red phase (last closed task "expected: red
 
 ## Changing the plugin
 
-- The playbook is edited in `docs/playbook.src.md` (English) and `docs/playbook_IT.src.md` (Italian), with the same
-  section numbering; `python tools/build_playbook.py` regenerates both. The `{{FILE ...}}` blocks embed the plugin's
+- The playbook is edited in `tools/playbook-src/playbook.src.md` (English) and `tools/playbook-src/playbook_IT.src.md`
+  (Italian), with the same section numbering; `python tools/build_playbook.py` regenerates both in `docs/`, which holds
+  only the playbook to read. The `{{FILE ...}}` blocks embed the plugin's
   scripts and templates, so they cannot diverge.
 - Tests: `python -m unittest discover -s tests -v`. They include the **coherence tests** between skills, scripts,
   playbooks and documentation in both languages (§ references, skill and script names, no version references in the

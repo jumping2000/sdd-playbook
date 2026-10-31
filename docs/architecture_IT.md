@@ -29,9 +29,9 @@ Il plugin è fatto bene se:
 | Proporzionalità | Livelli **S/M/L** scelti dall'utente tra opzioni e dichiarati nella spec (e nel suo hash); `diff_scope.py` impone solo i criteri vincolanti (area sensibile → L, dipendenze → M) e avvisa sulla dimensione; gli strumenti del processo non contano mai; `spec_lint.py` avvisa se gli AC sono troppi | Lo stesso processo per una riga e per una migrazione genera cerimonia sulle prime e poca attenzione sulle seconde (REVIEW A6) |
 | Controllo esterno | La CI generata da `sdd-init` esegue sulle PR i controlli di processo (`spec_lint --base`, `diff_scope`, `trace_check --junit`, `secrets_check`) con script e `AGENTS.md` protetti da CODEOWNERS | Ogni input del ramo è modificabile dall'agente; la CI sulla PR gira fuori dalla sua portata |
 | Review indipendente | Per task nel livello L (facoltativa nel livello M, `- Task review: on`) e per feature, sempre con lo stesso `sdd-reviewer` in sola lettura; `review_package.py` mette in un solo file ciò che serve al revisore; le review per task superate sono controllate da `state.py`, `sync_check.py` e `loop.py` | Una sola review alla fine di un diff grande trova gli errori tardi e perde i dettagli (REVIEW, sezione C); una review per task li ferma prima che la task successiva ci costruisca sopra, senza aggiungere un secondo agente da mantenere |
-| Skill con effetti | `sdd-loop` prepara ma non lancia; i commit solo se autorizzati, mai su `main` | Limitare i danni di un agente autonomo |
+| Skill con effetti | `sdd-loop` prepara ma non lancia; mai commit di feature su `main`; `main` avanza solo con il merge di una PR approvata (team) o in fast-forward dopo un gate selezionato (solo) | Limitare i danni di un agente autonomo |
 | Parti per singolo agente | Claude Code: subagent `sdd-reviewer` (solo strumenti di lettura) e hook opt-in. GitHub Copilot: lo stesso revisore come custom agent (`*.agent.md`, strumenti `read` e `search`), skill copiate in `.github/skills/` da `sdd-init` per il cloud agent e gli IDE. Codex: nessuna (review in sessione nuova) | Le skill restano uguali; cambia solo l'orchestrazione |
-| Coerenza documentale | Il playbook è **generato** dai file del plugin (`tools/build_playbook.py`), in inglese e in italiano; i test controllano i riferimenti incrociati in entrambe le lingue | Script, template e documentazione non possono divergere in silenzio |
+| Coerenza documentale | Il playbook è **generato** dalle sue sorgenti in `tools/playbook-src/` e dai file del plugin (`tools/build_playbook.py`), in inglese e in italiano; i test controllano i riferimenti incrociati in entrambe le lingue | Script, template e documentazione non possono divergere in silenzio |
 | Diagrammi | Blocchi **Mermaid** nel Markdown: nella documentazione del plugin e, attraverso template e controlli, in quella delle applicazioni che costruisce (piano, pagine d'area, mappa: flowchart, sequenza, stato, classi, ER, ognuno disegnato o `n/a` motivato) | GitHub e GitLab li rendono senza strumenti da installare, si rivedono come testo nel diff; uno script può controllare che esistano e abbiano il tipo giusto, non che siano veri: quello è compito del revisore |
 | Lingua | Documentazione, changelog e review in inglese e in italiano (suffisso `_IT`); il plugin (skill, template, script, hook, agente, test) interamente in inglese | Una sola lingua per i contratti sui file (nomi dei campi letti dagli script), indipendente dalla lingua della documentazione |
 
@@ -60,9 +60,9 @@ sdd-playbook/
 │   └── sdd-next/         SKILL.md
 ├── agents/sdd-reviewer.md       subagent (Claude Code); copia per Copilot in skills/sdd-init/references/copilot/
 ├── hooks/                        hooks.json, run.sh (launcher), stop_verify.py, pretool_guard.py (Claude Code, opt-in)
-├── docs/                         in inglese e in italiano (_IT): guida rapida, playbook (sorgente e generato),
-│                                 skill, script, architettura
-├── tools/build_playbook.py       genera i due playbook dai file del plugin
+├── docs/                         in inglese e in italiano (_IT): guida rapida, playbook (generato), skill, script,
+│                                 architettura
+├── tools/                        build_playbook.py e playbook-src/ (le sorgenti del playbook, EN e IT)
 ├── tests/                        test degli script, degli hook, del loop e di coerenza
 └── .github/workflows/ci.yml      test su Ubuntu e Windows
 ```
@@ -149,6 +149,7 @@ spec in-revision ....................................... sdd-spec
 spec in bozza, non approvata o con hash non valido ...... sdd-spec
 --- livello S: niente piano né review.md -----------------
 tasks.md mancante ....................................... sdd-tasks
+profilo solo, design approvato ma non su main ........... sdd-tasks (git fetch . HEAD:main)
 task successiva su un AC di una domanda non bloccante ... sdd-spec (risposta e revisione della spec)
 task T-nn o T-Rnn aperte ................................ sdd-implement
 review.md "non-compliant" (se c'è) ....................... sdd-review-diff
@@ -156,6 +157,7 @@ T-DOC aperta, altrimenti ................................ sdd-docs, sdd-sync
 --- livelli M (default) e L ------------------------------
 piano mancante, non approvato o decaduto ................ sdd-plan
 tasks.md mancante o basato su un altro piano ............ sdd-tasks
+profilo solo, design approvato ma non su main ........... sdd-tasks (git fetch . HEAD:main)
 task di test chiusa senza "tests approved:" ............. sdd-tests-from-ac
 task successiva su un AC di una domanda non bloccante ... sdd-spec (risposta e revisione della spec)
 task T-nn o T-Rnn aperte ................................ sdd-implement   (valuta sdd-loop)
@@ -315,13 +317,16 @@ finto che spunta una task per esecuzione) e degli hook, i **test di coerenza** v
   un'altra skill trovati con una ricerca) esista;
 - i template siano coerenti con gli script: review focus, anti-obiettivi, `blocking:` nelle domande aperte, le tre
   liste dei diritti decisionali in `AGENTS.md` e nelle skill, nell'agente e nel prompt del loop che le seguono;
+  `## Process` con `- Profile:` e `- Approvers:`, la regola di `approve.py` nel template di `AGENTS.md`, e ogni skill
+  con uno STOP che cita `interaction.md`;
 - ogni `python scripts/<x>.py` citato esista e ogni script sia documentato, in entrambe le lingue;
 - ogni skill sia nei due README, nei due riferimenti delle skill, nelle due guide rapide e nei due playbook, e ogni skill
   citata esista;
 - ogni `§` citato esista come titolo del playbook, e i due playbook abbiano la stessa numerazione;
 - i due playbook siano aggiornati rispetto ai file incorporati (`tools/build_playbook.py --check`) e non contengano riferimenti a versioni;
 - ogni documento (changelog e review compresi) esista in inglese e in italiano, e ognuno rimandi all'altra lingua;
-- i file del plugin (skill, agente, hook, tools, test, manifest) non contengano testo italiano;
+- i file del plugin (skill, agente, hook, tools, test, manifest) non contengano testo italiano, salvo la sorgente
+  italiana del playbook in `tools/playbook-src/`;
 - i tre manifest, i due changelog e i due README abbiano la stessa versione (badge del README compreso), ogni script la
   riporti in seconda riga, e la licenza sia MIT;
 - il revisore (Claude Code e Copilot) non abbia strumenti di scrittura, i permessi d'esempio del loop neghino il push e la scrittura dei controlli,

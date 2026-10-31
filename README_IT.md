@@ -218,8 +218,9 @@ di Git for Windows). In fase rossa (ultima task chiusa "expected: red") l'hook `
 
 ## Modificare il plugin
 
-- Il playbook si modifica in `docs/playbook.src.md` (inglese) e `docs/playbook_IT.src.md` (italiano), con la stessa
-  numerazione dei paragrafi; `python tools/build_playbook.py` rigenera entrambi. I blocchi `{{FILE ...}}` incorporano
+- Il playbook si modifica in `tools/playbook-src/playbook.src.md` (inglese) e `tools/playbook-src/playbook_IT.src.md`
+  (italiano), con la stessa numerazione dei paragrafi; `python tools/build_playbook.py` rigenera entrambi in `docs/`, che
+  contiene solo il playbook da leggere. I blocchi `{{FILE ...}}` incorporano
   script e template del plugin: così non possono divergere.
 - Test: `python -m unittest discover -s tests -v`. Includono i **test di coerenza** tra skill, script, playbook e
   documentazione in entrambe le lingue (riferimenti a §, nomi di skill e script, assenza di riferimenti a versioni nel

@@ -10,7 +10,8 @@ the user launches it, in a terminal and an isolated environment.
 
 ## Preconditions
 
-- Spec, plan (not at level S) and tasks valid and approved with the design PR:
+- Spec, plan (not at level S) and tasks valid, approved and on `main` (design PR in the team profile, fast-forward in
+  the solo profile):
   `python scripts/spec_lint.py <spec> --plan <plan> --tasks <tasks> --base main` without errors.
 - The loop ends successfully only if, besides a green `verify` and closed tasks, the final checks pass (`spec_lint.py`,
   `trace_check.py`, `diff_scope.py`, `secrets_check.py`); with `--junit <report>` (written by `verify`) `trace_check.py`

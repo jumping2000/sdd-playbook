@@ -279,7 +279,7 @@ jobs:
 | Gate tecnici | Branch protetto, PR obbligatoria, CI obbligatoria con i controlli di processo. Opzionali (Claude Code, plugin §11): hook `Stop` che impedisce di dichiarare completato senza `verify` verde, hook `PreToolUse` che blocca i comandi a rischio. Sono una rete di sicurezza, non un sandbox |
 | Tracciabilità | Commit con trailer `Spec: SPEC-2026-10-24-nome-feature` e `Agent: <nome/versione>`; PR template con link alla spec, output di `verify`, elenco degli AC coperti |
 | Identità dell'agente | Separata da quella di chi approva (vedi sotto): l'agente non deve poter unire una PR su `main` né approvarla |
-| Approvazioni | Il **merge della PR di design** (spec, piano, task) su `main` protetto, con review dei code owner obbligatoria (`CODEOWNERS` su `docs/specs/` e sui test), è l'approvazione: `spec_lint.py --base main` lo verifica. Nei documenti restano nome, data e **hash del contenuto approvato**: se il contenuto cambia, l'approvazione decade. In contesti regolati l'approvatore è il product owner o l'analista, non lo sviluppatore che lancia l'agente |
+| Approvazioni | Ogni approvazione la seleziona l'utente tra opzioni e la scrive `approve.py`. Profilo team: il **merge della PR di design** (spec, piano, task) su `main` protetto, con review dei code owner obbligatoria (`CODEOWNERS` su `docs/specs/` e sui test), è l'approvazione: `spec_lint.py --base main` lo verifica. Nei documenti restano nome, data e **hash del contenuto approvato**: se il contenuto cambia, l'approvazione decade. In contesti regolati l'approvatore è il product owner o l'analista, non lo sviluppatore che lancia l'agente |
 | Prompt injection | Codice, commenti, issue, dipendenze e pagine web possono contenere istruzioni rivolte all'agente: sono dati, non ordini (`PROMPT.md` del loop e revisore lo dicono). La difesa vera è che l'agente non abbia nulla da far uscire né il permesso di farlo: niente segreti nell'ambiente, rete limitata, niente push |
 | Log delle azioni | `progress.md` per i loop; per audit formale usa i log dell'agente e della CI, non la chat |
 
@@ -296,7 +296,7 @@ equivalenti per gli script (che guardano solo lo stato di git su `main`):
 Da configurare sulla piattaforma (il plugin fornisce solo i template `CODEOWNERS` e della PR): protezione di `main` con PR
 obbligatoria, review dei code owner obbligatoria e CI obbligatoria.
 
-Flusso di una feature: **PR di design** (spec, piano e task approvati in conversazione, con hash) → merge su `main` =
+Flusso di una feature nel profilo team: **PR di design** (spec, piano e task approvati in conversazione, con hash) → merge su `main` =
 approvazione → branch di implementazione da `main` → `spec_lint.py <spec> --plan <plan> --base main` deve passare prima
 del codice → **PR di implementazione**, in cui chi approva rilegge per primi i commit `Test-Lock`.
 
@@ -488,9 +488,9 @@ covering the ACs they name wait for the answer. "- none" when there are none. --
 - none <!-- spec in-revision: yyyy-mm-dd, what changes and why -->
 ```
 
-**Come si ricava la spec.** L'agente legge prima il codice e il materiale indicato dall'utente, così non chiede mai ciò che il progetto già dice; poi riformula la richiesta con parole proprie e fa **una domanda per messaggio**, quella la cui risposta cambierebbe di più ciò che si costruisce. Quando la richiesta ammette esiti davvero diversi per l'utente, propone 2-3 opzioni e l'utente sceglie. Gli **anti-obiettivi** (`Anti-goals`) registrano cosa renderebbe la feature un fallimento anche se funziona (`spec_lint.py` avvisa se mancano). *(`sdd-spec`)*
+**Come si ricava la spec.** L'agente legge prima il codice e il materiale indicato dall'utente, così non chiede mai ciò che il progetto già dice; poi riformula la richiesta con parole proprie e chiede a **giri di opzioni** (massimo 4 domande, 2-4 opzioni ciascuna, prima la consigliata, sempre una risposta libera), partendo da ciò che cambierebbe di più quello che si costruisce; anche gli esiti davvero diversi per l'utente sono opzioni. Una modifica semplice richiede di solito uno o due giri. Il livello è una delle domande: lo sceglie l'utente (§2.1). Gli **anti-obiettivi** (`Anti-goals`) registrano cosa renderebbe la feature un fallimento anche se funziona (`spec_lint.py` avvisa se mancano). *(`sdd-spec`)*
 
-Qualità minima di una spec: dichiara il livello (§2.1), nomina file/interfacce coinvolti, dichiara il non-scope, chiude con un controllo end-to-end che dimostra la feature. Lo stato `approved` richiede approvatore e data compilati, nessuna domanda aperta **bloccante** e l'**hash del corpo** (`- Hash:`, calcolato con `spec_lint.py --hash` dopo l'approvazione): `spec_lint.py` segnala se il contenuto è cambiato dopo l'ok. Il piano riporta in più `- Based on spec:` con l'hash della spec su cui è stato approvato, e decade se la spec cambia.
+Qualità minima di una spec: dichiara il livello (§2.1), nomina file/interfacce coinvolti, dichiara il non-scope, chiude con un controllo end-to-end che dimostra la feature. Lo stato `approved` richiede approvatore e data compilati, nessuna domanda aperta **bloccante** e l'**hash del corpo** (`- Hash:`, scritto da `approve.py` dopo l'approvazione selezionata): `spec_lint.py` segnala se il contenuto è cambiato dopo l'ok. Il piano riporta in più `- Based on spec:` con l'hash della spec su cui è stato approvato, e decade se la spec cambia.
 
 Le **domande aperte** portano `blocking: yes|no` e, facoltativo, `about:` con il REQ o l'AC che riguardano (`spec_lint.py` controlla che esistano). Una domanda è bloccante quando la risposta cambierebbe un requisito o un AC su cui si basa il piano; senza il marcatore conta come bloccante. Una spec approvata può tenere domande non bloccanti: le task che coprono gli AC che nominano (direttamente o tramite il loro REQ) aspettano la risposta (`spec_lint.py --tasks` avvisa), e la risposta entra nella spec con una revisione.
 
@@ -789,15 +789,15 @@ L'esito è uno tra `compliant`, `compliant with reservations`, `non-compliant`. 
 
 | Fase | Attività | Skill del plugin | Gate umano |
 |---|---|---|---|
-| 1. Fondamenta | Setup (§1), `AGENTS.md`, `constitution.md` scritte con l'agente in conversazione e riviste da te | `sdd-init` | Approvi principi e stack |
-| 2. Spec | Dall'idea al `spec.md`. Fai elencare all'agente domande aperte e assunzioni, rispondi, poi congela | `sdd-spec` | **Approvi la spec** (nome e data nel documento) |
-| 3. Piano | `plan.md` in sola lettura | `sdd-plan` | **Approvi il piano** |
-| 4. Task | `tasks.md` in passi piccoli, ognuno con comando di verifica | `sdd-tasks` | Controllo rapido |
-| 5. Test prima | Dagli AC, l'agente scrive i test; devono fallire per il motivo giusto; commit `Test-Lock` | `sdd-tests-from-ac` (via `sdd-implement`) | **Approvi i test bloccati** (`tests approved:`; nel livello S basta uno spot check) |
+| 1. Fondamenta | Setup (§1), `AGENTS.md`, `constitution.md` scritte con l'agente in conversazione e riviste da te | `sdd-init` | Approvi principi e stack (opzioni) |
+| 2. Spec | Dall'idea al `spec.md`. Fai elencare all'agente domande aperte e assunzioni, rispondi, poi congela | `sdd-spec` | **Selezioni l'approvazione della spec**; `approve.py` scrive nome, data e hash |
+| 3. Piano | `plan.md` in sola lettura | `sdd-plan` | **Selezioni l'approvazione del piano** |
+| 4. Task | `tasks.md` in passi piccoli, ognuno con comando di verifica | `sdd-tasks` | Controllo rapido (opzioni); poi il design arriva su `main` (solo: fast-forward; team: PR di design) |
+| 5. Test prima | Dagli AC, l'agente scrive i test; devono fallire per il motivo giusto; commit `Test-Lock` | `sdd-tests-from-ac` (via `sdd-implement`) | **Selezioni l'approvazione dei test bloccati** (`approve.py tests`; nel livello S basta uno spot check) |
 | 6. Implementazione | Task per task, `verify` a ogni passo; commit a ogni task verde (`Task: T-nn`); nel livello L (facoltativo nel livello M) un revisore a contesto fresco controlla ogni task sul suo pacchetto di review (`review_package.py`) prima della successiva | `sdd-implement`, oppure `sdd-loop` (§7) | — |
-| 7. Review del diff | Contesto fresco, che prova a confutare, sul pacchetto dell'intero branch; dopo le review per task si concentra su integrazione, non-scope e decisioni; `review.md` | `sdd-review-diff` | **Decidi sulla review** |
+| 7. Review del diff | Contesto fresco, che prova a confutare, sul pacchetto dell'intero branch; dopo le review per task si concentra su integrazione, non-scope e decisioni; `review.md` | `sdd-review-diff` | **Selezioni la decisione sulla review** (`approve.py review`) |
 | 8. Documentazione | T-DOC: esempi eseguiti, link validi | `sdd-docs` | Review |
-| 9. Riconciliazione | T-SYNC: spec e `docs/system/` allineate al comportamento reale; stato spec = `implemented` | `sdd-sync` | Review, poi PR |
+| 9. Riconciliazione | T-SYNC: spec e `docs/system/` allineate al comportamento reale; stato spec = `implemented` | `sdd-sync` | Review; poi solo: fast-forward di `main`; team: PR |
 | 10. Replan | Tra una feature e l'altra aggiorna `constitution.md`/`AGENTS.md` con ciò che hai imparato | — | — |
 
 `sdd-next` indica in ogni momento la fase corrente e il passo successivo. Nel livello S (§2.1) la fase 3 si salta e la 7 è la review della PR; nel livello L la fase 7 include la revisione umana del diff.
@@ -1288,7 +1288,7 @@ L'esecuzione di deploy e operazioni da parte di un agente è un argomento a part
 ## 11. Automazione con il plugin `sdd-playbook`
 
 Il plugin implementa i passi di questo playbook come **skill** (istruzioni per l'agente, con un gate umano esplicito
-a ogni punto di approvazione) e **script** (controlli deterministici copiati nel `scripts/` del progetto da
+a ogni punto di approvazione, chiesto come opzioni da selezionare) e **script** (controlli deterministici copiati nel `scripts/` del progetto da
 `sdd-init`). Funziona con Claude Code, Codex e GitHub Copilot (CLI e coding agent). Guida completa: `README_IT.md` e `docs/` del plugin (si parte da `docs/quick-guide_IT.md`).
 
 | Fase | Skill | Script usati | Gate umano |
@@ -1298,15 +1298,15 @@ a ogni punto di approvazione) e **script** (controlli deterministici copiati nel
 | Mappa e baseline (§5, passi 1-3) | `sdd-map-codebase` | `scan_repo.py`, `verify.py` | Mappa verificata a campione |
 | Caratterizzazione (§5, passo 4) | `sdd-characterize` | `verify.py` | Spot check |
 | Spec (§3.3) | `sdd-spec` | `spec_lint.py`, `approve.py` | **Approvazione della spec** |
-| Piano (§3.4) | `sdd-plan` | `spec_lint.py --plan` | **Approvazione del piano** |
-| Task (§3.5) | `sdd-tasks` | `spec_lint.py --tasks` | Controllo rapido |
-| Test dagli AC (§6) | `sdd-tests-from-ac` | `trace_check.py` | **Approvazione dei test bloccati** (M, L) |
+| Piano (§3.4) | `sdd-plan` | `spec_lint.py --plan`, `approve.py` | **Approvazione del piano** |
+| Task (§3.5) | `sdd-tasks` | `spec_lint.py --tasks`, `approve.py` | Controllo rapido |
+| Test dagli AC (§6) | `sdd-tests-from-ac` | `trace_check.py`, `approve.py` | **Approvazione dei test bloccati** (M, L) |
 | Implementazione (§4, fase 6) | `sdd-implement` | `verify.py`, `review_package.py` | Review della PR |
 | Loop (§7) | `sdd-loop` | `loop.py` | **Permessi, tetto, avvio** |
 | Bug fixing (§6.1) | `sdd-bugfix` | `bug_lint.py`, `verify.py` | Atteso e "da NON cambiare" |
-| Review del diff (§4, fase 7) | `sdd-review-diff` | `diff_scope.py`, `trace_check.py`, `secrets_check.py`, `review_package.py` | **Decisione sulla review** |
+| Review del diff (§4, fase 7) | `sdd-review-diff` | `diff_scope.py`, `trace_check.py`, `secrets_check.py`, `review_package.py`, `approve.py` | **Decisione sulla review** |
 | Documentazione (§6) | `sdd-docs` | `docs_check.py` | Review |
-| Riconciliazione (§4, fase 9) | `sdd-sync` | `sync_check.py` | Review, poi PR |
+| Riconciliazione (§4, fase 9) | `sdd-sync` | `sync_check.py` | Review; poi solo: fast-forward di `main`; team: PR |
 
 **Script del plugin** (tutti Python, solo libreria standard, uguali su Windows e Linux; exit code `0` = ok, `1` = controllo fallito, `2` = uso errato o precondizione mancante):
 

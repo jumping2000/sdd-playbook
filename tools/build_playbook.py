@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """Generate the playbook, in English and Italian, from the sources in docs/.
 
-  docs/playbook.src.md     -> docs/playbook-ai-software-lifecycle.md      (English)
-  docs/playbook_IT.src.md  -> docs/playbook-ai-software-lifecycle_IT.md   (Italian)
+  tools/playbook-src/playbook.src.md     -> docs/playbook-ai-software-lifecycle.md      (English)
+  tools/playbook-src/playbook_IT.src.md  -> docs/playbook-ai-software-lifecycle_IT.md   (Italian)
+
+The sources live outside docs/ so that docs/ holds one playbook per language: the one to read.
 
 The `{{FILE path language}}` lines of the sources are replaced with the exact content of the plugin file, in a code
 block. This way the scripts and templates shown in the playbook are identical to the plugin's.
@@ -18,8 +20,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 DOCS = ROOT / "docs"
-PAIRS = [(DOCS / "playbook.src.md", DOCS / "playbook-ai-software-lifecycle.md"),
-          (DOCS / "playbook_IT.src.md", DOCS / "playbook-ai-software-lifecycle_IT.md")]
+SRC = ROOT / "tools" / "playbook-src"
+PAIRS = [(SRC / "playbook.src.md", DOCS / "playbook-ai-software-lifecycle.md"),
+         (SRC / "playbook_IT.src.md", DOCS / "playbook-ai-software-lifecycle_IT.md")]
 MARKER = re.compile(r"^\{\{FILE\s+(\S+)(?:\s+(\S+))?\}\}\s*$")
 
 

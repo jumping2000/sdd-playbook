@@ -114,7 +114,7 @@ permissions file `skills/sdd-loop/references/settings.loop.json`.
 |---|---|
 | `python scripts/state.py` | Where am I, what is the next step |
 | `python scripts/verify.py` | Format, lint, types, tests and secrets: the definition of "done" |
-| `python scripts/spec_lint.py <spec> --plan <plan> --tasks <tasks> --base main` | Spec, plan and tasks valid and already approved by the merge |
+| `python scripts/spec_lint.py <spec> --plan <plan> --tasks <tasks> --base main` | Spec, plan and tasks valid and already on `main` (team: merged design PR; solo: fast-forward) |
 | `python scripts/approve.py spec <spec> --by "<name>" --commit` | Records the approval you selected (also `plan`, `tasks`, `tests`, `review`): name, date and hash, checked by the lint |
 | `python scripts/trace_check.py <spec> --junit reports/junit.xml` | Every AC has an executed, passing test |
 | `python scripts/diff_scope.py docs/specs/<id>` | Forbidden zones, locked tests, level, dependencies, out-of-plan files |
@@ -137,9 +137,12 @@ They are a safety net, not a sandbox: the real defence is permissions, isolation
 | Symptom | What to do |
 |---|---|
 | `state.py` says `choose` (choose) | Several active specs: work on the branch whose name contains the spec, or use `--spec <id>` |
-| An approval "lapses" | The content changed after the approval (the hash no longer matches): get it re-approved and recompute the hash |
+| An approval "lapses" | The content changed after the approval (the hash no longer matches): select the approval again; `approve.py` rewrites the hash |
+| `state.py`: "design approved but not on main yet" (solo) | Let the agent move `main` forward: `git fetch . HEAD:main` |
+| `approve.py`: "APPROVAL: NOT RECORDED" | The document would not pass the lint (e.g. a blocking open question): fix what it lists and select the approval again |
 | `spec_lint.py`: "blocking open questions" | Answer them, or mark `blocking: no` the ones whose answer would not change a REQ or an AC the plan relies on |
-| `diff_scope.py`: "level underestimated" | The change is bigger than the declared level: raise the level in the spec and get it re-approved |
+| `diff_scope.py`: "level underestimated" | A sensitive area (needs L) or a dependency change (needs M) below the declared level: raise it in the spec and select the approval again |
+| `diff_scope.py`: "[WARN] level S with N production files" | Only a warning: keep S if the change is still small, otherwise raise the level |
 | `diff_scope.py`: "dependencies changed without plan or ADR" | List the manifest in the approved plan or add an ADR in `docs/adr/` |
 | `diff_scope.py`: "tests approved: ... new Test-Lock commit after the approval" | The tests changed after your approval: read them again and approve the new `Test-Lock` commit |
 | `verify` red after the tests | It is the **red phase**, expected until the implementation task is done |
@@ -147,7 +150,8 @@ They are a safety net, not a sandbox: the real defence is permissions, isolation
 
 ## Recommended trial path
 
-1. **Toy greenfield:** one level-S feature, then one level-M feature, everything interactive.
+1. **Toy greenfield, solo profile:** one level-S feature, then one level-M feature, everything interactive (the
+   Langfuse stack tried with 0.17.0 is a good level-S benchmark).
 2. **Brownfield:** a real but non-critical repository, one mapped and characterized area, one level-M change.
 3. **The loop last**, in a container without network and with `settings.loop.json`.
 

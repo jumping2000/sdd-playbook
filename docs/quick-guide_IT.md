@@ -114,7 +114,7 @@ permessi d'esempio `skills/sdd-loop/references/settings.loop.json`.
 |---|---|
 | `python scripts/state.py` | Dove sono, qual è il prossimo passo |
 | `python scripts/verify.py` | Format, lint, tipi, test e segreti: il criterio di "fatto" |
-| `python scripts/spec_lint.py <spec> --plan <plan> --tasks <tasks> --base main` | Spec, piano e task validi e già approvati con il merge |
+| `python scripts/spec_lint.py <spec> --plan <plan> --tasks <tasks> --base main` | Spec, piano e task validi e già su `main` (team: PR di design unita; solo: fast-forward) |
 | `python scripts/approve.py spec <spec> --by "<nome>" --commit` | Registra l'approvazione che hai selezionato (anche `plan`, `tasks`, `tests`, `review`): nome, data e hash, controllati dal lint |
 | `python scripts/trace_check.py <spec> --junit reports/junit.xml` | Ogni AC ha un test eseguito e passato |
 | `python scripts/diff_scope.py docs/specs/<id>` | Zone vietate, test bloccati, livello, dipendenze, file fuori piano |
@@ -137,9 +137,12 @@ Sono una rete di sicurezza, non un sandbox: la difesa vera sono permessi, isolam
 | Sintomo | Cosa fare |
 |---|---|
 | `state.py` dice `choose` | Più spec attive: lavora sul branch che contiene il nome della spec, o usa `--spec <id>` |
-| Un'approvazione "decade" | Il contenuto è cambiato dopo l'ok (l'hash non corrisponde): fai riapprovare e ricalcola l'hash |
+| Un'approvazione "decade" | Il contenuto è cambiato dopo l'ok (l'hash non corrisponde): seleziona di nuovo l'approvazione; `approve.py` riscrive l'hash |
+| `state.py`: "design approved but not on main yet" (solo) | Lascia che l'agente faccia avanzare `main`: `git fetch . HEAD:main` |
+| `approve.py`: "APPROVAL: NOT RECORDED" | Il documento non passerebbe il lint (per esempio una domanda aperta bloccante): correggi ciò che elenca e seleziona di nuovo l'approvazione |
 | `spec_lint.py`: "blocking open questions" | Rispondi, oppure marca `blocking: no` quelle la cui risposta non cambierebbe un REQ o un AC su cui si basa il piano |
-| `diff_scope.py`: "level underestimated" | La modifica è più grande del livello dichiarato: alza il livello nella spec e fai riapprovare |
+| `diff_scope.py`: "level underestimated" | Un'area sensibile (serve L) o una modifica alle dipendenze (serve M) sotto il livello dichiarato: alzalo nella spec e seleziona di nuovo l'approvazione |
+| `diff_scope.py`: "[WARN] level S with N production files" | Solo un avviso: tieni S se la modifica resta piccola, altrimenti alza il livello |
 | `diff_scope.py`: "dependencies changed without plan or ADR" | Elenca il manifest nel piano approvato o aggiungi un ADR in `docs/adr/` |
 | `diff_scope.py`: "tests approved" | I test sono cambiati dopo la tua approvazione: rileggili e approva il nuovo commit `Test-Lock` |
 | `verify` rosso dopo i test | È la **fase rossa**, attesa finché la task di implementazione non è fatta |
@@ -147,7 +150,8 @@ Sono una rete di sicurezza, non un sandbox: la difesa vera sono permessi, isolam
 
 ## Percorso di prova consigliato
 
-1. **Greenfield giocattolo:** una feature di livello S, poi una di livello M, tutto in modalità interattiva.
+1. **Greenfield giocattolo, profilo solo:** una feature di livello S, poi una di livello M, tutto in modalità
+   interattiva (lo stack Langfuse provato con la 0.17.0 è un buon banco di prova per il livello S).
 2. **Brownfield:** un repository reale ma non critico, un'area mappata e caratterizzata, una modifica di livello M.
 3. **Il loop per ultimo**, in un container senza rete e con `settings.loop.json`.
 

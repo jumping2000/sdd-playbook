@@ -36,6 +36,11 @@ passaggi manuali, approvazioni a testo libero e git a mano. Il numero salta alla
 - **Test:** `approve.py` su repository temporanei, il caso Langfuse in `diff_scope`, la proporzione degli AC e un flusso
   solo end-to-end (spec approvata e committata, `state.py` chiede il fast-forward, `spec_lint --base main` passa,
   `diff_scope` accetta il livello S con un avviso).
+- **Revisione della documentazione:** le sorgenti del playbook sono passate in `tools/playbook-src/`, così `docs/`
+  contiene un solo playbook per lingua (quello generato); corrette le formulazioni precedenti alla 0.20.0 rimaste
+  (playbook §1.2, §3.3, §4 e §11, riferimento delle skill, guida rapida, script, macchina a stati ed elenco di coerenza
+  dell'architettura, stato della REVIEW); `sdd-implement`, `sdd-tasks`, `sdd-sync` e `sdd-loop` allineate ai profili e
+  ad `approve.py`.
 
 ## 0.17.0
 Diagrammi Mermaid, nella documentazione del plugin e in quella delle applicazioni costruite con esso.

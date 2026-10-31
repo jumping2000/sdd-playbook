@@ -10,7 +10,7 @@ Playbook §4 (phase 6) and §6. Work only on numbered `T-nn` tasks: `T-DOC` and 
 ## Preconditions
 
 - Spec approved, plan approved (there is none at level S), `tasks.md` valid, and spec and plan **already merged into
-  `main`** with the design PR (`python scripts/spec_lint.py <spec> --plan <plan> --tasks <tasks> --base main`: no
+  `main`** (design PR in the team profile, fast-forward in the solo profile: `python scripts/spec_lint.py <spec> --plan <plan> --tasks <tasks> --base main`: no
   errors). If `--base` fails, the approval is not there yet: stop. In the solo profile the design gate moved `main`
   forward (`git fetch . HEAD:main`), so `--base main` passes the same way.
 - You are on a **feature branch**, not on `main`/`master`/a protected branch. In the solo profile create
@@ -70,8 +70,9 @@ Playbook §4 (phase 6) and §6. Work only on numbered `T-nn` tasks: `T-DOC` and 
   the answer goes into the spec with a revision before the task.
 - A new or different dependency the plan does not list is needed: stop and ask (an ADR or an updated plan is needed;
   `diff_scope.py` reports a changed manifest without either as an error).
-- The change exceeds the spec level (more than 3 production files at S, a sensitive area of `AGENTS.md` below L, a
-  dependency at S): stop and ask; `diff_scope.py` would report it as an error.
+- The change breaks the level's hard criteria (a sensitive area of `AGENTS.md` below L, a dependency at S): stop and
+  ask; `diff_scope.py` would report it as an error. At level S, noticeably more files than the spec foresaw: stop and
+  offer the options `Continue at S`, `Raise the level` (new spec approval), `Stop here`.
 - Never declare a task or the feature completed without having run `verify` and shown the result.
 
 ## End

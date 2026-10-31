@@ -44,8 +44,10 @@ Playbook §3.5 and §4 (phase 4).
      run after the review.
    - If the spec is small, few tasks: do not inflate the plan.
 3. **Check** with `python scripts/spec_lint.py <spec> --tasks <tasks>`: it must pass.
-4. After the user's go-ahead, spec, plan and tasks go into the **design PR** (playbook §1.2): commit them on a dedicated
-   branch. If the agent has no push rights, the user pushes it; in any case only the user merges it.
+4. After the user's go-ahead, spec, plan and tasks reach `main` by profile (playbook §1.2): **solo**, you commit them on
+   the feature branch and move `main` forward with `git fetch . HEAD:main`; **team**, they go into the **design PR** on a
+   dedicated branch (if the agent has no push rights, the user pushes it) and you offer `Open the PR`, `Merge now, I
+   approve as <name>` (only if your identity may merge) or `I will merge it myself`.
 
 ## STOP
 

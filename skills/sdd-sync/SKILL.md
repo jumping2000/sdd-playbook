@@ -17,9 +17,10 @@ Playbook §3.7 and §4 (phase 9). A spec not reconciled with the code stops bein
 
 1. **Read** the spec, the final code and, if it exists, `docs/system/<area>.md`.
 2. **Compare the spec with the real behaviour.** Every gap is either a code defect (new bug: `sdd-bugfix`) or a
-   requirement change (update the spec **with the user's approval**, then update `Approved by / date` and `- Hash:`
-   with `python scripts/spec_lint.py <spec> --hash`; the change ends up in the implementation PR and whoever merges it
-   approves it). Never erase a discrepancy silently.
+   requirement change (update the spec with a revision and ask for the approval as a gate with options; after the
+   user selects it, `python scripts/approve.py spec <spec> --by "<name>" --commit` records name, date and hash; in the
+   team profile the change also ends up in the implementation PR and whoever merges it approves it). Never erase a
+   discrepancy silently.
 3. **Area page** (optional at level S): create or update `docs/system/<area>.md` from `references/area-template.md`:
    current behaviour (only what is true in the code), the five Mermaid diagrams **redrawn from the final code** (the
    plan's diagrams are the design, the area page shows what was built; guide: search for

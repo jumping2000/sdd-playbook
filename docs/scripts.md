@@ -82,11 +82,12 @@ python scripts/spec_lint.py <file.md> --hash
 ```
 
 **Approval.** `--hash` prints the hash of the file body (from the first `## ` section on, line endings and trailing
-spaces normalized, plus the level if the spec declares one: lowering it after approval voids the approval), to write in
-`- Hash:` after approval. An `approved`/`implemented` spec without a hash, or with a hash that no longer matches the
+spaces normalized, plus the level if the spec declares one: lowering it after approval voids the approval), the value
+of `- Hash:`; after a selected approval `approve.py` writes it, so nobody copies it by hand. An `approved`/`implemented` spec without a hash, or with a hash that no longer matches the
 content, is an error. An approved plan must have a valid `- Hash:` and `- Based on spec:` equal to the current hash of
 the spec: if the spec changes, the plan lapses. With `--base <ref>` spec and plan must exist on `<ref>` and be identical
-to the working copy: merging the design PR into a protected branch is the approval the agent cannot give itself
+to the working copy: in the team profile merging the design PR into a protected branch is the approval the agent
+cannot give itself; in the solo profile `main` holds the design after the fast-forward that follows the selected gate
 (playbook §1.2).
 
 | Mode | Errors detected |

@@ -231,7 +231,8 @@ class TestPlaybook(unittest.TestCase):
         for p in [*(ROOT / "skills").rglob("*"), *(ROOT / "agents").rglob("*"), *(ROOT / "hooks").rglob("*"),
                   *(ROOT / "tools").rglob("*"), *(ROOT / "tests").rglob("*.py"), ROOT / "plugin.json",
                   *(ROOT / ".claude-plugin").glob("*.json"), ROOT / ".codex-plugin" / "plugin.json"]:
-            if p.is_file() and "__pycache__" not in p.parts and p.name != "test_consistency.py":
+            if (p.is_file() and "__pycache__" not in p.parts and p.name != "test_consistency.py"
+                    and not p.name.endswith("_IT.src.md")):  # the Italian playbook source is documentation
                 m = italian.search(p.read_text(encoding="utf-8"))
                 self.assertIsNone(m, f"{p.relative_to(ROOT)}: Italian text '{m and m.group(0)}'")
 

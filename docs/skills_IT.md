@@ -28,21 +28,21 @@ Skill e template sono in inglese, come ogni parte del plugin.
 spec (playbook §2.1) lo accorcia o lo rafforza: S salta `sdd-plan` e `review.md`, L aggiunge ADR e revisione umana
 del diff.
 
-| Skill | Playbook | Produce | Controllo | Gate umano |
+| Skill | Playbook | Produce | Controllo | Gate umano (opzioni) |
 |---|---|---|---|---|
 | `sdd-next` | tutto | niente (sola lettura) | `state.py` | — |
-| `sdd-init` | §1 | scripts, `AGENTS.md`, `docs/`, task VS Code, CI | `verify.py` | principi e stack |
+| `sdd-init` | §1 | scripts, `AGENTS.md` (con profilo e approvatori), `docs/`, task VS Code, CI (team) | `verify.py` | principi e stack |
 | `sdd-map-codebase` | §5 | `docs/system/map.md` | `scan_repo.py`, `verify.py` | mappa a campione |
 | `sdd-characterize` | §5 | test di caratterizzazione, pagina d'area | `verify.py` + prova di fallimento | spot check |
-| `sdd-spec` | §3.3 | `spec.md` | `spec_lint.py` | approvazione della spec |
-| `sdd-plan` | §3.4 | `plan.md` | `spec_lint.py --plan` | approvazione del piano |
-| `sdd-tasks` | §3.5 | `tasks.md` | `spec_lint.py --tasks` | controllo rapido |
-| `sdd-tests-from-ac` | §6 | test rossi dagli AC | `trace_check.py` | approvazione dei test bloccati (M, L) |
-| `sdd-implement` | §4 fase 6 | codice e commit | `verify.py` | review PR |
+| `sdd-spec` | §3.3 | `spec.md` | `spec_lint.py`, `approve.py` | approvazione della spec e livello |
+| `sdd-plan` | §3.4 | `plan.md` | `spec_lint.py --plan`, `approve.py` | approvazione del piano |
+| `sdd-tasks` | §3.5 | `tasks.md` | `spec_lint.py --tasks`, `approve.py` | controllo rapido; design su `main` |
+| `sdd-tests-from-ac` | §6 | test rossi dagli AC | `trace_check.py`, `approve.py` | approvazione dei test bloccati (M, L) |
+| `sdd-implement` | §4 fase 6 | codice e commit | `verify.py` | task successiva (opzioni); review della PR nel profilo team |
 | `sdd-bugfix` | §6.1 | `docs/bugs/BUG-nnn.md`, test, fix | `bug_lint.py`, `verify.py` | atteso e "da NON cambiare" |
-| `sdd-review-diff` | §4 fase 7 | `review.md` | `diff_scope.py`, `trace_check.py`, `secrets_check.py` | decisione sulla review |
+| `sdd-review-diff` | §4 fase 7 | `review.md` | `diff_scope.py`, `trace_check.py`, `secrets_check.py`, `approve.py` | decisione sulla review |
 | `sdd-docs` | §6 | documentazione aggiornata | `docs_check.py` | review |
-| `sdd-sync` | §4 fase 9 | pagina d'area, spec `implemented` | `sync_check.py` | review, poi PR |
+| `sdd-sync` | §4 fase 9 | pagina d'area, spec `implemented` | `sync_check.py` | review; poi fast-forward (solo) o PR (team) |
 | `sdd-loop` | §7 | `PROMPT.md`, `progress.md`, comando | `loop.py --dry-run` | permessi, tetto, avvio |
 
 ---
@@ -111,12 +111,15 @@ del diff.
   (flowchart, sequenza, stato, classi, ER; `- n/a: <motivo>` quando uno non si applica, mai il flowchart; guida in
   `references/diagrams.md`), rischi, rilascio e rollback; autoverifica contro la
   spec (copertura, nomi, proporzione); `spec_lint.py --plan` deve passare. Segnala i candidati ADR senza crearli.
+- **Approvazione:** un gate a opzioni; `approve.py plan --commit` registra quella selezionata.
 
 ### sdd-tasks
 
 - **Precondizione:** spec e piano approvati (livello S: solo la spec).
 - **Cosa fa:** `tasks.md` con una riga per task nel formato descritto al §3.5 del playbook (azione, `verify:`, `covers:`), test prima del codice, ogni AC
   coperto (gli AC nominati da una domanda aperta non bloccante in task proprie, in fondo), `T-SYNC` sempre presente e `T-DOC` salvo nel livello S; `spec_lint.py --tasks` deve passare.
+- **Gate:** un controllo rapido a opzioni; `approve.py tasks --commit` registra `Based on plan`; poi il design arriva su
+  `main` (solo: fast-forward fatto dall'agente; team: PR di design, che l'agente può aprire o unire se l'utente lo seleziona).
 
 ### sdd-tests-from-ac
 
@@ -129,7 +132,7 @@ del diff.
 - **Regola:** i test rossi si committano da soli, con il trailer `Test-Lock: T-nn` (lo scheletro, se c'è, in un commit
   precedente). `diff_scope.py` segnala ogni modifica successiva a quei test. La CI del branch resta rossa fino alla task
   di implementazione: è la "fase rossa", che l'hook `Stop` e `loop.py` riconoscono. Nei livelli M e L l'utente rilegge i
-  test bloccati e solo allora l'agente scrive `tests approved: <name, date, sha>`; un nuovo commit `Test-Lock` per la stessa
+  test bloccati e seleziona l'approvazione; solo allora `approve.py tests` scrive `tests approved: <name, date, sha>`; un nuovo commit `Test-Lock` per la stessa
   task fa decadere l'approvazione.
 
 ### sdd-implement
@@ -172,8 +175,8 @@ del diff.
   branch di `review_package.py` e gli output; dopo le review per task si concentra su integrazione, non-scope e decisioni;
   in GitHub Copilot lo stesso agente come custom agent `.github/agents/sdd-reviewer.agent.md`; altrimenti sessione nuova con spec, piano, output degli script e diff); scrive `review.md` con esito, problemi con file e riga,
   tentativi di confutazione.
-- **Gate:** la **decisione è dell'utente** ("Decided by"; nel livello L anche "Human diff review", dopo che
-  l'utente ha riletto il diff); con `non-compliant` ogni problema `high`/`medium` diventa una
+- **Gate:** la **decisione è dell'utente**, selezionata tra opzioni e scritta da `approve.py review`
+  ("Decided by"; nel livello L anche "Human diff review" con `--diff-read`, dopo che l'utente ha riletto il diff); con `non-compliant` ogni problema `high`/`medium` diventa una
   task `T-Rnn` in `tasks.md`, eseguita da `sdd-implement` o dal loop; chiuse le `T-R`, la review si ripete.
 - **Non fa:** non modifica codice.
 

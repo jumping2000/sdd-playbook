@@ -36,6 +36,10 @@ manual steps, free-text approvals and git by hand. The number jumps to 0.20.0 to
 - **Tests:** `approve.py` on temporary repositories, the Langfuse case in `diff_scope`, AC proportion, and an end-to-end
   solo flow (spec approved and committed, `state.py` asks for the fast-forward, `spec_lint --base main` passes,
   `diff_scope` accepts level S with a warning).
+- **Documentation pass:** the playbook sources moved to `tools/playbook-src/`, so `docs/` holds one playbook per
+  language (the generated one); remaining pre-0.20.0 wording fixed (playbook §1.2, §3.3, §4 and §11, skill reference,
+  quick guide, scripts, architecture state machine and coherence list, REVIEW status); `sdd-implement`, `sdd-tasks`,
+  `sdd-sync` and `sdd-loop` aligned with the profiles and `approve.py`.
 
 ## 0.17.0
 Mermaid diagrams, in the plugin's documentation and in the documentation of the applications built with it.
