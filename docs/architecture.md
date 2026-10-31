@@ -2,7 +2,7 @@
 
 *Versione italiana: [architecture_IT.md](architecture_IT.md)*
 
-Design document **as built** (version 0.16.0): choices, structure, contracts between files and limits.
+Design document **as built** (version 0.17.0): choices, structure, contracts between files and limits.
 
 ## Goal and success criterion
 
@@ -31,6 +31,7 @@ The plugin is done well if:
 | Effectful skills | `sdd-loop` prepares but does not launch; commits only when authorized, never on `main` | Limit the damage of an autonomous agent |
 | Agent-specific parts | Claude Code: subagent `sdd-reviewer` (read-only tools) and opt-in hooks. GitHub Copilot: the same reviewer as a custom agent (`*.agent.md`, tools `read` and `search`), skills copied into `.github/skills/` by `sdd-init` for the cloud agent and the IDEs. Codex: none (review in a new session) | The skills stay the same; only the orchestration changes |
 | Documentation coherence | The playbook is **generated** from the plugin files (`tools/build_playbook.py`), in English and Italian; tests check cross-references in both languages | Scripts, templates and documentation cannot silently diverge |
+| Diagrams | **Mermaid** blocks in Markdown: in the plugin's documentation and, through templates and checks, in the documentation of the applications it builds (plan, area pages, map: flowchart, sequence, state, class, ER, each drawn or `n/a` with a reason) | Rendered by GitHub and GitLab with no tool to install, reviewed as text in the diff; a script can check that they exist and have the right type, not that they are true: that is the reviewer's job |
 | Language | Documentation, changelog and review in English and Italian (`_IT` suffix); the plugin (skills, templates, scripts, hooks, agent, tests) entirely in English | One language for the file contracts (field names read by the scripts), independent of the language of the docs |
 
 ## Repository structure
@@ -46,7 +47,7 @@ sdd-playbook/
 │   ├── sdd-map-codebase/ SKILL.md, references/map-template.md
 │   ├── sdd-characterize/ SKILL.md
 │   ├── sdd-spec/         SKILL.md, references/spec-template.md
-│   ├── sdd-plan/         SKILL.md, references/plan-template.md
+│   ├── sdd-plan/         SKILL.md, references/plan-template.md, diagrams.md
 │   ├── sdd-tasks/        SKILL.md, references/tasks-template.md
 │   ├── sdd-tests-from-ac/ SKILL.md, references/test-conventions.md
 │   ├── sdd-implement/    SKILL.md
@@ -68,6 +69,65 @@ sdd-playbook/
 A skill reads its own files with paths relative to its folder and finds the files of another skill by search
 (`**/sdd-sync/references/area-template.md`), never with `../`: a host may install skills one by one or add a prefix to
 the folder name. The coherence tests reject `../` in skill files and check every cited path.
+
+How the scripts depend on each other (modules drawn as classes, with their main functions): `spec_lint` holds the
+parsing shared by the others; `loop` and the `Stop` hook run the checks as separate processes.
+
+```mermaid
+classDiagram
+    direction LR
+    class spec_lint {
+        +lint_spec()
+        +lint_plan()
+        +lint_tasks()
+        +diagram_problems()
+        +fingerprint()
+    }
+    class trace_check {
+        +analyze()
+    }
+    class diff_scope {
+        +base_ref()
+        +merge_base()
+    }
+    class state {
+        +next_step()
+    }
+    class sync_check {
+        +check()
+    }
+    class docs_check {
+        +diagram_errors()
+        +run_examples()
+    }
+    class review_package {
+        +context()
+        +task_commits()
+    }
+    class loop {
+        +final_checks()
+    }
+    class verify {
+        +STEPS
+    }
+    class secrets_check
+    class stop_verify
+    trace_check ..> spec_lint : imports
+    diff_scope ..> spec_lint : imports
+    state ..> spec_lint : imports
+    sync_check ..> spec_lint : imports
+    sync_check ..> trace_check : imports
+    docs_check ..> spec_lint : imports
+    review_package ..> spec_lint : imports
+    review_package ..> diff_scope : imports
+    loop ..> spec_lint : imports
+    loop --> verify : runs
+    loop --> trace_check : runs
+    loop --> diff_scope : runs
+    loop --> secrets_check : runs
+    verify --> secrets_check : step
+    stop_verify --> verify : runs
+```
 
 ## State machine (`state.py`)
 
@@ -112,7 +172,7 @@ changes, the script that reads it must change too (the tests check this).
 | File | Fields and structures read | Script |
 |---|---|---|
 | `spec.md` | title `# SPEC-<id>: ...` (date + slug equal to the folder, or a number); `- Level:` (`S`, `M`, `L`; M if missing; read from the header only; part of the hash); `- Status:` (`draft`, `approved`, `in-revision`, `implemented`, `superseded`); section `## Revisions` (mandatory with an entry if `in-revision`); `- Approved by / date:`; `- Hash: sha256:...` of the body (from the first `## ` section); sections `## Problem and goal`, `Scope`, `Requirements`, `Acceptance criteria`, `Open questions`; line `**Non-scope (explicit):**`; line `**Anti-goals:**` (warning if missing); `- REQ-nnn`; `- AC-nnn [REQ-nnn]`; marker `[ASSUMPTION]`; open questions `- <question> — blocking: yes|no — about: REQ-nnn, AC-nnn` | `spec_lint`, `state`, `trace_check`, `sync_check`, `diff_scope` |
-| `plan.md` | `- Approved by / date:`; `- Based on spec:` (hash of the spec); `- Hash:` of the body; section `## Components and files to create/modify` with lines `- path: ...` (path = first word or text in backticks); section `## Test strategy ...` with the exact AC IDs and, if present, the `Where` column; section `## Review focus` (table with a `Where` column, or `- none`) | `spec_lint`, `state`, `diff_scope` |
+| `plan.md` | `- Approved by / date:`; `- Based on spec:` (hash of the spec); `- Hash:` of the body; section `## Components and files to create/modify` with lines `- path: ...` (path = first word or text in backticks); section `## Test strategy ...` with the exact AC IDs and, if present, the `Where` column; section `## Review focus` (table with a `Where` column, or `- none`); section `## Diagrams` with `### Flowchart`, `### Sequence diagram`, `### State diagram`, `### Class diagram`, `### ER diagram`, each a ```` ```mermaid ```` block whose first keyword is the type, or `- n/a: <reason>` (never the flowchart) | `spec_lint`, `state`, `diff_scope`, `review_package` |
 | `tasks.md` | `- Based on plan:` (hash of the plan); lines `- [ ] T-nn ...` with the fields `verify:` (command in backticks) and `covers:` (AC IDs), without placeholders; lines `- [ ] T-Rnn ...` from review problems (`verify:`, `covers:` optional); `T-DOC`, `T-SYNC`; `— tests approved: <name, yyyy-mm-dd, sha>` on closed test tasks (levels M and L; sha = approved `Test-Lock` commit); the marker `expected: red` (case-insensitive) on test tasks defines the **red phase** (last closed `T-nn` task with the marker, next one open) | `spec_lint`, `state`, `loop`, `sync_check`, `diff_scope`, `Stop` hook |
 | git commits | trailer `Test-Lock: T-nn` on the commit of the red tests: locks its test files and anchors the approval; trailer `Task: T-nn` on the implementation commits | `diff_scope`, `review_package` |
 | test files | `# SPEC-<id>` in the file plus `AC-nnn`, or citations `SPEC-<id>/AC-nnn` (in function names `SPEC_<id with _>_AC_nnn`); `TODO`/`FIXME`/`XXX` lines ignored | `trace_check`, `sync_check` |
@@ -120,8 +180,8 @@ changes, the script that reads it must change too (the tests check this).
 | JUnit XML report (`reports/junit.xml`) | `testcase` with `name`, `classname`, `file` and children `failure`, `error`, `skipped` | `trace_check --junit`, `sync_check --junit`, `loop --junit` |
 | `review.md` | `- Outcome:` (`compliant`, `compliant with reservations`, `non-compliant`); `- Decided by:`; `- Human diff review:` (level L) | `state`, `sync_check` |
 | `docs/bugs/BUG-*.md` | `- Status:` (`open`, `diagnosed`, `fixed`, `verified`); sections of `bugfix-template.md`; tickable items in `## Closure` | `bug_lint`, `state` |
-| `docs/system/<area>.md` | `- Last aligned:`; `- Linked specs:`; sections `## Current behaviour`, `Constraints and delicate points`, `Characterization tests` | `sync_check` |
-| `docs/system/map.md` | presence only | `state` |
+| `docs/system/<area>.md` | `- Last aligned:`; `- Linked specs:`; sections `## Current behaviour`, `Constraints and delicate points`, `Characterization tests`; section `## Diagrams` as in `plan.md` | `sync_check`, `docs_check` |
+| `docs/system/map.md` | presence; section `## Diagrams` as in `plan.md` | `state`, `docs_check` |
 | `AGENTS.md` | lines `- Do not modify: a, b` and `- Sensitive areas: a, b` (require level L), paths in backticks or first word; read from the merge-base. Section `## Decision rights` with `### Decides alone`, `### Asks first`, `### Never` (read by the agents, not by the scripts) | `diff_scope`; `sdd-implement`, loop, `sdd-reviewer` |
 | `docs/glossary.md` (optional) | table with the columns `Term` and `Avoid` (synonyms, comma-separated) | `spec_lint` |
 | `PROMPT.md`, `progress.md` | `PROMPT.md` read in full and passed on stdin; `progress.md`: `- Task review: on` (level M), `## Task reviews` with `- T-nn: pass` per closed task (level L, or M when on), `## Rulings` and `## Disputed review findings` read by the reviewer | `loop`, `state`, `sync_check`, `review_package`, `sdd-reviewer` |
@@ -131,6 +191,49 @@ changes, the script that reads it must change too (the tests check this).
 | `.secrets-ignore` | one glob per line, `#` for comments | `secrets_check` |
 
 A field with a `<...>` placeholder or empty counts as **not filled in**.
+
+The traceability model these contracts build, from the spec to the commits:
+
+```mermaid
+erDiagram
+    SPEC ||--|{ REQ : defines
+    REQ ||--|{ AC : "verified by"
+    SPEC ||--o{ OPEN_QUESTION : lists
+    OPEN_QUESTION }o--o{ AC : about
+    SPEC ||--o| PLAN : "Based on spec"
+    SPEC ||--|| TASKS : "tasks.md"
+    PLAN ||--o| TASKS : "Based on plan"
+    TASKS ||--|{ TASK : lists
+    TASK }o--|{ AC : covers
+    TASK ||--o{ COMMIT : "Task / Test-Lock"
+    TEST }o--|{ AC : cites
+    SPEC ||--o| REVIEW : "review.md"
+    AREA_PAGE }o--o{ SPEC : "Linked specs"
+    SPEC {
+        string id PK
+        string level
+        string status
+        string hash
+    }
+    AC {
+        string id PK
+        string reqs
+    }
+    TASK {
+        string id PK
+        string verify
+        string covers
+        string tests_approved
+    }
+    COMMIT {
+        string sha PK
+        string trailer
+    }
+    REVIEW {
+        string outcome
+        string decided_by
+    }
+```
 
 ## Differences between Claude Code, Codex and GitHub Copilot
 
@@ -218,7 +321,8 @@ A field with a `<...>` placeholder or empty counts as **not filled in**.
   carries it on line 2, and the license is MIT;
 - the reviewer (Claude Code and Copilot) has no write tools, the loop example permissions deny push and writes to the checks, and the CI actions do
   not use versions on Node 20;
-- the relative links of the documentation are valid (`docs_check.py`).
+- the relative links of the documentation are valid and its Mermaid blocks have a known type (`docs_check.py`); the
+  plan, area and map templates have the five diagram subsections and the diagram guide names them all.
 
 ## Possible evolutions
 

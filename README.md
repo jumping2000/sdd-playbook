@@ -1,6 +1,6 @@
-# SDD Playbook (version 0.16.0)
+# SDD Playbook (version 0.17.0)
 
-[![Version](https://img.shields.io/badge/version-0.16.0-blue)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.17.0-blue)](CHANGELOG.md)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![CI](https://github.com/jumping2000/sdd-playbook/actions/workflows/ci.yml/badge.svg)](https://github.com/jumping2000/sdd-playbook/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/python-3.8%2B-3776AB?logo=python&logoColor=white)](docs/scripts.md)
@@ -89,11 +89,26 @@ the agent's permissions (it provides an example), cover release, infrastructure 
 
 ## Flow
 
+```mermaid
+flowchart TD
+    init[sdd-init] --> code{existing code?}
+    code -- yes --> map[sdd-map-codebase] --> char[sdd-characterize] --> spec
+    code -- no --> spec[sdd-spec]
+    spec --> g1{{you approve the spec}} --> lvl{level}
+    lvl -- S --> tasks[sdd-tasks]
+    lvl -- M or L --> plan[sdd-plan] --> g2{{you approve the plan}} --> tasks
+    tasks --> tests[sdd-tests-from-ac] --> g3{{you approve the locked tests}}
+    g3 --> impl[sdd-implement or sdd-loop]
+    impl --> lvl2{level}
+    lvl2 -- S --> docs
+    lvl2 -- M or L --> review[sdd-review-diff] --> g4{{you decide on the review}} --> docs[sdd-docs]
+    docs --> sync[sdd-sync] --> pr([PR: merge into main])
+    bug[sdd-bugfix] -. defects, alongside the flow .-> impl
 ```
-sdd-init → [sdd-map-codebase → sdd-characterize]* → sdd-spec → sdd-plan → sdd-tasks
-          → sdd-implement (or sdd-loop) → sdd-review-diff → sdd-docs → sdd-sync → PR
-sdd-bugfix: for defects, alongside the flow.   sdd-next: at any time.   * brownfield only
-```
+
+`sdd-next` tells the next step at any time. More diagrams: spec states and gates in sequence in the
+[playbook](docs/playbook-ai-software-lifecycle.md) (§3.3, §4), scripts and traceability model in the
+[architecture](docs/architecture.md).
 
 The process is proportional to risk: the spec declares a **level** S, M or L (playbook §2.1). S skips plan and
 `review.md`; L adds an ADR and the human reading of the diff; `diff_scope.py` reports a diff that exceeds the declared
@@ -145,7 +160,7 @@ templates, scripts, hooks, agent, tests) is entirely in English; the field names
 
 - The same from a terminal: `claude plugin marketplace add jumping2000/sdd-playbook`, then
   `claude plugin install sdd-playbook@sdd-playbook-marketplace`; `claude plugin list` shows the installed version.
-- **A fixed version:** add the marketplace with a git ref, `jumping2000/sdd-playbook#v0.16.0` (every release has a tag
+- **A fixed version:** add the marketplace with a git ref, `jumping2000/sdd-playbook#v0.17.0` (every release has a tag
   `vX.Y.Z`). Without a ref the marketplace follows `main`; `/plugin marketplace update` fetches the latest.
 - Local trial of a checkout: `claude --plugin-dir <path>/sdd-playbook`.
 - Skills are invoked with the plugin prefix; hooks and subagent load with the plugin.
@@ -203,7 +218,7 @@ the one from Git for Windows). In the red phase (last closed task "expected: red
 | What | Result |
 |---|---|
 | Test suite | Passes on Linux (includes loop with fake agent, hooks and `run.sh` launcher, scripts on temporary git repositories). On Windows 11 verified up to 0.8.0; from 0.9.0 only the `windows-latest` CI matrix covers it, and its result must be checked |
-| `claude plugin validate .` | Passed on 0.16.0 (Claude Code 2.1.312); only warning: no icon, needed just for the official plugin directory |
+| `claude plugin validate .` | Passed on 0.17.0 (Claude Code 2.1.312); only warning: no icon, needed just for the official plugin directory |
 | Installation from the GitHub marketplace (Claude Code) | **Done** on 0.16.0: marketplace added from `jumping2000/sdd-playbook`, plugin installed and enabled; a git ref after `#` pins the version (tried with a branch) |
 | Codex manifest | **Not validated** with a Codex tool |
 | GitHub Copilot (`plugin.json`, `.github/skills/`, custom agent) | **Not tried**: built from the public documentation and examples (the GitHub docs site was not reachable from the build environment) |

@@ -4,6 +4,26 @@
 
 Entries before 0.13.0 use the names of their time (`sdlc-*`, `SDLC_*`, Italian field names).
 
+## 0.17.0
+Mermaid diagrams, in the plugin's documentation and in the documentation of the applications built with it.
+- **Diagrams in the applications:** `plan.md`, the area pages (`docs/system/<area>.md`) and the codebase map get a
+  `## Diagrams` section with five subsections: flowchart, sequence, state, class and ER diagram. Each holds a
+  ```` ```mermaid ```` block of its type or `- n/a: <reason>`; the flowchart always applies. The plan draws the change as
+  designed, the area page the area as built (redrawn from the code at `sdd-sync`), the map the existing system. New
+  guide `sdd-plan/references/diagrams.md` (when each diagram applies, examples, syntax traps).
+- **Checks:** `spec_lint.py --plan` (missing section or subsection: error; unfilled, wrong type, empty block or `n/a`
+  flowchart: warning before approval, error after), `sync_check.py` on the area page of the feature, `docs_check.py` on
+  every page of `docs/system/` and on every Mermaid block of the documentation (known diagram type, non-empty). The full
+  syntax is left to the renderer's preview.
+- **Skills and reviewer:** `sdd-plan`, `sdd-sync`, `sdd-map-codebase` and `sdd-docs` draw and check the diagrams;
+  `review_package.py` adds the plan's diagrams to the package; the reviewer (Claude Code and Copilot) reports diagrams that
+  disagree with the code.
+- **Fix:** `docs_check.py` closed a code block on any fence of three backticks, also inside a ```` ```` ```` block; a
+  fence now closes only on the same character, at least as long.
+- **Plugin documentation:** README flowchart of the cycle; playbook state diagram of the spec (§3.3) and sequence of
+  the human gates (§4); architecture class diagram of the scripts and ER diagram of the traceability model; all checked
+  with the Mermaid renderer. Playbook, scripts, skills and architecture describe the new rules, in both languages.
+
 ## 0.16.0
 Ideas from the AI Unified Process marketplace (S2, S3, S4, S5, S8 of the comparative analysis), adapted to SDD Playbook.
 - **Portable skills (S2):** no skill reads another skill's files through `../`; it finds them by search

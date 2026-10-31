@@ -2,7 +2,7 @@
 
 *English version: [architecture.md](architecture.md)*
 
-Documento di progetto **come costruito** (versione 0.16.0): scelte, struttura, contratti tra i file e limiti.
+Documento di progetto **come costruito** (versione 0.17.0): scelte, struttura, contratti tra i file e limiti.
 
 ## Obiettivo e criterio di successo
 
@@ -31,6 +31,7 @@ Il plugin è fatto bene se:
 | Skill con effetti | `sdd-loop` prepara ma non lancia; i commit solo se autorizzati, mai su `main` | Limitare i danni di un agente autonomo |
 | Parti per singolo agente | Claude Code: subagent `sdd-reviewer` (solo strumenti di lettura) e hook opt-in. GitHub Copilot: lo stesso revisore come custom agent (`*.agent.md`, strumenti `read` e `search`), skill copiate in `.github/skills/` da `sdd-init` per il cloud agent e gli IDE. Codex: nessuna (review in sessione nuova) | Le skill restano uguali; cambia solo l'orchestrazione |
 | Coerenza documentale | Il playbook è **generato** dai file del plugin (`tools/build_playbook.py`), in inglese e in italiano; i test controllano i riferimenti incrociati in entrambe le lingue | Script, template e documentazione non possono divergere in silenzio |
+| Diagrammi | Blocchi **Mermaid** nel Markdown: nella documentazione del plugin e, attraverso template e controlli, in quella delle applicazioni che costruisce (piano, pagine d'area, mappa: flowchart, sequenza, stato, classi, ER, ognuno disegnato o `n/a` motivato) | GitHub e GitLab li rendono senza strumenti da installare, si rivedono come testo nel diff; uno script può controllare che esistano e abbiano il tipo giusto, non che siano veri: quello è compito del revisore |
 | Lingua | Documentazione, changelog e review in inglese e in italiano (suffisso `_IT`); il plugin (skill, template, script, hook, agente, test) interamente in inglese | Una sola lingua per i contratti sui file (nomi dei campi letti dagli script), indipendente dalla lingua della documentazione |
 
 ## Struttura del repository
@@ -46,7 +47,7 @@ sdd-playbook/
 │   ├── sdd-map-codebase/ SKILL.md, references/map-template.md
 │   ├── sdd-characterize/ SKILL.md
 │   ├── sdd-spec/         SKILL.md, references/spec-template.md
-│   ├── sdd-plan/         SKILL.md, references/plan-template.md
+│   ├── sdd-plan/         SKILL.md, references/plan-template.md, diagrams.md
 │   ├── sdd-tasks/        SKILL.md, references/tasks-template.md
 │   ├── sdd-tests-from-ac/ SKILL.md, references/test-conventions.md
 │   ├── sdd-implement/    SKILL.md
@@ -69,6 +70,65 @@ Una skill legge i propri file con percorsi relativi alla sua cartella e trova i 
 (`**/sdd-sync/references/area-template.md`), mai con `../`: un host può installare le skill una per una o aggiungere un
 prefisso al nome della cartella. I test di coerenza rifiutano `../` nei file delle skill e controllano ogni percorso
 citato.
+
+Come dipendono tra loro gli script (moduli disegnati come classi, con le funzioni principali): `spec_lint` contiene il
+parsing condiviso dagli altri; `loop` e l'hook `Stop` eseguono i controlli come processi separati.
+
+```mermaid
+classDiagram
+    direction LR
+    class spec_lint {
+        +lint_spec()
+        +lint_plan()
+        +lint_tasks()
+        +diagram_problems()
+        +fingerprint()
+    }
+    class trace_check {
+        +analyze()
+    }
+    class diff_scope {
+        +base_ref()
+        +merge_base()
+    }
+    class state {
+        +next_step()
+    }
+    class sync_check {
+        +check()
+    }
+    class docs_check {
+        +diagram_errors()
+        +run_examples()
+    }
+    class review_package {
+        +context()
+        +task_commits()
+    }
+    class loop {
+        +final_checks()
+    }
+    class verify {
+        +STEPS
+    }
+    class secrets_check
+    class stop_verify
+    trace_check ..> spec_lint : importa
+    diff_scope ..> spec_lint : importa
+    state ..> spec_lint : importa
+    sync_check ..> spec_lint : importa
+    sync_check ..> trace_check : importa
+    docs_check ..> spec_lint : importa
+    review_package ..> spec_lint : importa
+    review_package ..> diff_scope : importa
+    loop ..> spec_lint : importa
+    loop --> verify : esegue
+    loop --> trace_check : esegue
+    loop --> diff_scope : esegue
+    loop --> secrets_check : esegue
+    verify --> secrets_check : step
+    stop_verify --> verify : esegue
+```
 
 ## Macchina a stati (`state.py`)
 
@@ -113,7 +173,7 @@ Gli script leggono pochi campi con convenzioni fisse. I nomi dei campi sono in i
 | File | Campi e strutture lette | Script |
 |---|---|---|
 | `spec.md` | titolo `# SPEC-<id>: ...` (data + slug uguale alla cartella, o numero); `- Level:` (`S`, `M`, `L`; M se manca; letto solo dall'intestazione; entra nell'hash); `- Status:` (`draft`, `approved`, `in-revision`, `implemented`, `superseded`); sezione `## Revisions` (obbligatoria con voce se `in-revision`); `- Approved by / date:`; `- Hash: sha256:...` del corpo (dalla prima sezione `## `); sezioni `## Problem and goal`, `Scope`, `Requirements`, `Acceptance criteria`, `Open questions`; riga `**Non-scope (explicit):**`; riga `**Anti-goals:**` (avviso se manca); `- REQ-nnn`; `- AC-nnn [REQ-nnn]`; marcatore `[ASSUMPTION]`; domande aperte `- <domanda> — blocking: yes|no — about: REQ-nnn, AC-nnn` | `spec_lint`, `state`, `trace_check`, `sync_check`, `diff_scope` |
-| `plan.md` | `- Approved by / date:`; `- Based on spec:` (hash della spec); `- Hash:` del corpo; sezione `## Components and files to create/modify` con righe `- path: ...` (percorso = prima parola o testo tra backtick); sezione `## Test strategy ...` con gli ID AC esatti e, se c'è, la colonna `Where`; sezione `## Review focus` (tabella con colonna `Where`, oppure `- none`) | `spec_lint`, `state`, `diff_scope` |
+| `plan.md` | `- Approved by / date:`; `- Based on spec:` (hash della spec); `- Hash:` del corpo; sezione `## Components and files to create/modify` con righe `- path: ...` (percorso = prima parola o testo tra backtick); sezione `## Test strategy ...` con gli ID AC esatti e, se c'è, la colonna `Where`; sezione `## Review focus` (tabella con colonna `Where`, oppure `- none`); sezione `## Diagrams` con `### Flowchart`, `### Sequence diagram`, `### State diagram`, `### Class diagram`, `### ER diagram`, ognuna un blocco ```` ```mermaid ```` la cui prima parola chiave è il tipo, oppure `- n/a: <reason>` (mai il flowchart) | `spec_lint`, `state`, `diff_scope`, `review_package` |
 | `tasks.md` | `- Based on plan:` (hash del piano); righe `- [ ] T-nn ...` con i campi `verify:` (comando tra backtick) e `covers:` (ID degli AC), senza segnaposto; righe `- [ ] T-Rnn ...` dai problemi della review (`verify:`, `covers:` facoltativo); `T-DOC`, `T-SYNC`; `— tests approved: <name, yyyy-mm-dd, sha>` sulle task di test chiuse (livelli M e L; sha = commit `Test-Lock` approvato); la marcatura `expected: red` (senza distinzione di maiuscole) sulle task di test definisce la **fase rossa** (ultima task `T-nn` chiusa con la marcatura, successiva aperta) | `spec_lint`, `state`, `loop`, `sync_check`, `diff_scope`, hook `Stop` |
 | commit git | trailer `Test-Lock: T-nn` sul commit dei test rossi: blocca i suoi file di test e ancora l'approvazione; trailer `Task: T-nn` sui commit di implementazione | `diff_scope`, `review_package` |
 | file di test | `# SPEC-<id>` nel file più `AC-nnn`, oppure citazioni `SPEC-<id>/AC-nnn` (nei nomi di funzione `SPEC_<id con _>_AC_nnn`); righe `TODO`/`FIXME`/`XXX` ignorate | `trace_check`, `sync_check` |
@@ -121,8 +181,8 @@ Gli script leggono pochi campi con convenzioni fisse. I nomi dei campi sono in i
 | report JUnit XML (`reports/junit.xml`) | `testcase` con `name`, `classname`, `file` e figli `failure`, `error`, `skipped` | `trace_check --junit`, `sync_check --junit`, `loop --junit` |
 | `review.md` | `- Outcome:` (`compliant`, `compliant with reservations`, `non-compliant`); `- Decided by:`; `- Human diff review:` (livello L) | `state`, `sync_check` |
 | `docs/bugs/BUG-*.md` | `- Status:` (`open`, `diagnosed`, `fixed`, `verified`); sezioni di `bugfix-template.md`; voci spuntabili in `## Closure` | `bug_lint`, `state` |
-| `docs/system/<area>.md` | `- Last aligned:`; `- Linked specs:`; sezioni `## Current behaviour`, `Constraints and delicate points`, `Characterization tests` | `sync_check` |
-| `docs/system/map.md` | solo la presenza | `state` |
+| `docs/system/<area>.md` | `- Last aligned:`; `- Linked specs:`; sezioni `## Current behaviour`, `Constraints and delicate points`, `Characterization tests`; sezione `## Diagrams` come in `plan.md` | `sync_check`, `docs_check` |
+| `docs/system/map.md` | presenza; sezione `## Diagrams` come in `plan.md` | `state`, `docs_check` |
 | `AGENTS.md` | righe `- Do not modify: a, b` e `- Sensitive areas: a, b` (richiedono il livello L), percorsi tra backtick o prima parola; lette dal merge-base. Sezione `## Decision rights` con `### Decides alone`, `### Asks first`, `### Never` (letta dagli agenti, non dagli script) | `diff_scope`; `sdd-implement`, loop, `sdd-reviewer` |
 | `docs/glossary.md` (facoltativo) | tabella con le colonne `Term` e `Avoid` (sinonimi separati da virgola) | `spec_lint` |
 | `PROMPT.md`, `progress.md` | `PROMPT.md` letto per intero e passato da stdin; in `progress.md`: `- Task review: on` (livello M), `## Task reviews` con `- T-nn: pass` per ogni task chiusa (livello L, o M se attiva), `## Rulings` e `## Disputed review findings` lette dal revisore | `loop`, `state`, `sync_check`, `review_package`, `sdd-reviewer` |
@@ -132,6 +192,49 @@ Gli script leggono pochi campi con convenzioni fisse. I nomi dei campi sono in i
 | `.secrets-ignore` | un glob per riga, `#` per i commenti | `secrets_check` |
 
 Un campo con segnaposto `<...>` o vuoto vale come **non compilato**.
+
+Il modello di tracciabilità che questi contratti costruiscono, dalla spec ai commit:
+
+```mermaid
+erDiagram
+    SPEC ||--|{ REQ : definisce
+    REQ ||--|{ AC : "verificato da"
+    SPEC ||--o{ OPEN_QUESTION : elenca
+    OPEN_QUESTION }o--o{ AC : about
+    SPEC ||--o| PLAN : "Based on spec"
+    SPEC ||--|| TASKS : "tasks.md"
+    PLAN ||--o| TASKS : "Based on plan"
+    TASKS ||--|{ TASK : elenca
+    TASK }o--|{ AC : covers
+    TASK ||--o{ COMMIT : "Task / Test-Lock"
+    TEST }o--|{ AC : cita
+    SPEC ||--o| REVIEW : "review.md"
+    AREA_PAGE }o--o{ SPEC : "Linked specs"
+    SPEC {
+        string id PK
+        string level
+        string status
+        string hash
+    }
+    AC {
+        string id PK
+        string reqs
+    }
+    TASK {
+        string id PK
+        string verify
+        string covers
+        string tests_approved
+    }
+    COMMIT {
+        string sha PK
+        string trailer
+    }
+    REVIEW {
+        string outcome
+        string decided_by
+    }
+```
 
 ## Differenze tra Claude Code, Codex e GitHub Copilot
 
@@ -214,7 +317,8 @@ finto che spunta una task per esecuzione) e degli hook, i **test di coerenza** v
 - il revisore (Claude Code e Copilot) non abbia strumenti di scrittura, i permessi d'esempio del loop neghino il push e la scrittura dei controlli,
   e le action della CI non usino
   versioni su Node 20;
-- i link relativi della documentazione siano validi (`docs_check.py`).
+- i link relativi della documentazione siano validi e i suoi blocchi Mermaid abbiano un tipo noto (`docs_check.py`); i
+  template di piano, pagina d'area e mappa abbiano le cinque sottosezioni dei diagrammi e la guida ai diagrammi le citi tutte.
 
 ## Evoluzioni possibili
 

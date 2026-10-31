@@ -320,6 +320,28 @@ class TestDocsCheck(unittest.TestCase):
             self.assertEqual(cli(d, "docs_check", "README.md").returncode, 0)  # without --run-examples nothing runs
 
 
+    def test_mermaid_blocks_and_system_pages(self):
+        with TmpDir() as d:
+            copy_scripts(d)
+            outer = "````markdown\n```mermaid\nnot a diagram\n```\n[in code](broken.md)\n````\n"  # nested fences
+            write(d, "README.md", outer + "```mermaid\nsequenceDiagram\n    A->>B: hi\n```\n")
+            self.assertEqual(cli(d, "docs_check", "README.md").returncode, 0)
+            write(d, "README.md", "```mermaid\nflowchrt TD\n    A --> B\n```\n```mermaid\n%% only a comment\n```\n")
+            r = cli(d, "docs_check", "README.md")
+            self.assertEqual(r.returncode, 1)
+            self.assertIn("block #1: unknown diagram type 'flowchrt'", r.stdout)
+            self.assertIn("block #2: unknown diagram type 'empty'", r.stdout)
+            write(d, "README.md", "# ok\n")
+            write(d, "docs/system/export.md", AREA_OK)
+            self.assertEqual(cli(d, "docs_check").returncode, 0)
+            write(d, "docs/system/map.md", "# Codebase map\n")
+            r = cli(d, "docs_check")
+            self.assertEqual(r.returncode, 1)
+            self.assertIn("docs/system/map.md: Section '## Diagrams' missing", r.stdout)
+            write(d, "docs/other.md", "# no diagrams needed outside docs/system\n")
+            self.assertEqual(cli(d, "docs_check", "docs/other.md").returncode, 0)
+
+
 class TestSyncCheck(unittest.TestCase):
     def prepare(self, d):
         copy_scripts(d)
@@ -352,6 +374,8 @@ class TestSyncCheck(unittest.TestCase):
             "missing section '## Constraints and delicate points'": lambda d: write(
                 d, "docs/system/export.md", AREA_OK.replace("## Constraints and delicate points", "## Other")),
             "ACs without tests: AC-002": lambda d: write(d, "tests/test_export.py", "def test_AC_001(): pass\n"),
+            "subsection '### ER diagram' missing": lambda d: write(d, "docs/system/export.md", AREA_OK.replace(
+                "### ER diagram", "### Other")),
         }
         for expected, breaker in cases.items():
             with self.subTest(expected):

@@ -1,6 +1,6 @@
 ---
 name: sdd-docs
-description: Use this skill to carry out the T-DOC task: update README, API documentation and ADRs from the spec and the real code, running the examples you write and checking links with docs_check.py.
+description: Use this skill to carry out the T-DOC task: update README, API documentation and ADRs from the spec and the real code, running the examples you write and checking links and Mermaid diagrams with docs_check.py.
 ---
 
 # Documentation (T-DOC)
@@ -23,8 +23,11 @@ Playbook §6 and §4 (phase 8). The source is **the spec and the real code**, no
    - Python: mark the block with `# docs-check: run` as its first line and run
      `python scripts/docs_check.py --run-examples`.
    - Other languages: run them by hand and report the result of each.
-5. **Links:** `python scripts/docs_check.py` must pass (valid relative links and images).
-6. Tick `T-DOC` in `tasks.md`; commit with the trailers `Spec: SPEC-<id>` and `Agent: <name and version>`.
+5. **Diagrams:** where the README or the API docs explain a flow, an interaction or a data model, use a Mermaid
+   diagram taken from the area page in `docs/system/` (the as-built one), not from the plan.
+6. **Check:** `python scripts/docs_check.py` must pass (valid relative links and images, known Mermaid diagram types,
+   the diagram section of every page in `docs/system/`).
+7. Tick `T-DOC` in `tasks.md`; commit with the trailers `Spec: SPEC-<id>` and `Agent: <name and version>`.
 
 ## STOP
 

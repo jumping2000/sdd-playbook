@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# sdd-playbook: 0.16.0
+# sdd-playbook: 0.17.0
 """Single project verification: format, lint, type-check, tests, secrets.
 
 Exit code 0 = all green. Standard library only; runs the same on Windows, Linux, macOS.

@@ -4,6 +4,28 @@
 
 Le voci precedenti alla 0.13.0 usano i nomi del loro tempo (`sdlc-*`, `SDLC_*`, campi in italiano).
 
+## 0.17.0
+Diagrammi Mermaid, nella documentazione del plugin e in quella delle applicazioni costruite con esso.
+- **Diagrammi nelle applicazioni:** `plan.md`, le pagine d'area (`docs/system/<area>.md`) e la mappa della codebase
+  hanno una sezione `## Diagrams` con cinque sottosezioni: flowchart, diagramma di sequenza, di stato, delle classi ed
+  ER. Ognuna contiene un blocco ```` ```mermaid ```` del suo tipo oppure `- n/a: <motivo>`; il flowchart si applica
+  sempre. Il piano disegna la modifica come progettata, la pagina d'area l'area come costruita (ridisegnata dal codice in
+  `sdd-sync`), la mappa il sistema esistente. Nuova guida `sdd-plan/references/diagrams.md` (quando serve ogni
+  diagramma, esempi, trappole di sintassi).
+- **Controlli:** `spec_lint.py --plan` (sezione o sottosezione mancante: errore; non compilata, tipo sbagliato, blocco
+  vuoto o flowchart `n/a`: warning prima dell'approvazione, errore dopo), `sync_check.py` sulla pagina d'area della
+  feature, `docs_check.py` su ogni pagina di `docs/system/` e su ogni blocco Mermaid della documentazione (tipo di
+  diagramma noto, non vuoto). La sintassi completa è lasciata all'anteprima del renderer.
+- **Skill e revisore:** `sdd-plan`, `sdd-sync`, `sdd-map-codebase` e `sdd-docs` disegnano e controllano i diagrammi;
+  `review_package.py` aggiunge al pacchetto i diagrammi del piano; il revisore (Claude Code e Copilot) segnala i
+  diagrammi in disaccordo con il codice.
+- **Correzione:** `docs_check.py` chiudeva un blocco di codice su qualunque recinzione di tre backtick, anche dentro un
+  blocco ```` ```` ````; ora una recinzione chiude solo con lo stesso carattere e lunga almeno quanto l'apertura.
+- **Documentazione del plugin:** flowchart del ciclo nel README; nel playbook il diagramma di stato della spec (§3.3) e
+  la sequenza dei gate umani (§4); nell'architettura il diagramma delle classi degli script e l'ER del modello di
+  tracciabilità; tutti verificati con il renderer Mermaid. Playbook, script, skill e architettura descrivono le nuove
+  regole, nelle due lingue.
+
 ## 0.16.0
 Idee dal marketplace AI Unified Process (S2, S3, S4, S5, S8 dell'analisi comparativa), adattate a SDD Playbook.
 - **Skill portabili (S2):** nessuna skill legge i file di un'altra skill con `../`; li trova con una ricerca

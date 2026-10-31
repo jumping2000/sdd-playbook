@@ -89,6 +89,27 @@ Export the report as CSV.
 ## Open questions
 - none
 """
+DIAGRAMS_OK = """
+## Diagrams
+
+### Flowchart
+```mermaid
+flowchart TD
+    A[export] --> B{rows?}
+```
+
+### Sequence diagram
+- n/a: one function, no collaborators
+
+### State diagram
+- n/a: no lifecycle
+
+### Class diagram
+- n/a: no new types
+
+### ER diagram
+- n/a: no persistent data
+"""
 PLAN_OK = """# PLAN for SPEC-001
 
 - Approved by / date: Anna Smith, 2026-10-19
@@ -103,7 +124,7 @@ PLAN_OK = """# PLAN for SPEC-001
 
 ## Review focus
 - none
-"""
+""" + DIAGRAMS_OK
 _spec_lint = load("spec_lint")
 APPROVED_SPEC = "- Approved by / date: Anna Smith, 2026-10-19\n"
 SPEC_OK = SPEC_OK.replace(APPROVED_SPEC, APPROVED_SPEC + f"- Hash: {_spec_lint.fingerprint(SPEC_OK)}\n")
@@ -136,7 +157,7 @@ Exports to CSV.
 
 ## Characterization tests
 - tests/test_char.py: current CSV format
-"""
+""" + DIAGRAMS_OK
 BUG_OK = """# BUG-001: Broken export
 
 - Status: verified

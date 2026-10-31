@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# sdd-playbook: 0.16.0
+# sdd-playbook: 0.17.0
 """AC -> test traceability: every acceptance criterion of the spec must appear in at least one test.
 
 Usage:

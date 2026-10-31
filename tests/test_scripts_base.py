@@ -111,6 +111,33 @@ class TestSpecLint(unittest.TestCase):
         empty = PLAN_OK.replace("## Review focus\n- none\n", "## Review focus\n")
         self.assertTrue(spec_lint.review_focus_problems(empty))
 
+    def test_diagrams(self):
+        self.assertEqual(spec_lint.diagram_problems(PLAN_OK), [])
+        drawn = "```mermaid\nerDiagram\n    REPORT ||--o{ ROW : has\n```"
+        self.assertEqual(spec_lint.diagram_problems(PLAN_OK.replace("- n/a: no persistent data", drawn)), [])
+        cases = {
+            "Section '## Diagrams' missing": PLAN_OK.replace("## Diagrams", "## Pictures"),
+            "subsection '### State diagram' missing": PLAN_OK.replace("### State diagram", "### States"),
+            "'ER diagram' needs a Mermaid block starting with erDiagram, found 'classDiagram'":
+                PLAN_OK.replace("- n/a: no persistent data", drawn.replace("erDiagram", "classDiagram")),
+            "'Flowchart' always applies": PLAN_OK.replace("```mermaid\nflowchart TD\n    A[export] --> B{rows?}\n```",
+                                                          "- n/a: trivial"),
+            "'Flowchart' has an empty Mermaid block": PLAN_OK.replace("    A[export] --> B{rows?}\n", ""),
+            "'Class diagram' not filled in": PLAN_OK.replace("- n/a: no new types", "- <mermaid block, or n/a: reason>"),
+        }
+        for expected, plan in cases.items():
+            with self.subTest(expected):
+                self.assertTrue(any(expected in p for p in spec_lint.diagram_problems(plan)),
+                                spec_lint.diagram_problems(plan))
+        # the plan lint: missing section is an error, an unfilled diagram is a warning until the plan is approved
+        self.assertTrue(any("Diagrams" in e for e in spec_lint.lint_plan(SPEC_OK, cases["'Class diagram' not filled in"])[0]))
+        unsigned = cases["'Class diagram' not filled in"].replace("Anna Smith, 2026-10-19", "<name, yyyy-mm-dd>")
+        err, warn = spec_lint.lint_plan(SPEC_OK, unsigned)
+        self.assertFalse(any("Diagrams" in e for e in err))
+        self.assertTrue(any("Diagrams" in w for w in warn))
+        self.assertEqual(spec_lint.mermaid_type("---\ntitle: x\n---\n%% note\nstateDiagram-v2\n[*] --> A"),
+                         "stateDiagram-v2")
+
     def test_plan_looks_for_exact_ids_in_the_test_strategy(self):
         cited_elsewhere = PLAN_OK.replace("| AC-002 | unit |\n", "") + "\n## Risks\n- AC-002 to evaluate\n"
         self.assertTrue(any("AC-002" in e for e in spec_lint.lint_plan(SPEC_OK, cited_elsewhere)[0]))

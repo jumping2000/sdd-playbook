@@ -21,8 +21,10 @@ Playbook §3.7 and §4 (phase 9). A spec not reconciled with the code stops bein
    with `python scripts/spec_lint.py <spec> --hash`; the change ends up in the implementation PR and whoever merges it
    approves it). Never erase a discrepancy silently.
 3. **Area page** (optional at level S): create or update `docs/system/<area>.md` from `references/area-template.md`:
-   current behaviour (only what is true in the code), constraints, characterization tests, references. Add the spec to
-   "Linked specs" and set "Last aligned" to today's date.
+   current behaviour (only what is true in the code), the five Mermaid diagrams **redrawn from the final code** (the
+   plan's diagrams are the design, the area page shows what was built; guide: search for
+   `**/sdd-plan/references/diagrams.md`), constraints, characterization tests, references. Add the spec to "Linked
+   specs" and set "Last aligned" to today's date. `python scripts/docs_check.py` checks the diagram section.
 4. **Close:** set `Status: implemented` in the spec and tick `T-SYNC` in `tasks.md`. Non-blocking open questions still
    in the spec (`spec_lint.py` warns) are reported to the user: answered with a revision, or moved to a new spec or to
    the issue tracker; never removed silently.

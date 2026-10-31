@@ -68,7 +68,8 @@ the diff.
 
 - **When:** at the start of work on existing code (brownfield).
 - **What it does:** `scan_repo.py` for the inventory; baseline with `verify`; reads the code to fill in the map
-  (modules, entry points, dependencies, zones not to touch, risks); every command in the table is executed; at least 5
+  (modules, the five Mermaid diagrams of the existing system, entry points, dependencies, zones not to touch, risks;
+  `docs_check.py docs/system` must pass); every command in the table is executed; at least 5
   statements spot-checked in the code; proposes updates to `AGENTS.md`.
 - **Writes only:** `docs/system/map.md` and, after confirmation, `AGENTS.md`.
 - **Gate:** the user spot-checks the map.
@@ -99,8 +100,10 @@ the diff.
 - **Precondition:** spec `approved` and lint green, level M or L (there is no plan at level S).
 - **What it does:** read-only; `plan.md` with at least one discarded alternative, files in the format
   `- path: what changes` (including any dependency manifest), interfaces between components (produces / consumes), all
-  ACs in the test strategy, the **review focus** (input classes no AC exercises, each with its test), risks, release and
-  rollback; self-review against the spec (coverage, names, proportion); `spec_lint.py --plan` must pass. Flags ADR
+  ACs in the test strategy, the **review focus** (input classes no AC exercises, each with its test), the five Mermaid
+  **diagrams** of the change (flowchart, sequence, state, class, ER; `- n/a: <reason>` when one does not apply, never
+  the flowchart; guide in `references/diagrams.md`), risks, release and rollback;
+  self-review against the spec (coverage, names, proportion); `spec_lint.py --plan` must pass. Flags ADR
   candidates without creating them.
 
 ### sdd-tasks
@@ -173,14 +176,15 @@ the diff.
 - **Preconditions:** `T-nn` tasks closed, review valid and not `non-compliant`.
 - **What it does:** updates README, API documentation and migration notes from the spec and the real code; proposes ADRs
   (creates them after confirmation); runs the examples (Python blocks marked `# docs-check: run` with
-  `docs_check.py --run-examples`, others by hand); `docs_check.py` checks the links; ticks `T-DOC`.
+  `docs_check.py --run-examples`, others by hand); explains flows and data with the Mermaid diagrams of the area page;
+  `docs_check.py` checks links and diagrams; ticks `T-DOC`.
 
 ### sdd-sync
 
 - **Preconditions:** review with `Decided by` filled in (level S: `diff_scope.py` and `trace_check.py` green), `T-DOC`
   closed.
 - **What it does:** compares spec and real behaviour: every gap is either a bug (`sdd-bugfix`) or a requirement change to
-  approve, never hidden; creates/updates `docs/system/<area>.md` (optional at level S); sets `Status: implemented`; ticks
+  approve, never hidden; creates/updates `docs/system/<area>.md` (optional at level S) with the five Mermaid diagrams redrawn from the final code; sets `Status: implemented`; ticks
   `T-SYNC`; reports the non-blocking open questions still in the spec (answered with a revision, or moved); `sync_check.py --junit` must pass; proposes lessons for `AGENTS.md` and ADRs.
 
 ### sdd-loop

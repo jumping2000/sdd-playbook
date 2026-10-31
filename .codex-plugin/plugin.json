@@ -1,6 +1,6 @@
 {
   "name": "sdd-playbook",
-  "version": "0.16.0",
+  "version": "0.17.0",
   "description": "SDD Playbook: spec-driven development for coding agents (Claude Code, Codex, GitHub Copilot). Skills, cross-platform checks and opt-in hooks: specs with acceptance criteria, approved plans, locked tests, verify, review, reconciliation.",
   "skills": "./skills/"
 }

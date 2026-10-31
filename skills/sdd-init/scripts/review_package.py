@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# sdd-playbook: 0.16.0
+# sdd-playbook: 0.17.0
 """Review package: everything an independent reviewer needs for one task (or the whole branch), in one file.
 
 Usage:
@@ -7,7 +7,7 @@ Usage:
   python scripts/review_package.py docs/specs/001-x [--base main] [--out FILE]       # whole branch
 
 With a task: the commits of the branch whose message carries the trailer "Task: T-03" or "Test-Lock: T-03", the task
-line, the text of the ACs it covers, the plan's "Interfaces" and "Review focus" sections and the rulings of that task in
+line, the text of the ACs it covers, the plan's "Interfaces", "Diagrams" and "Review focus" sections and the rulings of that task in
 progress.md. Without a task: every commit since the merge-base, all the ACs and the whole "Rulings" section.
 Then the commit list, the files touched and the patches with extended context (generated files such as __pycache__/ and
 reports/ excluded). The reviewer (sdd-reviewer, read-only) reads the file in one go instead of running git.
@@ -56,7 +56,7 @@ def read(path: Path) -> str:
 
 
 def context(feature: Path, task: str | None) -> list[str]:
-    """Task line, covered ACs, plan interfaces and review focus, rulings."""
+    """Task line, covered ACs, plan interfaces, diagrams and review focus, rulings."""
     spec, plan = read(feature / "spec.md"), read(feature / "plan.md")
     tasks, progress = read(feature / "tasks.md"), read(feature / "progress.md")
     out = [f"# Review package: {feature.as_posix()}" + (f" {task}" if task else " (whole branch)"), ""]
@@ -68,7 +68,7 @@ def context(feature: Path, task: str | None) -> list[str]:
         covered = list(spec_lint.parse_spec(spec)[1])
     ac_lines = [t.strip() for t in spec.splitlines() if (m := spec_lint.AC_DEF.match(t)) and m.group(1) in covered]
     out += ["## Acceptance criteria", *(ac_lines or ["none"]), ""]
-    for title in ("Interfaces", "Review focus"):
+    for title in ("Interfaces", "Diagrams", "Review focus"):
         lines = [x for x in section(plan, title.lower()) if x.strip()]
         if lines:
             out += [f"## {title} (plan)", *lines, ""]

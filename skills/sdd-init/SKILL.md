@@ -60,7 +60,9 @@ example the `secrets` step) and let the user decide. Also update `.gitignore` (`
 workflow ("Process checks" step of the template) and, for Copilot, `.github/skills/` and `.github/agents/`. Then run
 `verify` and `state.py`, and read the plugin CHANGELOG for format changes (new fields in spec, tasks and review). Since
 0.16.0: propose the `## Decision rights` section of the `AGENTS.md` template to the user, mark the open questions of
-active specs `blocking: yes|no`, and offer `docs/glossary.md`.
+active specs `blocking: yes|no`, and offer `docs/glossary.md`. Since 0.17.0: plans, area pages and map need the
+`## Diagrams` section (`spec_lint.py --plan`, `sync_check.py`, `docs_check.py` report it); adding it to an approved plan
+changes its hash, so the plan goes back to the user for approval.
 
 ## STOP
 

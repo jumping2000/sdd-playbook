@@ -1,6 +1,6 @@
-# SDD Playbook (versione 0.16.0)
+# SDD Playbook (versione 0.17.0)
 
-[![Version](https://img.shields.io/badge/version-0.16.0-blue)](CHANGELOG_IT.md)
+[![Version](https://img.shields.io/badge/version-0.17.0-blue)](CHANGELOG_IT.md)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![CI](https://github.com/jumping2000/sdd-playbook/actions/workflows/ci.yml/badge.svg)](https://github.com/jumping2000/sdd-playbook/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/python-3.8%2B-3776AB?logo=python&logoColor=white)](docs/scripts_IT.md)
@@ -91,11 +91,26 @@ permessi dell'agente (ne fornisce un esempio), non copre rilascio, sicurezza del
 
 ## Flusso
 
+```mermaid
+flowchart TD
+    init[sdd-init] --> code{codice esistente?}
+    code -- sì --> map[sdd-map-codebase] --> char[sdd-characterize] --> spec
+    code -- no --> spec[sdd-spec]
+    spec --> g1{{approvi la spec}} --> lvl{livello}
+    lvl -- S --> tasks[sdd-tasks]
+    lvl -- M o L --> plan[sdd-plan] --> g2{{approvi il piano}} --> tasks
+    tasks --> tests[sdd-tests-from-ac] --> g3{{approvi i test bloccati}}
+    g3 --> impl[sdd-implement o sdd-loop]
+    impl --> lvl2{livello}
+    lvl2 -- S --> docs
+    lvl2 -- M o L --> review[sdd-review-diff] --> g4{{decidi sulla review}} --> docs[sdd-docs]
+    docs --> sync[sdd-sync] --> pr([PR: merge in main])
+    bug[sdd-bugfix] -. difetti, in parallelo al flusso .-> impl
 ```
-sdd-init → [sdd-map-codebase → sdd-characterize]* → sdd-spec → sdd-plan → sdd-tasks
-          → sdd-implement (o sdd-loop) → sdd-review-diff → sdd-docs → sdd-sync → PR
-sdd-bugfix: per i difetti, in parallelo al flusso.   sdd-next: in ogni momento.   * solo nel brownfield
-```
+
+`sdd-next` indica il passo successivo in ogni momento. Altri diagrammi: stati della spec e gate in sequenza nel
+[playbook](docs/playbook-ai-software-lifecycle_IT.md) (§3.3, §4), script e modello di tracciabilità
+nell'[architettura](docs/architecture_IT.md).
 
 Il processo è proporzionato al rischio: la spec dichiara un **livello** S, M o L (playbook §2.1). S salta piano e
 `review.md`; L aggiunge ADR e revisione umana del diff; `diff_scope.py` segnala un diff che supera il livello dichiarato.
@@ -148,7 +163,7 @@ proprio (skill, template, script, hook, agente, test) è interamente in inglese;
 
 - Lo stesso da terminale: `claude plugin marketplace add jumping2000/sdd-playbook`, poi
   `claude plugin install sdd-playbook@sdd-playbook-marketplace`; `claude plugin list` mostra la versione installata.
-- **Una versione fissa:** aggiungi il marketplace con un riferimento git, `jumping2000/sdd-playbook#v0.16.0` (ogni
+- **Una versione fissa:** aggiungi il marketplace con un riferimento git, `jumping2000/sdd-playbook#v0.17.0` (ogni
   rilascio ha un tag `vX.Y.Z`). Senza riferimento il marketplace segue `main`; `/plugin marketplace update` scarica
   l'ultima versione.
 - Prova locale di una copia del repository: `claude --plugin-dir <percorso>/sdd-playbook`.
@@ -209,7 +224,7 @@ di Git for Windows). In fase rossa (ultima task chiusa "expected: red") l'hook `
 | Cosa | Esito |
 |---|---|
 | Suite di test | Passa su Linux (comprende loop con agente finto, hook e launcher `run.sh`, script su repository git temporanei). Su Windows 11 verificata fino alla 0.8.0; dalla 0.9.0 la copre solo la matrice CI `windows-latest`, il cui esito va controllato |
-| `claude plugin validate .` | Passa sulla 0.16.0 (Claude Code 2.1.312); unico avviso: manca l'icona, che serve solo per la directory ufficiale dei plugin |
+| `claude plugin validate .` | Passa sulla 0.17.0 (Claude Code 2.1.312); unico avviso: manca l'icona, che serve solo per la directory ufficiale dei plugin |
 | Installazione dal marketplace su GitHub (Claude Code) | **Fatta** sulla 0.16.0: marketplace aggiunto da `jumping2000/sdd-playbook`, plugin installato e attivo; un riferimento git dopo `#` fissa la versione (provato con un branch) |
 | Manifest Codex | **Non validato** con uno strumento Codex |
 | GitHub Copilot (`plugin.json`, `.github/skills/`, custom agent) | **Non provato**: costruito dalla documentazione pubblica e da esempi (il sito di documentazione di GitHub non era raggiungibile dall'ambiente di build) |

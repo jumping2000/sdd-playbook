@@ -28,6 +28,9 @@ Playbook §3.4 and §4 (phase 3).
    - **Review focus:** the input classes or failure modes the spec implies but no AC exercises (empty input, very large
      input, concurrency, encoding, permissions...), at most 5, most likely first, each with the test that pins it and
      where. A spec's silence on an input is not permission to break on it. Write `- none` only after checking;
+   - **Diagrams:** the five Mermaid diagrams of the change (flowchart, sequence, state, class, ER) with the names of
+     "Interfaces", following `references/diagrams.md`; a diagram that does not apply becomes `- n/a: <reason>`, never
+     the flowchart;
    - risks with the way to verify them; release and rollback;
    - do not introduce anything the spec does not require: if it is needed, it is a question for the user;
    - every manifest or lockfile to change (new dependencies) goes into "Components and files": `diff_scope.py` accepts
@@ -35,7 +38,7 @@ Playbook §3.4 and §4 (phase 3).
    - `- Based on spec:` with the value of `- Hash:` of the approved spec.
 3. **Self-review** with the spec in front of you, and fix inline:
    - coverage: every REQ and AC has a place in the plan;
-   - consistency: the same component, function and field names in every section;
+   - consistency: the same component, function and field names in every section, diagrams included;
    - review focus: filled in, each case with a test;
    - proportion: the plan records decisions, it does not transcribe the code. A plan longer than the code it describes
      has written the code instead; a line that decides nothing ("handle errors", "TBD") is a gap.

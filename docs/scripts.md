@@ -19,7 +19,7 @@ The file formats the scripts read are described in [architecture.md](architectur
 | `bug_lint.py` | bugfix | completeness of a bug file |
 | `diff_scope.py` | review-diff, sync, loop | changes vs plan, forbidden zones, locked tests and level |
 | `scan_repo.py` | map-codebase | inventory of a codebase |
-| `docs_check.py` | docs | links and examples |
+| `docs_check.py` | docs, sync, map-codebase | links, Mermaid diagrams and examples |
 | `sync_check.py` | sync | closure of a feature |
 | `secrets_check.py` | review-diff, loop, `verify` | secrets in files |
 | `loop.py` | loop | external autonomous loop |
@@ -86,7 +86,7 @@ to the working copy: merging the design PR into a protected branch is the approv
 | Mode | Errors detected |
 |---|---|
 | spec | invalid state (`draft`, `approved`, `in-revision`, `implemented`, `superseded`); level other than S, M, L (warning if missing: counts as M); title without ID `# SPEC-<id>:`, invalid date or ID different from the folder name; `in-revision` without an entry in `## Revisions`; missing sections; duplicate REQ/AC IDs; REQ without AC; AC citing a non-existent REQ; non-scope missing or a placeholder (warning for missing anti-goals); if `approved`/`implemented`: missing approver, missing or mismatching hash, blocking open questions or questions without `blocking: yes|no` (warning for non-blocking ones and if `[ASSUMPTION]` remain); in any state an open question `about:` a REQ or AC that does not exist; warnings for vague words in REQs and ACs and, when `docs/glossary.md` exists, for the synonyms its "Avoid" column lists |
-| `--plan` | missing `## Test strategy` section; spec ACs missing from that section (exact ID: `AC-001` does not match `AC-0011`); missing `## Review focus` section; review focus with placeholders or empty (warning before approval, error once approved; `- none` is valid); approved plan with invalid hash or based on another version of the spec; warning if the plan is not approved |
+| `--plan` | missing `## Test strategy` section; spec ACs missing from that section (exact ID: `AC-001` does not match `AC-0011`); missing `## Review focus` section; review focus with placeholders or empty (warning before approval, error once approved; `- none` is valid); `## Diagrams` section missing, or one of its subsections `### Flowchart`, `### Sequence diagram`, `### State diagram`, `### Class diagram`, `### ER diagram` missing (error); a subsection without a Mermaid block of its type (`flowchart`/`graph`, `sequenceDiagram`, `stateDiagram-v2`, `classDiagram`, `erDiagram`) or `- n/a: <reason>`, an empty block, an `n/a` flowchart (warning before approval, error once approved); approved plan with invalid hash or based on another version of the spec; warning if the plan is not approved |
 | `--base` | spec or plan missing on `<ref>` or different from the version on `<ref>` |
 | `--tasks` | no tasks; `T-nn` tasks without `verify:` or `covers:` or with `<...>` placeholders; `T-Rnn` tasks without `verify:` or with placeholders (`covers:` optional); duplicate IDs; missing `T-SYNC`, or missing `T-DOC` except at level S; AC not covered by any task; warning for an open `T-nn` task covering an AC named by a non-blocking open question |
 | `--plan` and `--tasks` together | tasks whose `- Based on plan:` differs from the plan hash (warning if the field is missing) |
@@ -190,6 +190,13 @@ Default: `README.md` and `docs/`. Checks relative links and images (ignores code
 `--run-examples` it runs the Python blocks whose first non-empty line is `# docs-check: run` (60 s timeout, must exit
 0). Other blocks are not run.
 
+**Diagrams.** Every ```` ```mermaid ```` block must start with a known Mermaid diagram type (after `%%` comments and
+the `---` front matter) and have a body; the rest of the syntax is not checked: preview the diagram (GitHub, GitLab,
+VS Code with a Mermaid extension). Every page of `docs/system/` (area pages and map) needs the `## Diagrams` section with
+the five diagrams, each drawn or `- n/a: <reason>`, with the same rules as `spec_lint.py --plan` (always errors here).
+Code fences close only on a fence of the same character at least as long as the opening one, so a template shown in a
+```` ```` ```` block keeps its inner blocks.
+
 ### sync_check.py
 
 ```
@@ -198,7 +205,8 @@ python scripts/sync_check.py docs/specs/001-x [--area docs/system/<area>.md] [--
 
 Checks that: the spec is valid with `Status: implemented`; no task is open; `review.md` has a valid outcome other than
 `non-compliant` and `Decided by` filled in; an area page exists (or the one given) with the required sections,
-"Last aligned" filled in and the spec among the "Linked specs"; every AC is cited in a test **of this
+"Last aligned" filled in, the spec among the "Linked specs" and the `## Diagrams` section complete (as in
+`docs_check.py`); every AC is cited in a test **of this
 spec**, with the rules of `trace_check.py` (if tests are missing and there are ambiguous citations, the error says so).
 Level S: `review.md` and area page optional (if `review.md` exists, it is checked). Level L: `review.md` must also have
 `- Human diff review:` filled in. At levels M and L closed test tasks ("expected: red") carry `tests approved:`. At level
@@ -262,7 +270,7 @@ python scripts/review_package.py docs/specs/001-x [--base main] [--out FILE]    
 Not a check: it prepares the input of the independent reviewer, who has no Bash. With a task it collects the branch
 commits whose message carries `Task: T-03` (implementation commits, see `sdd-implement`) or `Test-Lock: T-03` (locked
 tests); without a task, every commit since the merge-base. It writes one Markdown file with the task line, the text of
-the covered ACs (all of them for the branch), the plan's `## Interfaces` and `## Review focus`, the rulings of
+the covered ACs (all of them for the branch), the plan's `## Interfaces`, `## Diagrams` and `## Review focus`, the rulings of
 `progress.md` (only the task's), the commit list, the files touched and the patches with 10 lines of context; generated
 files (`__pycache__/`, `reports/`) are excluded and uncommitted changes are not included. Default output:
 `reports/review/<spec folder>/<task or branch>.md`. Exit `2` with an invalid task ID, without git or base ref, or when no

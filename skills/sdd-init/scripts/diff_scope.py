@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# sdd-playbook: 0.16.0
+# sdd-playbook: 0.17.0
 """Compare the changed files with the plan, the forbidden zones and the locked tests.
 
 Usage:

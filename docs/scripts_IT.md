@@ -19,7 +19,7 @@ I formati dei file che gli script leggono sono descritti in [architecture_IT.md]
 | `bug_lint.py` | bugfix | completezza del file di un bug |
 | `diff_scope.py` | review-diff, sync, loop | modifiche vs piano, zone vietate, test bloccati e livello |
 | `scan_repo.py` | map-codebase | inventario di una codebase |
-| `docs_check.py` | docs | link ed esempi |
+| `docs_check.py` | docs, sync, map-codebase | link, diagrammi Mermaid ed esempi |
 | `sync_check.py` | sync | chiusura di una feature |
 | `secrets_check.py` | review-diff, loop, `verify` | segreti nei file |
 | `loop.py` | loop | loop autonomo esterno |
@@ -84,7 +84,7 @@ protetto è l'approvazione che l'agente non può darsi da solo (playbook §1.2).
 | Modalità | Errori rilevati |
 |---|---|
 | spec | stato non valido (`draft`, `approved`, `in-revision`, `implemented`, `superseded`); livello diverso da S, M, L (avviso se manca: vale M); titolo senza ID `# SPEC-<id>:`, data non valida o ID diverso dal nome della cartella; `in-revision` senza una voce in `## Revisions`; sezioni mancanti; ID REQ/AC duplicati; REQ senza AC; AC che cita REQ inesistenti; non-scope assente o con segnaposto (avviso se mancano gli anti-obiettivi, `Anti-goals`); se `approved`/`implemented`: approvatore mancante, hash mancante o non corrispondente, domande aperte bloccanti o senza `blocking: yes|no` (avviso per quelle non bloccanti e se restano `[ASSUMPTION]`); in ogni stato una domanda aperta `about:` un REQ o AC inesistente; avvisi per parole vaghe nei REQ e negli AC e, se esiste `docs/glossary.md`, per i sinonimi della sua colonna "Avoid" |
-| `--plan` | sezione `## Test strategy` mancante; AC della spec assenti da quella sezione (ID esatto: `AC-001` non vale per `AC-0011`); sezione `## Review focus` mancante; review focus con segnaposto o vuoto (avviso prima dell'approvazione, errore dopo; `- none` è valido); piano approvato con hash non valido o basato su un'altra versione della spec; avviso se il piano non è approvato |
+| `--plan` | sezione `## Test strategy` mancante; AC della spec assenti da quella sezione (ID esatto: `AC-001` non vale per `AC-0011`); sezione `## Review focus` mancante; review focus con segnaposto o vuoto (avviso prima dell'approvazione, errore dopo; `- none` è valido); sezione `## Diagrams` mancante, o mancante una delle sottosezioni `### Flowchart`, `### Sequence diagram`, `### State diagram`, `### Class diagram`, `### ER diagram` (errore); una sottosezione senza un blocco Mermaid del suo tipo (`flowchart`/`graph`, `sequenceDiagram`, `stateDiagram-v2`, `classDiagram`, `erDiagram`) né `- n/a: <motivo>`, un blocco vuoto, un flowchart `n/a` (avviso prima dell'approvazione, errore dopo); piano approvato con hash non valido o basato su un'altra versione della spec; avviso se il piano non è approvato |
 | `--base` | spec o piano assenti su `<ref>` o diversi dalla versione su `<ref>` |
 | `--tasks` | nessuna task; task `T-nn` senza `verify:` o `covers:` o con segnaposto `<...>`; task `T-Rnn` senza `verify:` o con segnaposto (`covers:` facoltativo); ID duplicati; `T-SYNC` mancante, o `T-DOC` mancante salvo nel livello S; AC non coperto da nessuna task; avviso per una task `T-nn` aperta che copre un AC nominato da una domanda aperta non bloccante |
 | `--plan` e `--tasks` insieme | task con `- Based on plan:` diverso dall'hash del piano (avviso se il campo manca) |
@@ -184,6 +184,13 @@ Default: `README.md` e `docs/`. Controlla i link e le immagini relativi (ignora 
 `--run-examples` esegue i blocchi Python la cui prima riga non vuota è `# docs-check: run` (timeout 60 s, deve
 terminare con exit 0). Gli altri blocchi non vengono eseguiti.
 
+**Diagrammi.** Ogni blocco ```` ```mermaid ```` deve iniziare con un tipo di diagramma Mermaid noto (dopo i commenti
+`%%` e il front matter `---`) e avere un corpo; il resto della sintassi non è controllato: guarda l'anteprima del
+diagramma (GitHub, GitLab, VS Code con un'estensione Mermaid). Ogni pagina di `docs/system/` (pagine d'area e mappa)
+richiede la sezione `## Diagrams` con i cinque diagrammi, ognuno disegnato o `- n/a: <motivo>`, con le stesse regole di
+`spec_lint.py --plan` (qui sempre errori). Un blocco di codice si chiude solo con una recinzione dello stesso carattere
+lunga almeno quanto quella d'apertura, così un template mostrato in un blocco ```` ```` ```` conserva i blocchi interni.
+
 ### sync_check.py
 
 ```
@@ -192,7 +199,8 @@ python scripts/sync_check.py docs/specs/001-x [--area docs/system/<area>.md] [--
 
 Verifica che: la spec sia valida con `Status: implemented`; nessuna task sia aperta; `review.md` abbia un esito valido,
 diverso da `non-compliant`, e la "Decided by" compilata; esista una pagina d'area (o quella indicata) con le sezioni
-richieste, "Last aligned" compilato e la spec tra le "Linked specs"; ogni AC sia citato in un test **di
+richieste, "Last aligned" compilato, la spec tra le "Linked specs" e la sezione `## Diagrams` completa (come in
+`docs_check.py`); ogni AC sia citato in un test **di
 questa spec**, con le regole di `trace_check.py` (se mancano test e ci sono citazioni ambigue, l'errore lo dice).
 Livello S: `review.md` e pagina d'area facoltative (se `review.md` c'è, si controlla). Livello L: `review.md` deve avere
 anche `- Human diff review:` compilato. Nei livelli M e L le task di test chiuse ("expected: red") riportano
@@ -256,7 +264,7 @@ python scripts/review_package.py docs/specs/001-x [--base main] [--out FILE]    
 Non è un controllo: prepara l'input del revisore indipendente, che non ha Bash. Con una task raccoglie i commit del
 branch il cui messaggio porta `Task: T-03` (commit di implementazione, vedi `sdd-implement`) o `Test-Lock: T-03` (test
 bloccati); senza task, tutti i commit dal merge-base. Scrive un unico file Markdown con la riga della task, il testo
-degli AC coperti (tutti per il branch), le sezioni `## Interfaces` e `## Review focus` del piano, le decisioni di
+degli AC coperti (tutti per il branch), le sezioni `## Interfaces`, `## Diagrams` e `## Review focus` del piano, le decisioni di
 `progress.md` (solo quelle della task), l'elenco dei commit, i file toccati e le patch con 10 righe di contesto; i file
 generati (`__pycache__/`, `reports/`) sono esclusi e le modifiche non committate non sono incluse. Output di default:
 `reports/review/<cartella della spec>/<task o branch>.md`. Exit `2` con un ID di task non valido, senza git o ref di

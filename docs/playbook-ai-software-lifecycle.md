@@ -81,7 +81,7 @@ repo/
 
 ```python
 #!/usr/bin/env python3
-# sdd-playbook: 0.16.0
+# sdd-playbook: 0.17.0
 """Single project verification: format, lint, type-check, tests, secrets.
 
 Exit code 0 = all green. Standard library only; runs the same on Windows, Linux, macOS.
@@ -309,15 +309,15 @@ code → **implementation PR**, where the approver reads the `Test-Lock` commits
 | `AGENTS.md` | Commands, conventions, what not to touch | **Yes** | Markdown, short |
 | `constitution.md` | Stable principles (stack, security, mandatory tests) | Recommended (can be omitted if already in AGENTS.md) | Markdown |
 | `spec.md` | Problem, scope, **non-scope**, use cases, requirements, acceptance criteria | **Yes** | Markdown with IDs |
-| `plan.md` | Architecture, interfaces, files involved, risks | **Yes** (levels M and L, §2.1) | Markdown |
+| `plan.md` | Architecture, interfaces, diagrams, files involved, risks | **Yes** (levels M and L, §2.1) | Markdown |
 | `tasks.md` | Small, verifiable tasks | **Yes** | Checklist |
 | `review.md` | Outcome of the diff review and human decision | **Yes** (levels M and L, §2.1) | Markdown |
 | Definition of Done | Single command + criteria | **Yes** | `scripts/verify.py` + section in AGENTS.md |
 | ADR | Decisions with rationale | Recommended | Markdown |
 | `progress.md`, `PROMPT.md` | Memory and instructions between iterations | Loop only | Markdown |
 | `bugfix.md` | Diagnosis and non-regression of a bug | For non-trivial bugs | Markdown |
-| `docs/system/map.md` | Codebase map | **Yes** in brownfield | Markdown |
-| `docs/system/<area>.md` | Current behaviour per area, reconciled after every feature | Recommended (mandatory in brownfield) | Short Markdown |
+| `docs/system/map.md` | Codebase map, with the diagrams of the existing system | **Yes** in brownfield | Markdown |
+| `docs/system/<area>.md` | Current behaviour per area, with its diagrams, reconciled after every feature | Recommended (mandatory in brownfield) | Short Markdown |
 
 ### 2.1 Levels S, M, L
 
@@ -472,6 +472,20 @@ Minimum quality of a spec: it declares the level (§2.1), names the files/interf
 
 **Changing an approved spec.** `Status: in-revision` and an entry in `## Revisions` (date, what changes, why); after the changes, a new approval with a new hash. The hash chain does the rest: the plan records the spec hash and lapses, the tasks (`- Based on plan:`) record the plan hash and must be reviewed if the plan changes. States: `draft` → `approved` ⇄ `in-revision` → `implemented` (or `superseded`).
 
+```mermaid
+stateDiagram-v2
+    state "in-revision" as in_revision
+    [*] --> draft
+    draft --> approved: approval with name, date and hash
+    approved --> in_revision: requirement change
+    in_revision --> approved: new approval, new hash
+    approved --> implemented: sdd-sync closes the feature
+    approved --> superseded: replaced by another spec
+    implemented --> superseded: replaced by another spec
+    implemented --> [*]
+    superseded --> [*]
+```
+
 ### 3.4 `plan.md`
 
 ```markdown
@@ -490,6 +504,31 @@ Minimum quality of a spec: it declares the level (§2.1), names the files/interf
 ## Interfaces (APIs, schemas, contracts)
 - External: <signatures, schemas, formats; "none" if there are none>
 - <component built by the tasks>: produces <exact names and signatures later tasks rely on>; consumes <what it uses>
+
+## Diagrams
+<!-- The change as designed, with the names of "Interfaces".
+One Mermaid block per subsection (guide: diagrams.md of the sdd-plan skill); a diagram that does not apply is
+replaced by "- n/a: <reason>". The flowchart always applies. -->
+
+### Flowchart
+<!-- flowchart TD: main flow, decisions and error paths -->
+- <mermaid block>
+
+### Sequence diagram
+<!-- sequenceDiagram: calls between actors and components, in order, error replies included -->
+- <mermaid block, or n/a: reason>
+
+### State diagram
+<!-- stateDiagram-v2: statuses and transitions of the entities with a lifecycle -->
+- <mermaid block, or n/a: reason>
+
+### Class diagram
+<!-- classDiagram: types and modules with their relations and public members -->
+- <mermaid block, or n/a: reason>
+
+### ER diagram
+<!-- erDiagram: persistent entities, keys and cardinalities -->
+- <mermaid block, or n/a: reason>
 
 ## Test strategy (mapped to ACs)
 | AC | Level (unit / integration / e2e) | Where | Notes |
@@ -518,6 +557,8 @@ test that pins it; write "- none" if you checked and found none -->
 The files in the "Components and files" section go **one per line in the format `- path: what changes`** (the path is the first word, or the text in backticks); the paths in the "Where" column of the test strategy and of the review focus also count as planned: `diff_scope.py` uses them to detect out-of-plan changes. ACs are searched by exact ID only in the "Test strategy" section.
 
 **Interfaces** records, for every component the tasks build, what it produces (exact names and signatures) and what it consumes: a task, or a loop iteration with fresh context, sees only its part and learns its neighbours' names from here. **Review focus** lists at most 5 input classes or failure modes the spec implies but no AC exercises (empty or huge input, encoding, concurrency, permissions), each with the test that pins it: the tests derived from the ACs cover only what the spec states, and a spec's silence on an input is not permission to break on it. `spec_lint.py --plan` requires the section (`- none` after checking). Before asking for approval the agent reviews the plan against the spec: coverage, consistent names, proportion (a plan longer than the code has transcribed it). *(`sdd-plan`)*
+
+**Diagrams** draws the change in Mermaid, which GitHub and GitLab render in the Markdown itself: a flowchart (main flow, decisions, error paths), a sequence diagram (calls between actors and components), a state diagram (entities with a lifecycle), a class diagram (types and modules) and an ER diagram (persistent data), with the names of "Interfaces". A diagram that does not apply is replaced by `- n/a: <reason>`, never the flowchart: an honest `n/a` is worth more than a diagram drawn to fill the section. `spec_lint.py --plan` checks that every subsection holds a Mermaid block of its type or an `n/a` with a reason (warning before approval, error after); the guide with examples is `diagrams.md` of `sdd-plan`.
 
 ### 3.5 `tasks.md`
 
@@ -587,6 +628,32 @@ The **map** (`docs/system/map.md`) is written once, at the start of work on an e
 |---|---|---|
 | <path> | <what it does> | <modules> |
 
+## Diagrams
+<!-- The existing system as read in the code: modules and dependencies in the flowchart,
+the existing schema in the ER diagram.
+One Mermaid block per subsection (guide: diagrams.md of the sdd-plan skill); a diagram that does not apply is
+replaced by "- n/a: <reason>". The flowchart always applies. -->
+
+### Flowchart
+<!-- flowchart TD: main flow, decisions and error paths -->
+- <mermaid block>
+
+### Sequence diagram
+<!-- sequenceDiagram: calls between actors and components, in order, error replies included -->
+- <mermaid block, or n/a: reason>
+
+### State diagram
+<!-- stateDiagram-v2: statuses and transitions of the entities with a lifecycle -->
+- <mermaid block, or n/a: reason>
+
+### Class diagram
+<!-- classDiagram: types and modules with their relations and public members -->
+- <mermaid block, or n/a: reason>
+
+### ER diagram
+<!-- erDiagram: persistent entities, keys and cardinalities -->
+- <mermaid block, or n/a: reason>
+
 ## Entry points
 - <path>: <what it starts>
 
@@ -621,6 +688,31 @@ The **area page** (`docs/system/<area>.md`) grows area by area and is reconciled
 ## Current behaviour
 <2-3 paragraphs: what the area does today, for whom, with which rules; only what is true in the code>
 
+## Diagrams
+<!-- The area as built, redrawn from the code (not copied from the plan).
+One Mermaid block per subsection (guide: diagrams.md of the sdd-plan skill); a diagram that does not apply is
+replaced by "- n/a: <reason>". The flowchart always applies. -->
+
+### Flowchart
+<!-- flowchart TD: main flow, decisions and error paths -->
+- <mermaid block>
+
+### Sequence diagram
+<!-- sequenceDiagram: calls between actors and components, in order, error replies included -->
+- <mermaid block, or n/a: reason>
+
+### State diagram
+<!-- stateDiagram-v2: statuses and transitions of the entities with a lifecycle -->
+- <mermaid block, or n/a: reason>
+
+### Class diagram
+<!-- classDiagram: types and modules with their relations and public members -->
+- <mermaid block, or n/a: reason>
+
+### ER diagram
+<!-- erDiagram: persistent entities, keys and cardinalities -->
+- <mermaid block, or n/a: reason>
+
 ## Constraints and delicate points
 - <constraint, side effect, compatibility to preserve>
 
@@ -630,6 +722,8 @@ The **area page** (`docs/system/<area>.md`) grows area by area and is reconciled
 ## References
 - <key files, ADRs, specs>
 ```
+
+Map and area pages carry the same five diagrams, but of the system **as it is**: the map draws the existing code, the area page is redrawn from the final code at every `sdd-sync` (the plan's diagrams are the design, not the documentation). This way the application's documentation keeps its diagrams aligned feature by feature. `docs_check.py` checks the diagram section of every page in `docs/system/`, `sync_check.py` that of the area page of the feature.
 
 ### 3.8 `review.md`
 
@@ -680,6 +774,33 @@ The outcome is one of `compliant` (compliant), `compliant with reservations` (co
 
 `sdd-next` tells you at any time the current phase and the next step. At level S (§2.1) phase 3 is skipped and phase 7 is the PR review; at level L phase 7 includes the human reading of the diff.
 
+The human gates of a level M or L feature, in order:
+
+```mermaid
+sequenceDiagram
+    actor H as Human
+    participant A as Agent
+    participant S as Scripts
+    participant G as Git and CI
+    A->>S: spec_lint.py (spec, then plan)
+    A->>H: STOP: approve spec and plan
+    H->>G: merge the design PR into main
+    A->>G: commit Test-Lock: T-nn (red tests)
+    A->>H: STOP: read the locked tests
+    H->>A: tests approved: name, date, sha
+    loop every task
+        A->>S: verify.py
+        A->>G: commit Task: T-nn
+    end
+    A->>S: diff_scope, trace_check --junit, secrets_check
+    A->>H: review.md from a fresh-context reviewer
+    H->>A: Decided by: name, date
+    A->>S: docs_check, sync_check
+    A->>G: open the implementation PR
+    G->>G: CI process checks
+    H->>G: merge
+```
+
 ---
 
 ## 5. Brownfield flow
@@ -718,6 +839,7 @@ Differences from greenfield: more time reading/characterizing, smaller specs, a 
 - An explicit final task (`T-DOC`), not a casual addition. *(`sdd-docs`)*
 - Source: spec and real code. The agent must run the examples it writes: `docs_check.py --run-examples` runs the Python blocks marked `# docs-check: run` and checks relative links; examples in other languages are tried by hand.
 - What to generate: README (setup, usage), API docs, ADRs for the decisions taken, migration notes in brownfield.
+- **Diagrams:** the application's documentation explains flows, interactions, lifecycles, types and data with Mermaid diagrams (flowchart, sequence, state, class, ER) taken from the area pages, which are redrawn from the code at every feature. `docs_check.py` rejects unknown diagram types and `docs/system/` pages without the diagram section; the full syntax is checked by previewing the diagram.
 
 ### 6.1 Bug fixing
 
@@ -782,7 +904,7 @@ The idea is the so-called "Ralph loop": an outer cycle that reruns the agent unt
 
 ```python
 #!/usr/bin/env python3
-# sdd-playbook: 0.16.0
+# sdd-playbook: 0.17.0
 """Outer loop: reruns the agent until verify is green and no numbered task (T-nn and T-Rnn) is open.
 
 Usage:
@@ -1097,7 +1219,7 @@ Deployment and operations performed by an agent are a separate topic: by default
 - [ ] Every REQ has at least one AC and at least one traced, executed and passing test (`trace_check.py --junit`); locked tests approved
 - [ ] `verify` green locally (also on Windows, if it is a team environment) and in CI
 - [ ] Diff read against spec and plan (`diff_scope.py`, `review.md` with human decision)
-- [ ] Documentation updated, examples executed, links valid (`docs_check.py`)
+- [ ] Documentation updated, examples executed, links valid, diagrams redrawn from the code (`docs_check.py`)
 - [ ] Spec and `docs/system/<area>.md` reconciled; spec state = `implemented` (`sync_check.py`)
 - [ ] `AGENTS.md`/ADRs updated with the lessons learned
 - [ ] In brownfield: green baseline before and after, characterization tests present
@@ -1151,17 +1273,17 @@ works with Claude Code, Codex and GitHub Copilot (CLI and coding agent). Full gu
 | Script | What it checks |
 |---|---|
 | `verify.py` | Format, lint, types, tests and secrets of the project: the definition of "done" |
-| `spec_lint.py` | Spec (sections, ID, level, REQ→AC, non-scope, approval, blocking open questions; warnings for vague words and glossary synonyms); with `--plan` every AC is in the test strategy; with `--tasks` every task has verification and coverage and no placeholders, every AC is covered, `T-DOC` and `T-SYNC` are present |
+| `spec_lint.py` | Spec (sections, ID, level, REQ→AC, non-scope, approval, blocking open questions; warnings for vague words and glossary synonyms); with `--plan` every AC is in the test strategy, review focus and the five diagrams filled in; with `--tasks` every task has verification and coverage and no placeholders, every AC is covered, `T-DOC` and `T-SYNC` are present |
 | `state.py` | Project state and next phase for every active spec, according to its level; with several specs it uses the current branch's or `--spec` |
 | `scan_repo.py` | Deterministic inventory of a codebase (stack, languages, tests, CI, entry points) |
 | `trace_check.py` | Every AC cited in at least one test of its spec (`SPEC-nnn/AC-nnn` or declared file); with `--junit` also executed and passed in the report; requirements without tests; ambiguous citations |
 | `bug_lint.py` | Completeness of a bug file according to its state |
 | `diff_scope.py` | Changed files: forbidden zones (`Do not modify:` in `AGENTS.md`), locked tests (`Test-Lock`) changed after locking, test approvals voided by a new `Test-Lock`, level underestimated by the diff, dependencies without plan or ADR, out-of-plan files, planned files not touched |
-| `docs_check.py` | Valid relative links; marked Python examples executed successfully |
-| `sync_check.py` | Closure: spec `implemented`, tasks closed, tests approved, review with human decision, area page, traceability (with the JUnit report at level L) |
+| `docs_check.py` | Valid relative links; known Mermaid diagram types; the five diagrams in every page of `docs/system/`; marked Python examples executed successfully |
+| `sync_check.py` | Closure: spec `implemented`, tasks closed, tests approved, review with human decision, area page with its diagrams, traceability (with the JUnit report at level L) |
 | `secrets_check.py` | Keys and tokens with a known format and `.env` files in the branch files (or in the whole repository with `--all`) |
 | `loop.py` | Outer loop with cap, stall detection, timeout per iteration, baseline, protected branch, pause for test approval, task reviews at level L and dry run |
-| `review_package.py` | Not a check: writes in one file what an independent reviewer needs for a task (commits with `Task:`/`Test-Lock:`, covered ACs, plan interfaces and review focus, rulings, patches) or for the whole branch |
+| `review_package.py` | Not a check: writes in one file what an independent reviewer needs for a task (commits with `Task:`/`Test-Lock:`, covered ACs, plan interfaces, diagrams and review focus, rulings, patches) or for the whole branch |
 
 **Optional hooks (Claude Code only; not ported to Codex and GitHub Copilot)**, inactive unless enabled with an environment variable. They start from `hooks/run.sh`, which exits immediately if the hook is not enabled and otherwise uses the first of `python3`, `python` and `py -3` that is Python 3; without Python the error is visible but non-blocking:
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# sdd-playbook: 0.16.0
+# sdd-playbook: 0.17.0
 """Deterministic checks on the playbook's spec, plan and tasks.
 
 Usage:
@@ -28,7 +28,8 @@ Language (warnings): vague words in REQ and AC lines ("fast", "appropriate", "sh
 docs/glossary.md exists, the synonyms its "Avoid" column lists.
 Plan content: every AC in the test strategy; a "## Review focus" section listing the input classes or failure modes the
 spec implies but no AC exercises, each with the test that pins it, or "- none" (placeholders: warning before approval,
-error once the plan is approved).
+error once the plan is approved). A "## Diagrams" section with the five subsections of DIAGRAMS, each a ```mermaid block
+of its type or "- n/a: <reason>" (the flowchart always applies): same rule as the review focus.
 Tasks: T-nn from the plan (verify: and covers: mandatory), T-Rnn from review problems (covers: optional).
 Level (playbook §2.1): "- Level: S | M | L" in the spec header; without the field it counts as M (warning). The level
 is part of the hash: lowering it after approval voids the approval. Level S: no plan, T-DOC optional.
@@ -63,6 +64,12 @@ TEST_TASK = re.compile(r"^\s*-\s+\[[xX]\]\s+(T-\d+)\b(.*expected:\s*red.*)$", re
 WEAK_WORDS = re.compile(r"\b(fast|quick(?:ly)?|appropriate(?:ly)?|adequate(?:ly)?|user-friendly|easy|easily|intuitive|"
                         r"flexible|efficient(?:ly)?|robust|reasonable|as needed|if possible|as appropriate|etc|and/or|"
                         r"should|some|several|various|normally|usually|approximately|TBD)\b", re.I)
+# Diagrams (playbook §3.4): subsection heading -> accepted first keywords of the Mermaid block. The flowchart always applies.
+DIAGRAMS = {"Flowchart": ("flowchart", "graph"), "Sequence diagram": ("sequenceDiagram",),
+            "State diagram": ("stateDiagram-v2", "stateDiagram"), "Class diagram": ("classDiagram",),
+            "ER diagram": ("erDiagram",)}
+ALWAYS_DRAWN = ("Flowchart",)
+NA_ITEM = re.compile(r"^[-*]\s*n/a\s*:\s*(\S.*)$", re.I)
 APPROVED = re.compile(r"tests approved:\s*([^,—\n<>]*\w[^,—\n<>]*),\s*(\d{4}-\d{2}-\d{2}),\s*([0-9a-f]{7,40})\b", re.I)
 
 
@@ -356,6 +363,68 @@ def review_focus_problems(plan: str) -> list[str]:
     return []
 
 
+def mermaid_blocks(lines: list[str]) -> list[str]:
+    """Bodies of the ```mermaid blocks among the lines (a closing fence is at least as long as the opening one)."""
+    out, fence, buf = [], None, []
+    for line in lines:
+        m = re.match(r"^\s*(`{3,}|~{3,})\s*([\w+-]*)\s*$", line)
+        if fence is None and m:
+            fence, buf = (m.group(1), m.group(2)), []
+        elif fence is not None and m and not m.group(2) and m.group(1)[0] == fence[0][0] \
+                and len(m.group(1)) >= len(fence[0]):
+            if fence[1] == "mermaid":
+                out.append("\n".join(buf))
+            fence = None
+        elif fence is not None:
+            buf.append(line)
+    return out
+
+
+def mermaid_type(code: str) -> str:
+    """First keyword of a Mermaid diagram, skipping %% comments and the --- front matter."""
+    lines = [line.strip() for line in code.splitlines()]
+    if lines and lines[0] == "---":
+        lines = lines[lines.index("---", 1) + 1:] if "---" in lines[1:] else []
+    first = next((line for line in lines if line and not line.startswith("%%")), "")
+    return first.split()[0] if first else ""
+
+
+def diagram_problems(text: str) -> list[str]:
+    """Problems of the "## Diagrams" section: every DIAGRAMS subsection with a Mermaid block of its type or n/a."""
+    lines = next((lines for title, lines in sections(text).items() if title.lower() == "diagrams"), None)
+    if lines is None:
+        return [f"Section '## Diagrams' missing ({', '.join(DIAGRAMS)}: a Mermaid block each, or '- n/a: <reason>')"]
+    subs: dict[str, list[str]] = {}
+    current = None
+    for line in lines:
+        m = re.match(r"^###\s+(.*?)\s*$", line)
+        if m:
+            current = m.group(1)
+            subs[current] = []
+        elif current is not None:
+            subs[current].append(line)
+    out = []
+    for title, keywords in DIAGRAMS.items():
+        body = next((v for k, v in subs.items() if k.lower() == title.lower()), None)
+        if body is None:
+            out.append(f"Diagrams: subsection '### {title}' missing")
+            continue
+        blocks = mermaid_blocks(body)
+        na = [m.group(1) for line in body if (m := NA_ITEM.match(line.strip())) and not PLACEHOLDER.search(line)]
+        if blocks:
+            wrong = [b for b in blocks if mermaid_type(b) not in keywords]
+            if wrong:
+                out.append(f"Diagrams: '{title}' needs a Mermaid block starting with {' or '.join(keywords)}, "
+                           f"found '{mermaid_type(wrong[0]) or 'empty'}'")
+            elif any(len([x for x in b.splitlines() if x.strip()]) < 2 for b in blocks):
+                out.append(f"Diagrams: '{title}' has an empty Mermaid block")
+        elif na and title in ALWAYS_DRAWN:
+            out.append(f"Diagrams: '{title}' always applies: draw it")
+        elif not na:
+            out.append(f"Diagrams: '{title}' not filled in (a Mermaid block, or '- n/a: <reason>')")
+    return out
+
+
 def lint_plan(spec: str, plan: str) -> tuple[list[str], list[str]]:
     _, acs = parse_spec(spec)
     strategy = next((lines for title, lines in sections(plan).items() if title.startswith("Test strategy")), None)
@@ -365,7 +434,7 @@ def lint_plan(spec: str, plan: str) -> tuple[list[str], list[str]]:
         in_plan = set(re.findall(r"\bAC-\d+\b", "\n".join(strategy)))
         err = [f"{ac} does not appear in the plan (test strategy)" for ac in acs if ac not in in_plan]
     warn = []
-    focus = review_focus_problems(plan)
+    focus = review_focus_problems(plan) + diagram_problems(plan)
     if plan_signed(plan):
         err += plan_approval_problems(spec, plan)
         err += focus

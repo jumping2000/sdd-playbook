@@ -62,14 +62,14 @@ Ripeti i passi 2-4 un'area alla volta, solo dove stai per intervenire: non serve
 | # | Skill | Cosa ottieni | Il tuo ruolo |
 |---|---|---|---|
 | 1 | `sdd-spec` | `docs/specs/<data-slug>/spec.md`: requisiti, acceptance criteria, non-scope, **livello** | Rispondi alle domande aperte, poi **approvi** (nome e data) |
-| 2 | `sdd-plan` (non nel livello S) | `plan.md`: file da toccare, strategia di test, dipendenze, rischi | **Approvi** |
+| 2 | `sdd-plan` (non nel livello S) | `plan.md`: file da toccare, diagrammi Mermaid (flowchart, sequenza, stato, classi, ER), strategia di test, dipendenze, rischi | **Approvi** |
 | 3 | `sdd-tasks` | `tasks.md`: task piccole, ognuna con un comando di verifica | Controllo rapido |
 | — | **PR di design** | spec, piano e task su un branch | **Il tuo merge su `main` è l'approvazione** |
 | 4 | `sdd-tests-from-ac` (la richiama `sdd-implement`) | Test rossi scritti dagli AC, bloccati con un commit `Test-Lock` | **Rileggi i test** e approvi: `tests approved: <name, date, sha>` (livelli M e L) |
 | 5 | `sdd-implement`, oppure `sdd-loop` per molte task indipendenti | Il codice che fa passare i test senza modificarli | — |
 | 6 | `sdd-review-diff` (non nel livello S) | `review.md`, da un revisore a contesto fresco che prova a confutare | **Decidi**; nel livello L rileggi anche il diff |
 | 7 | `sdd-docs` | README, documentazione API, esempi eseguiti | Review |
-| 8 | `sdd-sync` | Spec `implemented`, pagina d'area in `docs/system/` | Review, poi **PR di implementazione** |
+| 8 | `sdd-sync` | Spec `implemented`, pagina d'area in `docs/system/` con i diagrammi ridisegnati dal codice | Review, poi **PR di implementazione** |
 
 Se la review è `non-compliant`, i problemi diventano task `T-R01`, `T-R02`… che si implementano come le altre; poi la
 review si ripete. `sdd-next` te lo indica.

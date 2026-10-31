@@ -211,7 +211,7 @@ class TestPlaybook(unittest.TestCase):
         self.assertEqual(r.returncode, 0, r.stdout)
 
     def test_no_reference_to_playbook_versions(self):
-        forbidden = re.compile(r"\[v\d\]|\bv[12]\b|playbook v\d|versione? [12]\b", re.I)
+        forbidden = re.compile(r"\[v\d\]|(?<!-)\bv[12]\b|playbook v\d|versione? [12]\b", re.I)  # not stateDiagram-v2
         for rel, text in all_texts().items():
             if rel.startswith(".github/") or rel.endswith(".json"):
                 continue
@@ -263,6 +263,13 @@ class TestPlaybook(unittest.TestCase):
         self.assertEqual(spec_lint.glossary_avoid(read("skills/sdd-init/references/glossary.md.tmpl")), {})
         plan = read("skills/sdd-plan/references/plan-template.md")
         self.assertIn("## Review focus", plan)
+        for rel in ("skills/sdd-plan/references/plan-template.md", "skills/sdd-sync/references/area-template.md",
+                    "skills/sdd-map-codebase/references/map-template.md"):  # unfilled, never missing
+            problems = spec_lint.diagram_problems(read(rel))
+            self.assertTrue(problems and all("not filled in" in p for p in problems), (rel, problems))
+        guide = read("skills/sdd-plan/references/diagrams.md")
+        for title in spec_lint.DIAGRAMS:
+            self.assertIn(f"`### {title}`", guide)
         self.assertIn("produces", plan)
         self.assertIn("**Anti-goals:**", spec)
         progress = read("skills/sdd-loop/references/progress.md.tmpl")

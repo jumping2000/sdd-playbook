@@ -19,8 +19,9 @@ Playbook §5, steps 1-3.
 2. **Baseline:** run `python scripts/verify.py` and, if `STEPS` does not cover the project yet, the real build and test
    commands. Note the result **as it is**: if it is already red, it is not your fault and must be declared.
 3. **Read the code** starting from the entry points and the largest modules. Fill in `docs/system/map.md` from
-   `references/map-template.md`: modules and responsibilities, entry points, external dependencies, zones not to touch,
-   risks and known debt.
+   `references/map-template.md`: modules and responsibilities, the five Mermaid diagrams of the existing system (guide:
+   search for `**/sdd-plan/references/diagrams.md`; `n/a` with a reason where nothing applies), entry points, external
+   dependencies, zones not to touch, risks and known debt. `python scripts/docs_check.py docs/system` must pass.
 4. **Real commands:** every command in the table was run by you, with its result. Do not write inferred commands.
 5. **Spot check:** pick at least 5 statements of the map and check them in the code; list them with file and line in
    "How this map was verified". Fix the false ones.

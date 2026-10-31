@@ -23,6 +23,9 @@ Proceed as follows:
 5. Look for out-of-scope changes: files not in the plan, unrequested refactoring, behaviour changed without an AC,
    weakened or removed tests.
 6. Report dependencies, secrets or permissions added without the spec justifying them.
+7. Compare the Mermaid diagrams of `plan.md` and of the area page in `docs/system/` with the code: a participant,
+   method, status, transition, table or column the code does not have, or an `n/a` whose reason the diff
+   contradicts, is a `low` problem (`medium` when it concerns a public interface or persistent data).
 
 Rules:
 - Read-only by construction (read and search tools only). If you need the result of a command you did not receive, ask for

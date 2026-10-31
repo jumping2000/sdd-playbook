@@ -62,14 +62,14 @@ Repeat steps 2-4 one area at a time, only where you are about to work: there is 
 | # | Skill | What you get | Your role |
 |---|---|---|---|
 | 1 | `sdd-spec` | `docs/specs/<date-slug>/spec.md`: requirements, acceptance criteria, non-scope, **level** | Answer the open questions, then **approve** (name and date) |
-| 2 | `sdd-plan` (not at level S) | `plan.md`: files to touch, test strategy, dependencies, risks | **Approve** |
+| 2 | `sdd-plan` (not at level S) | `plan.md`: files to touch, Mermaid diagrams (flowchart, sequence, state, class, ER), test strategy, dependencies, risks | **Approve** |
 | 3 | `sdd-tasks` | `tasks.md`: small tasks, each with a verification command | Quick check |
 | — | **Design PR** | spec, plan and tasks on a branch | **Your merge into `main` is the approval** |
 | 4 | `sdd-tests-from-ac` (called by `sdd-implement`) | Red tests written from the ACs, locked by a `Test-Lock` commit | **Read the tests** and approve: `tests approved: <name, date, sha>` (levels M and L) |
 | 5 | `sdd-implement`, or `sdd-loop` for many independent tasks | The code that makes the tests pass without changing them | — |
 | 6 | `sdd-review-diff` (not at level S) | `review.md`, from a fresh-context reviewer that tries to refute the result | **Decide**; at level L also read the diff |
 | 7 | `sdd-docs` | README, API docs, executed examples | Review |
-| 8 | `sdd-sync` | Spec `implemented`, area page in `docs/system/` | Review, then the **implementation PR** |
+| 8 | `sdd-sync` | Spec `implemented`, area page in `docs/system/` with its diagrams redrawn from the code | Review, then the **implementation PR** |
 
 If the review is `non-compliant` (not compliant), the problems become tasks `T-R01`, `T-R02`… implemented like the others;
 then the review is repeated. `sdd-next` tells you so.

@@ -67,7 +67,8 @@ del diff.
 
 - **Quando:** inizio di un lavoro su codice esistente (brownfield).
 - **Cosa fa:** `scan_repo.py` per l'inventario; baseline con `verify`; lettura del codice per compilare la mappa
-  (moduli, entry point, dipendenze, zone da non toccare, rischi); ogni comando della tabella è eseguito;
+  (moduli, i cinque diagrammi Mermaid del sistema esistente, entry point, dipendenze, zone da non toccare, rischi;
+  `docs_check.py docs/system` deve passare); ogni comando della tabella è eseguito;
   almeno 5 affermazioni verificate a campione nel codice; propone aggiornamenti di `AGENTS.md`.
 - **Scrive solo:** `docs/system/map.md` e, con conferma, `AGENTS.md`.
 - **Gate:** l'utente verifica la mappa a campione.
@@ -98,7 +99,9 @@ del diff.
 - **Precondizione:** spec `approved` e lint verde, livello M o L (nel livello S non c'è piano).
 - **Cosa fa:** in sola lettura; `plan.md` con almeno un'alternativa scartata, file in formato `- path: what changes`,
   interfacce tra i componenti (cosa produce / cosa consuma), tutti gli AC nella strategia di test, il **review focus**
-  (classi di input che nessun AC esercita, ognuna con il suo test), rischi, rilascio e rollback; autoverifica contro la
+  (classi di input che nessun AC esercita, ognuna con il suo test), i cinque **diagrammi** Mermaid della modifica
+  (flowchart, sequenza, stato, classi, ER; `- n/a: <motivo>` quando uno non si applica, mai il flowchart; guida in
+  `references/diagrams.md`), rischi, rilascio e rollback; autoverifica contro la
   spec (copertura, nomi, proporzione); `spec_lint.py --plan` deve passare. Segnala i candidati ADR senza crearli.
 
 ### sdd-tasks
@@ -171,14 +174,15 @@ del diff.
 - **Precondizioni:** task `T-nn` chiuse, review valida e non `non-compliant`.
 - **Cosa fa:** aggiorna README, documentazione API, note di migrazione da spec e codice reale; propone ADR (li crea dopo
   conferma); esegue gli esempi (Python marcati `# docs-check: run` con `docs_check.py --run-examples`, altri a mano);
-  `docs_check.py` verifica i link; spunta `T-DOC`.
+  spiega flussi e dati con i diagrammi Mermaid della pagina d'area; `docs_check.py` verifica link e diagrammi; spunta
+  `T-DOC`.
 
 ### sdd-sync
 
 - **Precondizioni:** review con "Decided by" compilata (livello S: `diff_scope.py` e `trace_check.py` verdi),
   `T-DOC` chiusa.
 - **Cosa fa:** confronta spec e comportamento reale: ogni scostamento è un bug (`sdd-bugfix`) o un cambio di
-  requisito da approvare, mai nascosto; crea/aggiorna `docs/system/<area>.md` (facoltativa nel livello S); imposta `Status: implemented`; spunta
+  requisito da approvare, mai nascosto; crea/aggiorna `docs/system/<area>.md` (facoltativa nel livello S) con i cinque diagrammi Mermaid ridisegnati dal codice finale; imposta `Status: implemented`; spunta
   `T-SYNC`; segnala le domande aperte non bloccanti rimaste nella spec (risposte con una revisione, o spostate); `sync_check.py` deve passare; propone lezioni per `AGENTS.md` e ADR.
 
 ### sdd-loop

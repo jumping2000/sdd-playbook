@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# sdd-playbook: 0.16.0
+# sdd-playbook: 0.17.0
 """Closing check of a feature: spec, tasks, review, area page and traceability aligned.
 
 Usage:
@@ -11,7 +11,8 @@ Checks:
      "- T-nn: pass" in "## Task reviews" of progress.md
   3. review.md present with a valid Outcome other than "non-compliant", and the human decision filled in
   4. area page (--area, or the first one in docs/system/ that cites the spec) with the required sections,
-     "Last aligned" filled in and the spec among the "Linked specs"
+     "Last aligned" filled in, the spec among the "Linked specs" and the "## Diagrams" section complete (the five
+     Mermaid diagrams of spec_lint.DIAGRAMS, each drawn or "- n/a: <reason>")
   5. every AC cited in at least one test of this spec (trace_check: qualified IDs SPEC-nnn/AC-nnn)
 Levels (playbook §2.1): S requires neither review.md (the review is the PR review) nor the area page; L also requires
 "- Human diff review:" filled in in review.md. At levels M and L closed test tasks carry "tests approved:". With
@@ -125,6 +126,7 @@ def check(feature: Path, area_arg: str | None, tests: list[Path], junit: list[st
             err.append(f"{area.as_posix()}: 'Last aligned' not filled in")
         if not cites(field(t, "Linked specs"), spec_id):
             err.append(f"{area.as_posix()}: {spec_id} is not among the 'Linked specs'")
+        err += [f"{area.as_posix()}: {p}" for p in spec_lint.diagram_problems(t)]
 
     folders = [d for d in (tests or [Path(c) for c in trace_check.FOLDERS]) if d.is_dir()]
     if not folders:
