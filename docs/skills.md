@@ -3,204 +3,100 @@
 *Versione italiana: [skills_IT.md](skills_IT.md)*
 
 Each skill is a folder `skills/<name>/` with a `SKILL.md` (frontmatter `name` and `description`, then the instructions)
-and, when needed, `references/` with the templates. The instructions are deliberately short (under 150 lines): the
-process details live in the [playbook](playbook-ai-software-lifecycle.md), which every skill cites by section. Skills and
-templates are in English, like every part of the plugin.
+and, when needed, `references/` with templates. The instructions are short (under 150 lines): the method is in the
+[playbook](playbook-ai-software-lifecycle.md), which every skill cites by section. Skills and templates are in
+English, like every part of the plugin.
 
 **Common conventions**
-- Scripts are called as `python scripts/<name>.py` from the project root: `sdd-init` copies them there.
-  If a project was initialized with an earlier version, copy the missing script from `skills/sdd-init/scripts/`.
-- Every choice and every gate is asked as **options to select** (guide `references/interaction.md` of `sdd-init`):
-  rounds of up to 4 questions, the recommended option first, always a free answer; gates as `Approve as <name>` (names
-  from `- Approvers:` in `AGENTS.md`), `Request changes`, `Stop here`.
-- Every skill that produces a document to approve ends with a **STOP**: after the user selects an approval it records
-  it with `approve.py` (name, date, hashes, checked by the lint) and does not start the next phase on its own.
-- Git by profile (`- Profile:` in `AGENTS.md`, playbook §1.2): **solo**, the skills create the feature branch, commit
-  and move `main` by fast-forward right after a selected gate; **team**, the merge of the PR into protected `main` is the
-  approval, and the skills offer to open or merge it with the user's explicit approval. Never a feature commit on
-  `main`/`master`.
-- When a requirement is ambiguous, they stop and ask: they do not assume.
+- Scripts are called as `python scripts/<name>.py` from the project root: `sdd-start` copies them there.
+- Every choice, confirmation and merge is asked as **options to select** (guide
+  `skills/sdd-start/references/interaction.md`): rounds of up to 4 questions, the recommended option first, always a
+  free answer. The three decisions of a feature: `Confirm the spec`, `Confirm the plan`, `Merge into main` for every PR.
+- The agent works on branches (`spec/<id>`, `task/<id>-T-nn`, `fix/BUG-nnn`), never commits on `main`, never merges
+  without the user's selection. The merge is the only approval the process records.
+- When a requirement is ambiguous, the skills stop and ask: they do not assume.
 
-**Typical order:** `sdd-init` → (`sdd-map-codebase` → `sdd-characterize`) → `sdd-spec` → `sdd-plan` →
-`sdd-tasks` → `sdd-implement` (or `sdd-loop`) → `sdd-review-diff` → `sdd-docs` → `sdd-sync`. The spec level
-(playbook §2.1) shortens or strengthens it: S skips `sdd-plan` and `review.md`, L adds an ADR and a human reading of
-the diff.
+**Order:** `sdd-start` → `sdd-plan` → `sdd-task` per task (or `sdd-parallel` for independent tasks) → the last task
+closes the feature. Existing code: `sdd-map` first. Bugs: `sdd-bugfix`. Anytime: `sdd-next`.
 
-| Skill | Playbook | Produces | Check | Human gate (options) |
+| Skill | Playbook | Produces | Checks | Your decision (options) |
 |---|---|---|---|---|
-| `sdd-next` | all | nothing (read-only) | `state.py` | — |
-| `sdd-init` | §1 | scripts, `AGENTS.md` (with profile and approvers), `docs/`, VS Code task, CI (team) | `verify.py` | principles and stack |
-| `sdd-map-codebase` | §5 | `docs/system/map.md` | `scan_repo.py`, `verify.py` | map spot check |
-| `sdd-characterize` | §5 | characterization tests, area page | `verify.py` + failure proof | spot check |
-| `sdd-spec` | §3.3 | `spec.md` | `spec_lint.py`, `approve.py` | spec approval and level |
-| `sdd-plan` | §3.4 | `plan.md` | `spec_lint.py --plan`, `approve.py` | plan approval |
-| `sdd-tasks` | §3.5 | `tasks.md` | `spec_lint.py --tasks`, `approve.py` | quick check; design to `main` |
-| `sdd-tests-from-ac` | §6 | red tests from the ACs | `trace_check.py`, `approve.py` | approval of the locked tests (M, L) |
-| `sdd-implement` | §4, phase 6 | code and commits | `verify.py` | next task (options); PR review in the team profile |
-| `sdd-bugfix` | §6.1 | `docs/bugs/BUG-nnn.md`, test, fix | `bug_lint.py`, `verify.py` | expected and "must NOT change" |
-| `sdd-review-diff` | §4, phase 7 | `review.md` | `diff_scope.py`, `trace_check.py`, `secrets_check.py`, `approve.py` | review decision |
-| `sdd-docs` | §6 | updated documentation | `docs_check.py` | review |
-| `sdd-sync` | §4, phase 9 | area page, spec `implemented` | `sync_check.py` | review; then fast-forward (solo) or PR (team) |
-| `sdd-loop` | §7 | `PROMPT.md`, `progress.md`, command | `loop.py --dry-run` | permissions, cap, launch |
+| `sdd-next` | §3 | nothing (read-only) | `state.py` | which skill to run |
+| `sdd-start` | §1-§3 | first time: scripts, `AGENTS.md`, `verify.py`; then `spec.md` | `verify.py`, `spec_lint.py` | confirm the spec |
+| `sdd-plan` | §2, §4 | `plan.md` with the tasks, design PR | `spec_lint.py --plan` | confirm the plan, merge the design PR |
+| `sdd-task` | §4 | locked tests, code, docs, PR; the last task closes the feature | `verify.py`, `trace_check.py --task`, `diff_scope.py --task`, `docs_check.py` | merge the PR |
+| `sdd-parallel` | §5 | several `sdd-task` in worktrees, one PR each | as `sdd-task`, rerun after every merge | run in parallel, then each merge |
+| `sdd-map` | §6 | `docs/system/map.md`, characterization tests, area page | `scan_repo.py`, `verify.py`, `docs_check.py` | map spot check, merge |
+| `sdd-bugfix` | §7 | `docs/bugs/BUG-nnn.md`, red test, fix, PR | `verify.py` | expected and unchanged behaviour, merge |
 
 ---
 
-### sdd-next
+### sdd-start
 
-- **When:** you do not know where to restart, or want to know where you are.
-- **What it does:** runs `state.py`, reports infrastructure, specs (level, state, approvals, tasks, review and the next
-  step of each), unverified bugs and the `NEXT` (next) line with its reason; asks whether to proceed. With several
-  active specs and none tied to the branch (`choose`), it asks the user which one to work on and reruns with `--spec <id>`.
-- **Does not:** modify files, start the next phase, or infer the state from the conversation.
-
-### sdd-init
-
-- **When:** once per project, before specs or code.
-- **What it does:** detects operating system, stack and existing code; asks in one round of options for what it cannot
-  detect (profile solo or team, approvers' names, real commands, Windows yes/no); copies the 13 scripts into `scripts/` (each with the plugin
-  version on line 2, for updates); adapts `STEPS` in `verify.py`, trying every command; creates `AGENTS.md`, `CLAUDE.md`
-  (`@AGENTS.md`), `.gitattributes`, `.gitignore` entries, `.vscode/tasks.json`, `docs/constitution.md`, the `docs/*`
-  folders and, in the team profile, the CI workflow (with the PR "process checks" step), `CODEOWNERS` and the PR
-  template (solo: CI only if there is a remote); runs `verify` and
-  `state`. It also explains how to update an already initialized project.
-- **Rules:** never overwrites existing files (shows the difference, merges `tasks.json`); does not invent steps or
-  tests; reports a red `verify` as it is.
-- **Also:** the **decision rights** section of `AGENTS.md` (decides alone / asks first / never), reviewed with the user;
-  `docs/glossary.md` only if the user wants it.
-- **Gate:** approval of `AGENTS.md`, constitution and `verify` steps.
-- **Declared limits:** the generated CI has never been run; the hooks are not enabled.
-
-### sdd-map-codebase
-
-- **When:** at the start of work on existing code (brownfield).
-- **What it does:** `scan_repo.py` for the inventory; baseline with `verify`; reads the code to fill in the map
-  (modules, the five Mermaid diagrams of the existing system, entry points, dependencies, zones not to touch, risks;
-  `docs_check.py docs/system` must pass); every command in the table is executed; at least 5
-  statements spot-checked in the code; proposes updates to `AGENTS.md`.
-- **Writes only:** `docs/system/map.md` and, after confirmation, `AGENTS.md`.
-- **Gate:** the user spot-checks the map.
-
-### sdd-characterize
-
-- **When:** before changing an existing area.
-- **What it does:** tests that pin the **current** behaviour (even if wrong, marked as such); they must pass on the
-  unmodified code; proves they can fail with a deliberate break and restore (`git restore`, empty `git diff`); records
-  the tests in the area page.
-- **Does not:** modify production code or fix the defects it finds.
-- **Precondition:** clean `git status` on the area's files.
-
-### sdd-spec
-
-- **When:** from an idea to an approvable specification; also to complete a draft.
-- **What it does:** reads `AGENTS.md`, constitution, the code involved and (brownfield) map and area page before asking
-  anything; plays the request back in its own words; **asks in rounds of options** (up to 4 questions, recommended
-  first), different outcomes for the user included; the user **chooses the level** among S, M, L (the lowest the hard
-  criteria allow is recommended); writes `spec.md` with verifiable requirements, few Given/when/then ACs (3-6 at S),
-  mandatory non-scope, anti-goals, assumptions marked `[ASSUMPTION]`, open questions marked `blocking: yes|no` (only
-  non-blocking ones may stay open after approval), glossary terms and no vague words (warnings of `spec_lint.py`); `spec_lint.py` must pass; in brownfield it
-  proposes `sdd-characterize` if the area has no tests.
-- **Approval:** a gate with options; after the user selects `Approve as <name>`, `approve.py spec --commit` writes
-  `Status: approved`, name, date and hash. Then `main` by profile (solo: fast-forward; team: design PR).
+- **When:** at the start of every feature, from an idea or a request.
+- **First time only:** detects stack, remote and existing code; one round of options for the real commands, Windows,
+  the agents in use and the optional CI (`verify` on every PR); copies the scripts into `scripts/`, adapts `STEPS` of
+  `verify.py` trying every command, creates `AGENTS.md`, `CLAUDE.md`, `.gitattributes`, `.gitignore` entries,
+  `.vscode/tasks.json`, `docs/constitution.md` and the `docs/*` folders; for GitHub Copilot copies skills and reviewer
+  into `.github/`. Never overwrites existing files. Also updates the scripts of an initialized project.
+- **Then:** reads the code and the material before asking; plays the request back; brainstorms in rounds of options
+  (goal, users, outcomes, non-scope, anti-goals, constraints, errors); asks to confirm the understanding; writes
+  `spec.md` on a branch `spec/<id>` with verifiable REQs, Given/when/then ACs (only those that would catch a real
+  defect), non-scope, anti-goals, assumptions marked, open questions `blocking: yes|no`; `spec_lint.py` must pass.
+- **Decision:** `Confirm the spec` sets `- Status: approved` (only without blocking questions).
 
 ### sdd-plan
 
-- **Precondition:** spec `approved` and lint green, level M or L (there is no plan at level S).
-- **What it does:** read-only; `plan.md` with at least one discarded alternative, files in the format
-  `- path: what changes` (including any dependency manifest), interfaces between components (produces / consumes), all
-  ACs in the test strategy, the **review focus** (input classes no AC exercises, each with its test), the five Mermaid
-  **diagrams** of the change (flowchart, sequence, state, class, ER; `- n/a: <reason>` when one does not apply, never
-  the flowchart; guide in `references/diagrams.md`), risks, release and rollback;
-  self-review against the spec (coverage, names, proportion); `spec_lint.py --plan` must pass. Flags ADR
-  candidates without creating them.
-- **Approval:** a gate with options; `approve.py plan --commit` records the selected one.
+- **Precondition:** spec `approved`, lint green.
+- **What it does:** read-only on the code; `plan.md` with the approach and a discarded alternative, the interfaces
+  between components, the mandatory **flowchart**, 3 to 8 **vertical tasks** (`covers`, `files`, `depends`,
+  `verify`), the review focus and the risks; self-review against the spec; `spec_lint.py --plan` must pass. Proposes
+  ADRs for new dependencies or architecture decisions.
+- **Decision:** `Confirm the plan`, then the **design PR** (spec and plan together) and its merge question: the merge
+  approves both.
 
-### sdd-tasks
+### sdd-task
 
-- **Precondition:** spec and plan approved (level S: spec only).
-- **What it does:** `tasks.md` with one line per task in the format described in playbook §3.5 (action, `verify:`,
-  `covers:`), tests before code, every AC covered (ACs named by a non-blocking open question in tasks of their own,
-  placed last), `T-SYNC` always present and `T-DOC` except at level S;
-  `spec_lint.py --tasks` must pass.
-- **Gate:** a quick check with options; `approve.py tasks --commit` records `Based on plan`; then the design reaches
-  `main` (solo: fast-forward by the agent; team: design PR, which the agent can open or merge if the user selects it).
+- **Precondition:** spec and plan on `main`; the task ready (dependencies merged).
+- **What it does:** branch `task/<id>-T-nn`; tests from the task's ACs, red for the right reason, committed alone with
+  `Test-Lock: T-nn`; the code with `Task: T-nn`; `verify`, `trace_check.py --task`, `diff_scope.py --task`; the
+  documentation the task changes; the task's box ticked; the PR (`references/pr-body.md`); the review of
+  `sdd-reviewer`. The **last task** also writes the area page with the five diagrams from the final code and sets the
+  spec to `implemented`.
+- **Decision:** `Merge into main` (or `Change it`, `Leave it open`), with the checks, the reviewer's verdict, the CI
+  status and the sensitive files in front of you.
+- **Rules:** never weaken a test; a change to spec or plan is a new design PR; a task that outgrows its files or a
+  readable PR is split.
 
-### sdd-tests-from-ac
+### sdd-parallel
 
-- **When:** for the tasks that write tests (called by `sdd-implement`) or on request.
-- **What it does:** tests from the ACs, not from the code, with the ID in the name (`references/test-conventions.md`),
-  plus the error cases and the plan's review focus cases; checks the test quality against the anti-patterns of the
-  conventions (assertions on mocks, weak assertions, production methods only for tests); a minimal skeleton if needed;
-  the tests must be **red for the right reason** (not import or syntax errors), with the failure message reported;
-  `trace_check.py --warn-only`.
-- **Rule:** red tests are committed alone, with the trailer `Test-Lock: T-nn` (the skeleton, if any, in an earlier
-  commit). `diff_scope.py` reports any later change to those tests. At levels M and L the user reads the locked tests and
-  selects the approval; only then `approve.py tests` writes `tests approved: <name, date, sha>` on the task line; a new `Test-Lock` commit for the same
-  task voids the approval.
+- **When:** `state.py` names two or more ready tasks with disjoint files.
+- **What it does:** one worktree, branch and agent per task (at most 3), each following `sdd-task` up to the review;
+  merges one at a time, rebasing and rechecking the others after each merge; a conflict stops the task and leads to a
+  plan correction.
 
-### sdd-implement
+### sdd-map
 
-- **Preconditions:** spec, plan and tasks valid and already merged into `main` (`spec_lint.py ... --base main`); feature
-  branch; `verify` run before starting (baseline); at levels M and L the test task carries `tests approved:`.
-- **Cycle:** first open `T-nn` or `T-Rnn` task → implement only that → `verify:` command and full `verify` → green:
-  tick, commit with `Spec:` and `Agent:` trailers; red: at most 3 attempts, then stop and ask. Never modifies tests
-  locked by a `Test-Lock` commit; stops if the change would exceed the spec level or needs an unplanned dependency.
-- **Decision rights:** follows the section of `AGENTS.md`: decides alone only what "Decides alone" lists and records it
-  as a ruling in `progress.md` (`- T-nn: what — why — cost if wrong`); stops on "Asks first", on a decision no line
-  names and on a task covering an AC named by a non-blocking open question; never does what "Never" lists.
-- **Tests after the code:** expected values from the ACs; a test that disagrees with code outside the task stays
-  failing and is reported.
-- **Task review:** at level L (optional at M with `- Task review: on`) every task is reviewed by `sdd-reviewer` on its
-  package (`review_package.py <spec-dir> T-nn`) before the next one; high and medium problems are fixed in the same task
-  (at most 2 rounds); the verdict goes into `## Task reviews` of `progress.md`. Commits carry `Task: T-nn`.
-- **Review findings (`T-Rnn`):** verified on the code before any change; a wrong finding is not fixed but recorded with
-  its evidence in "Disputed review findings".
-- **End:** when only `T-DOC` and `T-SYNC` remain, moves on to `sdd-review-diff`; does not declare the feature done.
+- **When:** at the start of work on an existing codebase, and before changing an area.
+- **What it does:** inventory with `scan_repo.py`, baseline as it is, the map with the five diagrams of the existing
+  system, tried commands, 5 statements spot-checked, `Do not modify` and `Sensitive areas` proposed for `AGENTS.md`;
+  then characterization tests of the area to change, proven able to fail, recorded in the area page.
 
 ### sdd-bugfix
 
-- **When:** a defect to fix (not for new features). Trivial bugs: red test, fix, `verify`, no file.
-- **What it does:** `docs/bugs/BUG-nnn-slug.md` with states `open → diagnosed → fixed → verified`, checked by
-  `bug_lint.py` at every transition; reproduction (if it does not reproduce, it stops), definition of expected and "must
-  NOT change" behaviour, red test, read-only diagnosis with the techniques of `references/debugging.md` (trace back to
-  the source, one hypothesis at a time, bisect, flaky tests), minimal fix, non-regression test, closure.
-- **Gate:** the user confirms expected and unchanged behaviour (step 2).
-- **Rules:** one bug, one branch, one commit; no refactoring in the same commit; other defects found = new bugs.
+- **What it does:** bug file, reproduction (no fix by intuition), expected and unchanged behaviour confirmed by the
+  user, red test locked with `Test-Lock: BUG-nnn`, verified root cause (`references/debugging.md`), minimal fix,
+  non-regression, PR with review and merge question. A one-line bug with an obvious cause needs no bug file.
 
-### sdd-review-diff
+### sdd-next
 
-- **Preconditions:** no open `T-nn` task, `verify` green, work committed. At level S the deterministic checks are enough,
-  reported in the PR.
-- **What it does:** `diff_scope.py` (including underestimated level, dependencies without a decision and approvals
-  voided by new `Test-Lock` commits), `trace_check.py --junit` and `secrets_check.py`; independent review (Claude Code:
-  subagent `sdd-reviewer`, without Bash, that receives the branch package of `review_package.py` and the outputs in the
-  message; after per-task reviews it focuses on integration, non-scope and rulings; GitHub Copilot: the same agent as
-  the custom agent `.github/agents/sdd-reviewer.agent.md`; otherwise a new session with spec, plan, script outputs and
-  diff); writes `review.md` with outcome, problems with file and line, refutation attempts.
-- **Gate:** the **decision belongs to the user**, selected among options and written by `approve.py review`
-  (`Decided by`; at level L also `Human diff review` with `--diff-read`, after the user has read the diff); with `non-compliant` every `high`/`medium` problem becomes a `T-Rnn` task in `tasks.md`,
-  executed by `sdd-implement` or the loop; once the `T-R` tasks are closed, the review is repeated.
-- **Does not:** modify code.
+- **What it does:** runs `state.py` and reports infrastructure, specs, tasks merged and the `NEXT` step; asks which spec
+  when there are several; reports open bugs; does not change anything.
 
-### sdd-docs
+## Reviewer agent: sdd-reviewer
 
-- **Preconditions:** `T-nn` tasks closed, review valid and not `non-compliant`.
-- **What it does:** updates README, API documentation and migration notes from the spec and the real code; proposes ADRs
-  (creates them after confirmation); runs the examples (Python blocks marked `# docs-check: run` with
-  `docs_check.py --run-examples`, others by hand); explains flows and data with the Mermaid diagrams of the area page;
-  `docs_check.py` checks links and diagrams; ticks `T-DOC`.
-
-### sdd-sync
-
-- **Preconditions:** review with `Decided by` filled in (level S: `diff_scope.py` and `trace_check.py` green), `T-DOC`
-  closed.
-- **What it does:** compares spec and real behaviour: every gap is either a bug (`sdd-bugfix`) or a requirement change to
-  approve, never hidden; creates/updates `docs/system/<area>.md` (optional at level S) with the five Mermaid diagrams redrawn from the final code; sets `Status: implemented`; ticks
-  `T-SYNC`; reports the non-blocking open questions still in the spec (answered with a revision, or moved); `sync_check.py --junit` must pass; proposes lessons for `AGENTS.md` and ADRs.
-
-### sdd-loop
-
-- **When:** many small, independent tasks. For few or tightly coupled tasks, `sdd-implement` is better.
-- **What it does:** prepares `PROMPT.md` and `progress.md`, proposes the example permissions (`settings.loop.json`:
-  no writes to `scripts/`, `AGENTS.md`, `.github/`, spec, plan and review; no push, no network), agrees on `--max`,
-  `--stall` and `--timeout`, runs `loop.py --dry-run`, shows the safety checklist and the command.
-- **Does not:** **launch the loop**: the user launches it in an isolated terminal, after explicit approval.
+Independent reviewer, read-only by construction (Claude Code subagent with Read, Grep, Glob; GitHub Copilot custom
+agent with `read` and `search`; Codex: a new session with the same instructions). It reviews **one PR**: ACs of the
+task implemented and tested by tests that could fail, tests derived from the ACs and locked before the code, no
+anti-patterns, nothing outside the task, decisions within the decision rights, diagrams matching the code in the last
+task. Verdict `pass` or `fix needed`, problems with file and line, what the human should read before the merge.

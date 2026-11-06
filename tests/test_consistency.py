@@ -180,7 +180,7 @@ class TestReferences(unittest.TestCase):
         self.assertEqual(titles, set(re.findall(r"^## (\d+)\. ", PLAYBOOK_IT, re.M)), "same § numbering in both")
         self.assertEqual(titles, {str(n) for n in range(10)})
         self.assertLess(len(PLAYBOOK.splitlines()), 300, "the playbook stays short: details live in the templates")
-        for rel, text in {**md_texts(), "playbook_it": PLAYBOOK_IT}.items():
+        for rel, text in {**md_texts(history=False), "playbook_it": PLAYBOOK_IT}.items():  # history keeps old §
             for n in re.findall(r"§\s?(\d+)", text):
                 self.assertIn(n, titles, f"{rel}: §{n} does not exist in the playbook")
 

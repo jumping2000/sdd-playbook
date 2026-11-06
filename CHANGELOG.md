@@ -4,6 +4,35 @@
 
 Entries before 0.13.0 use the names of their time (`sdlc-*`, `SDLC_*`, Italian field names).
 
+## 0.30.0
+A simplification, from the review of the method after its first real trial: **one risk, one mechanism**. The plugin
+goes from 14 to 7 skills and from 13 to 8 scripts; the playbook from about 1,200 lines to about 140.
+- **One flow, no variants:** levels S/M/L and the solo/team profiles are gone. Small vertical tasks make small PRs;
+  sensitive areas of `AGENTS.md` are flagged in the PR (`SENSITIVE` line of `diff_scope.py`) instead of raising a level.
+- **Three kinds of decision, all options:** confirm the spec, confirm the plan, merge each PR. **The merge is the
+  approval:** hashes, `Approved by`, `Based on spec/plan`, `tests approved:`, `Decided by`, `review.md` and
+  `approve.py` are removed; git records who merged what.
+- **New skills:** `sdd-start` (initializes the project the first time, explores the request, brainstorms in rounds of
+  options, writes the spec), `sdd-task` (one task, one branch, one PR: locked tests, code, verify, docs, review, merge
+  question; the last task closes the feature), `sdd-parallel` (independent tasks in separate worktrees, one PR each,
+  merged one at a time), `sdd-map` (map and characterization). `sdd-plan`, `sdd-bugfix` and `sdd-next` rewritten.
+  Removed: `sdd-init`, `sdd-spec`, `sdd-tasks`, `sdd-tests-from-ac`, `sdd-implement`, `sdd-review-diff`, `sdd-docs`,
+  `sdd-sync`, `sdd-loop`, `sdd-characterize`, `sdd-map-codebase`.
+- **Plan with vertical tasks:** `tasks.md` is gone; the plan lists 3 to 8 tasks, each with `covers`, `files`,
+  `depends` and `verify`; `spec_lint.py --plan` checks them (dependencies and cycles included) and warns above 8.
+- **Tests:** no human approval of single tests; they are written from the ACs, locked by a `Test-Lock` commit before
+  the code (`diff_scope.py`) and checked by the reviewer agent on every PR.
+- **Diagrams:** the flowchart is mandatory in the plan; the five diagrams stay complete in the final documentation,
+  the area page written by the last task from the real code.
+- **Scripts:** `trace_check.py --task`; `diff_scope.py --task` (errors: forbidden zones and locked tests; warnings:
+  files outside the task, dependencies, more than 400 changed lines, sensitive areas); `state.py` reads spec, plan and
+  merged tasks from `main` and proposes `sdd-parallel` for ready tasks with disjoint files; the `Stop` hook recognizes
+  the red phase from the last `Test-Lock` commit. Removed: `approve.py`, `loop.py`, `review_package.py`, `bug_lint.py`,
+  `sync_check.py`, the glossary of synonyms.
+- **CI in the projects:** optional, only `verify` on every PR; CODEOWNERS, PR template and process checks removed.
+- **Documentation:** short playbook written directly (no generator), README, quick guide, skills, scripts and
+  architecture rewritten in both languages.
+
 ## 0.20.0
 From the first real trial: too much process for a simple task, too many manual steps, free-text approvals and git by hand. The number jumps to 0.20.0 to mark the change of approach.
 - **Level chosen by the user:** `sdd-spec` proposes the lowest level the hard criteria allow and shows S, M and L as
