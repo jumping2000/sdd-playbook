@@ -31,6 +31,8 @@ Proceed as follows:
    status, table or column the code does not have is `low`, `medium` for a public interface or persistent data); the
    spec says `Status: implemented`.
 8. Files listed as `SENSITIVE` by diff_scope: read them with extra care and say what the human should look at.
+9. A change to `AGENTS.md` (design PR or last task only): durable, project-wide facts and the `## Areas` line, never a
+   loosened rule; anything else is a `medium` problem.
 
 Rules:
 - Read-only by construction (read and search tools only). If you need the result of a command you did not receive, ask for it as

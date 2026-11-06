@@ -39,8 +39,8 @@ a task, right after its `Test-Lock` commit), `SDD_GUARD=1` blocks destructive co
 
 | Document | Purpose | Written by |
 |---|---|---|
-| `AGENTS.md` | Commands, conventions, zones not to touch, sensitive areas, decision rights | `sdd-start` |
-| `docs/specs/<id>/spec.md` | Problem, scope, **non-scope**, **anti-goals**, use cases, requirements (REQ), acceptance criteria (AC, Given/when/then), open questions | `sdd-start` |
+| `AGENTS.md` | Commands, conventions, zones not to touch, sensitive areas, decision rights, the `## Areas` index of the area pages; under 100 lines, only durable project-wide facts | `sdd-start`; updates proposed at the design PR and at the feature's close |
+| `docs/specs/<id>/spec.md` | Problem, scope, **non-scope**, **anti-goals**, **current behaviour and impact** (what exists and must not change), use cases, requirements (REQ), acceptance criteria (AC, Given/when/then), open questions | `sdd-start` |
 | `docs/specs/<id>/plan.md` | Approach and discarded alternative, interfaces, **flowchart**, 3 to 8 **vertical tasks**, review focus, risks | `sdd-plan` |
 | `docs/system/<area>.md` | Current behaviour of an area with the **five diagrams** (flowchart, sequence, state, class, ER) drawn from the code | the last task of a feature |
 | `docs/system/map.md` | Map of an existing codebase, with its diagrams, tried commands and baseline | `sdd-map` |
@@ -65,6 +65,11 @@ flowchart TD
     more -- yes --> task
     more -- no --> done([feature closed by its last task])
 ```
+
+**`AGENTS.md` grows with the project, not with the features.** At the design PR the agent proposes the durable facts
+the design brings (new commands, sensitive areas, zones not to touch, conventions, the ADR of a new dependency); at the
+feature's close, one line in `## Areas` for the area page and the lessons that apply to the whole project. Both as
+options (`Apply`, `Skip`), both in the PR; feature details stay in spec, plan and area page.
 
 Your decisions for a feature of five tasks: the spec, the plan and five merges, each one an option to select.
 `sdd-next` (or `python scripts/state.py`) tells the next step at any time, reading spec, plan and merged tasks from git.
@@ -99,7 +104,13 @@ means the plan's files or interfaces were wrong: the plan is corrected, not the 
 
 ## 6. Existing codebases
 
-The main risk is that the agent changes what it should not touch. `sdd-map`, before any spec: a deterministic
+The main risk is that the agent changes what it should not touch. **Every change to existing code starts with an impact
+analysis** (`sdd-start`): the area pages listed in `AGENTS.md` (`## Areas`) and the specs they link, the code and its
+callers, the tests that protect the behaviour today (run, green), `git log` of the files involved. The spec records it
+in `## Current behaviour and impact`: what exists today, what changes, what must not change and which tests protect it.
+A behaviour that must not change and has no test gets characterization tests first.
+
+For code that has never been mapped, `sdd-map` comes before any spec: a deterministic
 inventory (`scan_repo.py`), the real commands tried, the **baseline** (a red one is declared, not hidden), the map with
 its diagrams, `Do not modify` and `Sensitive areas` in `AGENTS.md`. Then, area by area and only where you are about
 to work, **characterization tests** that pin the current behaviour and are proven able to fail. The spec describes only
@@ -107,7 +118,9 @@ the change, with an explicit non-scope.
 
 ## 7. Bugs
 
-**Reproduce, pin with a red test, diagnose, fix the minimum, check that nothing else changed** (`sdd-bugfix`). You
+**Read, reproduce, pin with a red test, diagnose, fix the minimum, check that nothing else changed** (`sdd-bugfix`).
+Before reproducing, the agent reads the area page and the spec (the ACs say what is expected), runs the area's tests
+and looks at `git log`/`git blame` of the suspect files: a recent change is often the cause. You
 confirm the expected behaviour and the behaviour that must not change; the red test is locked like a task's; the root
 cause is verified, not guessed; after three failed attempts the agent stops. A trivial bug (obvious cause, one line)
 needs only a red test, the fix and `verify`. One bug, one PR, one merge question.

@@ -9,7 +9,7 @@ Usage:
 Spec: title "# SPEC-yyyy-mm-dd-slug: ..." with the ID equal to the folder name (the old "# SPEC-NNN: ..." is still
 valid); "- Status:" draft | approved | implemented | superseded; sections Problem and goal, Scope, Requirements,
 Acceptance criteria, Open questions; every REQ has an AC, every AC cites existing REQs; a filled-in non-scope (error)
-and anti-goals (warning). Open questions: "- <question> — blocking: yes|no"; an approved or implemented spec may keep
+and anti-goals (warning), a "## Current behaviour and impact" section (warning). Open questions: "- <question> — blocking: yes|no"; an approved or implemented spec may keep
 only non-blocking ones. Warnings: vague words in REQ and AC lines ("fast", "appropriate", "should", "etc", ...),
 assumptions still marked [ASSUMPTION] in an approved spec. The approval is the merge of the design PR: no field to sign.
 Plan: a "## Flowchart" with a ```flowchart Mermaid block; "## Tasks" with one line per vertical task,
@@ -180,6 +180,9 @@ def lint_spec(text: str, folder: str | None = None) -> tuple[list[str], list[str
     if not m or not m.group(1).strip() or PLACEHOLDER.fullmatch(m.group(1).strip()):
         warn.append("Anti-goals missing or not filled in (what would make the feature a failure even if it works)")
     warn += language_warnings(text)
+    if "Current behaviour and impact" not in sec:
+        warn.append("Section '## Current behaviour and impact' missing (what exists today and must not change; "
+                    "'- none (new area)' for new code)")
     if state in ("approved", "implemented"):
         questions = open_questions(text)
         blocking = [q for q in questions if q[1] is not False]  # a placeholder also counts as an open question

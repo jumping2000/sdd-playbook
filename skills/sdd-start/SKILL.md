@@ -36,10 +36,17 @@ changes.
 
 ## 2. Explore the request
 
-1. **Look before you ask.** Read `AGENTS.md`, `docs/constitution.md`, the material the user pointed to and the code the
-   request touches; with existing code also `docs/system/map.md` and the area page involved. Never ask what the
-   project already answers.
-2. **Play it back.** In a short message restate what the user wants, for whom and why, and what it would touch; say
+1. **Look before you ask.** Read `AGENTS.md` (its `## Areas` index says where each area is documented),
+   `docs/constitution.md` and the material the user pointed to. Never ask what the project already answers.
+2. **Impact analysis, when the request changes existing code** (an app built with the playbook or not):
+   - the area pages `docs/system/<area>.md` and the specs they link, `docs/system/map.md`, the ADRs involved;
+   - the code the request touches and its callers, read from the entry points down;
+   - the tests that protect that behaviour today (run them: they must be green before you start);
+   - `git log` of the files involved: recent changes and their reasons.
+   Show the result in a few lines: **what exists today, what changes, what must not change, which tests protect it**.
+   If no test protects a behaviour that must not change, propose characterization tests first (`sdd-map`, part 2). If
+   the code has never been mapped, propose `sdd-map` before the spec.
+3. **Play it back.** In a short message restate what the user wants, for whom and why, and what it would touch; say
    plainly if you found a constraint, a conflict or a cheaper path.
 
 ## 3. Brainstorm in rounds of options
@@ -56,7 +63,8 @@ in a few lines (options: `That's it`, `Correct it`).
 a short lower-case slug (`2026-10-24-export-csv`): folder name and title (`# SPEC-2026-10-24-export-csv: Export CSV`).
 - every requirement is a verifiable sentence; every REQ has at least one AC in Given/when/then form, with an error case
   where it makes sense; keep only the ACs that would catch a real defect;
-- the **non-scope** is mandatory and concrete; in an existing codebase describe only the change;
+- the **non-scope** is mandatory and concrete; in an existing codebase describe only the change, and fill in
+  `## Current behaviour and impact` from the impact analysis (`- none (new area)` for new code);
 - the **anti-goals** record what the user said would make the feature a failure;
 - every assumption is marked `[ASSUMPTION]`; vague words ("fast", "appropriate", "etc") are replaced;
 - open questions: `- <question> — blocking: yes|no`; blocking means the answer would change a REQ or an AC.

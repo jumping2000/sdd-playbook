@@ -45,6 +45,9 @@ point to `sdd-start`.
 
 Summarize the approach and the task list (with what can run in parallel) and ask the plan decision with options
 (`Confirm the plan`, `Change it`, `Stop here`; guide: search for `**/sdd-start/references/interaction.md`). On
-`Confirm the plan`, commit the plan on the spec's branch, open the **design PR** (spec and plan together) and ask the
-merge question. The merge is the approval of both: do not start any task before it.
+`Confirm the plan`, commit the plan on the spec's branch. Then propose the **`AGENTS.md` update** the design brings,
+limited to durable, project-wide facts: new commands, new `Sensitive areas` or `Do not modify` paths, new conventions,
+the ADR of a new dependency; never feature details, which stay in spec, plan and area page; `AGENTS.md` stays under
+100 lines. Ask with options (`Apply`, `Skip`); if applied, it travels in the same PR. Open the **design PR** (spec,
+plan and the `AGENTS.md` change) and ask the merge question. The merge is the approval of both: do not start any task before it.
 Next step: `sdd-task` (or `sdd-parallel` when `python scripts/state.py` proposes it).

@@ -39,9 +39,11 @@ closes the feature. Existing code: `sdd-map` first. Bugs: `sdd-bugfix`. Anytime:
   `verify.py` trying every command, creates `AGENTS.md`, `CLAUDE.md`, `.gitattributes`, `.gitignore` entries,
   `.vscode/tasks.json`, `docs/constitution.md` and the `docs/*` folders; for GitHub Copilot copies skills and reviewer
   into `.github/`. Never overwrites existing files. Also updates the scripts of an initialized project.
-- **Then:** reads the code and the material before asking; plays the request back; brainstorms in rounds of options
+- **Then:** reads the material before asking; for a change to existing code, an **impact analysis** (area pages
+  and linked specs, code and callers, the protecting tests run green, `git log`) shown as what exists, what changes,
+  what must not change and which tests protect it; plays the request back; brainstorms in rounds of options
   (goal, users, outcomes, non-scope, anti-goals, constraints, errors); asks to confirm the understanding; writes
-  `spec.md` on a branch `spec/<id>` with verifiable REQs, Given/when/then ACs (only those that would catch a real
+  `spec.md` on a branch `spec/<id>` with `## Current behaviour and impact`, verifiable REQs, Given/when/then ACs (only those that would catch a real
   defect), non-scope, anti-goals, assumptions marked, open questions `blocking: yes|no`; `spec_lint.py` must pass.
 - **Decision:** `Confirm the spec` sets `- Status: approved` (only without blocking questions).
 
@@ -52,7 +54,8 @@ closes the feature. Existing code: `sdd-map` first. Bugs: `sdd-bugfix`. Anytime:
   between components, the mandatory **flowchart**, 3 to 8 **vertical tasks** (`covers`, `files`, `depends`,
   `verify`), the review focus and the risks; self-review against the spec; `spec_lint.py --plan` must pass. Proposes
   ADRs for new dependencies or architecture decisions.
-- **Decision:** `Confirm the plan`, then the **design PR** (spec and plan together) and its merge question: the merge
+- **Decision:** `Confirm the plan`, then the proposed `AGENTS.md` update (durable facts only; `Apply` or `Skip`),
+  then the **design PR** (spec and plan together) and its merge question: the merge
   approves both.
 
 ### sdd-task
@@ -62,7 +65,7 @@ closes the feature. Existing code: `sdd-map` first. Bugs: `sdd-bugfix`. Anytime:
   `Test-Lock: T-nn`; the code with `Task: T-nn`; `verify`, `trace_check.py --task`, `diff_scope.py --task`; the
   documentation the task changes; the task's box ticked; the PR (`references/pr-body.md`); the review of
   `sdd-reviewer`. The **last task** also writes the area page with the five diagrams from the final code and sets the
-  spec to `implemented`.
+  spec to `implemented`, and proposes for `AGENTS.md` the `## Areas` line and the project-wide lessons.
 - **Decision:** `Merge into main` (or `Change it`, `Leave it open`), with the checks, the reviewer's verdict, the CI
   status and the sensitive files in front of you.
 - **Rules:** never weaken a test; a change to spec or plan is a new design PR; a task that outgrows its files or a
@@ -84,7 +87,8 @@ closes the feature. Existing code: `sdd-map` first. Bugs: `sdd-bugfix`. Anytime:
 
 ### sdd-bugfix
 
-- **What it does:** bug file, reproduction (no fix by intuition), expected and unchanged behaviour confirmed by the
+- **What it does:** reads first (area page, spec, the area's tests, `git log`/`git blame` of the suspect files); bug
+  file, reproduction (no fix by intuition), expected and unchanged behaviour confirmed by the
   user, red test locked with `Test-Lock: BUG-nnn`, verified root cause (`references/debugging.md`), minimal fix,
   non-regression, PR with review and merge question. A one-line bug with an obvious cause needs no bug file.
 

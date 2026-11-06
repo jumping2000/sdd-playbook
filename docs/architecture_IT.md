@@ -115,14 +115,14 @@ Gli script leggono pochi campi con convenzioni fisse. I nomi dei campi sono in i
 
 | File | Campi e strutture letti | Script |
 |---|---|---|
-| `spec.md` | titolo `# SPEC-<id>: ...` (data + slug uguale alla cartella, o un numero); `- Status:` (`draft`, `approved`, `implemented`, `superseded`); sezioni `## Problem and goal`, `Scope`, `Requirements`, `Acceptance criteria`, `Open questions`; riga `**Non-scope (explicit):**`; riga `**Anti-goals:**`; `- REQ-nnn`; `- AC-nnn [REQ-nnn]`; marcatore `[ASSUMPTION]`; domande aperte `- <domanda> — blocking: yes|no` | `spec_lint`, `state`, `trace_check` |
+| `spec.md` | titolo `# SPEC-<id>: ...` (data + slug uguale alla cartella, o un numero); `- Status:` (`draft`, `approved`, `implemented`, `superseded`); sezioni `## Problem and goal`, `Scope`, `Requirements`, `Acceptance criteria`, `Open questions`; riga `**Non-scope (explicit):**`; riga `**Anti-goals:**`; sezione `## Current behaviour and impact` (avviso se manca); `- REQ-nnn`; `- AC-nnn [REQ-nnn]`; marcatore `[ASSUMPTION]`; domande aperte `- <domanda> — blocking: yes|no` | `spec_lint`, `state`, `trace_check` |
 | `plan.md` | sezioni `## Approach`, `## Flowchart` (un flowchart ```` ```mermaid ````), `## Tasks`, `## Review focus` (voci o `- none`); righe di task `- [ ] T-nn <obiettivo> — covers: AC-nnn — files: `percorso` — depends: T-nn \| none — verify: `<comando>``; la casella spuntata dalla PR del task stesso | `spec_lint`, `state`, `trace_check --task`, `diff_scope --task` |
 | git | `main` (o `master`): la versione approvata di spec e piano, e i task spuntati; trailer `Test-Lock: T-nn` (o `BUG-nnn`) sul commit dei test rossi, che blocca i suoi file di test; trailer `Task: T-nn` sui commit di implementazione | `state`, `diff_scope`, hook `Stop` |
 | file di test | `# SPEC-<id>` nel file più `AC-nnn`, oppure citazioni `SPEC-<id>/AC-nnn`; righe `TODO`/`FIXME`/`XXX` ignorate | `trace_check` |
 | report JUnit XML (`reports/junit.xml`) | `testcase` con `name`, `classname`, `file` e figli `failure`, `error`, `skipped` | `trace_check --junit` |
 | `docs/system/<area>.md`, `map.md` | sezione `## Diagrams` con `### Flowchart`, `### Sequence diagram`, `### State diagram`, `### Class diagram`, `### ER diagram`, ognuna un blocco Mermaid del suo tipo o `- n/a: <motivo>` (mai il flowchart) | `docs_check` |
 | `docs/bugs/BUG-*.md` | `- Status:` (`open`, `diagnosed`, `fixed`, `verified`) | `state` (bug aperti) |
-| `AGENTS.md` | righe `- Do not modify: a, b` (errori) e `- Sensitive areas: a, b` (segnalate), percorsi tra backtick o prima parola, lette dal merge-base; sezione `## Decision rights` (letta dagli agenti) | `diff_scope`; `sdd-task`, `sdd-reviewer` |
+| `AGENTS.md` | righe `- Do not modify: a, b` (errori) e `- Sensitive areas: a, b` (segnalate), percorsi tra backtick o prima parola, lette dal merge-base; sezioni `## Decision rights` e `## Areas` (indice delle pagine d'area; lette dagli agenti); aggiornato solo alla PR di design e alla chiusura di una feature | `diff_scope`; `sdd-task`, `sdd-reviewer` |
 | `scripts/verify.py` | lista `STEPS` | (adattata da `sdd-start`) |
 | `scripts/*.py` | seconda riga `# sdd-playbook: <versione>` | `sdd-start` (aggiornamento), test di coerenza |
 | manifest e lockfile | solo il nome del file | `diff_scope` (avviso) |

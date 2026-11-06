@@ -115,14 +115,14 @@ The scripts read a few fields with fixed conventions. Field names are English an
 
 | File | Fields and structures read | Script |
 |---|---|---|
-| `spec.md` | title `# SPEC-<id>: ...` (date + slug equal to the folder, or a number); `- Status:` (`draft`, `approved`, `implemented`, `superseded`); sections `## Problem and goal`, `Scope`, `Requirements`, `Acceptance criteria`, `Open questions`; line `**Non-scope (explicit):**`; line `**Anti-goals:**`; `- REQ-nnn`; `- AC-nnn [REQ-nnn]`; marker `[ASSUMPTION]`; open questions `- <question> — blocking: yes|no` | `spec_lint`, `state`, `trace_check` |
+| `spec.md` | title `# SPEC-<id>: ...` (date + slug equal to the folder, or a number); `- Status:` (`draft`, `approved`, `implemented`, `superseded`); sections `## Problem and goal`, `Scope`, `Requirements`, `Acceptance criteria`, `Open questions`; line `**Non-scope (explicit):**`; line `**Anti-goals:**`; section `## Current behaviour and impact` (warning if missing); `- REQ-nnn`; `- AC-nnn [REQ-nnn]`; marker `[ASSUMPTION]`; open questions `- <question> — blocking: yes|no` | `spec_lint`, `state`, `trace_check` |
 | `plan.md` | sections `## Approach`, `## Flowchart` (a ```` ```mermaid ```` flowchart), `## Tasks`, `## Review focus` (items or `- none`); task lines `- [ ] T-nn <goal> — covers: AC-nnn — files: `path` — depends: T-nn \| none — verify: `<command>``; the box ticked by the task's own PR | `spec_lint`, `state`, `trace_check --task`, `diff_scope --task` |
 | git | `main` (or `master`): the version of spec and plan that is approved, and the ticked tasks; trailer `Test-Lock: T-nn` (or `BUG-nnn`) on the commit of the red tests, which locks its test files; trailer `Task: T-nn` on the implementation commits | `state`, `diff_scope`, `Stop` hook |
 | test files | `# SPEC-<id>` in the file plus `AC-nnn`, or citations `SPEC-<id>/AC-nnn`; `TODO`/`FIXME`/`XXX` lines ignored | `trace_check` |
 | JUnit XML report (`reports/junit.xml`) | `testcase` with `name`, `classname`, `file` and children `failure`, `error`, `skipped` | `trace_check --junit` |
 | `docs/system/<area>.md`, `map.md` | section `## Diagrams` with `### Flowchart`, `### Sequence diagram`, `### State diagram`, `### Class diagram`, `### ER diagram`, each a Mermaid block of its type or `- n/a: <reason>` (never the flowchart) | `docs_check` |
 | `docs/bugs/BUG-*.md` | `- Status:` (`open`, `diagnosed`, `fixed`, `verified`) | `state` (open bugs) |
-| `AGENTS.md` | lines `- Do not modify: a, b` (errors) and `- Sensitive areas: a, b` (flagged), paths in backticks or first word, read from the merge-base; section `## Decision rights` (read by the agents) | `diff_scope`; `sdd-task`, `sdd-reviewer` |
+| `AGENTS.md` | lines `- Do not modify: a, b` (errors) and `- Sensitive areas: a, b` (flagged), paths in backticks or first word, read from the merge-base; sections `## Decision rights` and `## Areas` (index of the area pages; read by the agents); updated only at the design PR and at a feature's close | `diff_scope`; `sdd-task`, `sdd-reviewer` |
 | `scripts/verify.py` | list `STEPS` | (adapted by `sdd-start`) |
 | `scripts/*.py` | line 2 `# sdd-playbook: <version>` | `sdd-start` (update), coherence tests |
 | manifests and lockfiles | file name only | `diff_scope` (warning) |

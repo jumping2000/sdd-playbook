@@ -40,8 +40,8 @@ di un task, subito dopo il suo commit `Test-Lock`), `SDD_GUARD=1` blocca comandi
 
 | Documento | Scopo | Scritto da |
 |---|---|---|
-| `AGENTS.md` | Comandi, convenzioni, zone da non toccare, aree sensibili, diritti decisionali | `sdd-start` |
-| `docs/specs/<id>/spec.md` | Problema, scope, **non-scope**, **anti-goal**, casi d'uso, requisiti (REQ), criteri di accettazione (AC, Dato/quando/allora), domande aperte | `sdd-start` |
+| `AGENTS.md` | Comandi, convenzioni, zone da non toccare, aree sensibili, diritti decisionali, l'indice `## Areas` delle pagine d'area; sotto le 100 righe, solo fatti durevoli validi per tutto il progetto | `sdd-start`; aggiornamenti proposti alla PR di design e alla chiusura della feature |
+| `docs/specs/<id>/spec.md` | Problema, scope, **non-scope**, **anti-goal**, **comportamento attuale e impatto** (cosa esiste e non deve cambiare), casi d'uso, requisiti (REQ), criteri di accettazione (AC, Dato/quando/allora), domande aperte | `sdd-start` |
 | `docs/specs/<id>/plan.md` | Approccio e alternativa scartata, interfacce, **flowchart**, da 3 a 8 **task verticali**, review focus, rischi | `sdd-plan` |
 | `docs/system/<area>.md` | Comportamento attuale di un'area con i **cinque diagrammi** (flowchart, sequenza, stato, classi, ER) ricavati dal codice | l'ultimo task di una feature |
 | `docs/system/map.md` | Mappa di una codebase esistente, con i diagrammi, i comandi provati e la baseline | `sdd-map` |
@@ -66,6 +66,11 @@ flowchart TD
     more -- sì --> task
     more -- no --> done([feature chiusa dal suo ultimo task])
 ```
+
+**`AGENTS.md` cresce con il progetto, non con le feature.** Alla PR di design l'agente propone i fatti durevoli che il
+design porta (nuovi comandi, aree sensibili, zone da non toccare, convenzioni, l'ADR di una dipendenza nuova); alla
+chiusura della feature, una riga in `## Areas` per la pagina d'area e le lezioni valide per tutto il progetto. Entrambi
+come opzioni (`Apply`, `Skip`), entrambi nella PR; i dettagli della feature restano in spec, piano e pagina d'area.
 
 Le tue decisioni per una feature di cinque task: la spec, il piano e cinque merge, ognuno un'opzione da selezionare.
 `sdd-next` (o `python scripts/state.py`) indica in ogni momento il passo successivo, leggendo da git spec, piano e task
@@ -102,7 +107,13 @@ codice.
 
 ## 6. Codebase esistenti
 
-Il rischio principale è che l'agente cambi ciò che non deve toccare. `sdd-map`, prima di ogni spec: un inventario
+Il rischio principale è che l'agente cambi ciò che non deve toccare. **Ogni modifica a codice esistente parte da
+un'analisi d'impatto** (`sdd-start`): le pagine d'area elencate in `AGENTS.md` (`## Areas`) e le spec che collegano, il
+codice e chi lo chiama, i test che proteggono il comportamento oggi (eseguiti, verdi), `git log` dei file coinvolti. La
+spec la registra in `## Current behaviour and impact`: cosa esiste oggi, cosa cambia, cosa non deve cambiare e quali
+test lo proteggono. Un comportamento che non deve cambiare e non ha test riceve prima i test di caratterizzazione.
+
+Per il codice mai mappato, `sdd-map` viene prima di ogni spec: un inventario
 deterministico (`scan_repo.py`), i comandi reali provati, la **baseline** (se è rossa si dichiara, non si nasconde), la
 mappa con i diagrammi, `Do not modify` e `Sensitive areas` in `AGENTS.md`. Poi, area per area e solo dove stai per
 lavorare, **test di caratterizzazione** che fissano il comportamento attuale e di cui si prova che possono fallire. La
@@ -110,8 +121,9 @@ spec descrive solo la modifica, con un non-scope esplicito.
 
 ## 7. Bug
 
-**Riproduci, fissa con un test rosso, diagnostica, correggi il minimo, controlla che nient'altro sia cambiato**
-(`sdd-bugfix`). Confermi il comportamento atteso e quello che non deve cambiare; il test rosso si blocca come quello di
+**Leggi, riproduci, fissa con un test rosso, diagnostica, correggi il minimo, controlla che nient'altro sia cambiato**
+(`sdd-bugfix`). Prima di riprodurre, l'agente legge la pagina d'area e la spec (gli AC dicono cosa è atteso), esegue i
+test dell'area e guarda `git log`/`git blame` dei file sospetti: spesso la causa è una modifica recente. Confermi il comportamento atteso e quello che non deve cambiare; il test rosso si blocca come quello di
 un task; la causa radice è verificata, non indovinata; dopo tre tentativi falliti l'agente si ferma. Un bug banale
 (causa evidente, una riga) richiede solo un test rosso, la correzione e `verify`. Un bug, una PR, una domanda di merge.
 

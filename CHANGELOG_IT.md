@@ -32,6 +32,14 @@ passa da 14 a 7 skill e da 13 a 8 script; il playbook da circa 1.200 righe a cir
   `sync_check.py`, il glossario dei sinonimi.
 - **CI nei progetti:** facoltativa, solo `verify` su ogni PR; rimossi CODEOWNERS, template della PR e controlli di
   processo.
+- **Codice esistente e bug:** ogni modifica a codice esistente parte da un'analisi d'impatto in `sdd-start` (pagine
+  d'area e spec collegate, codice e chiamanti, test che lo proteggono eseguiti e verdi, `git log`), registrata nella
+  nuova sezione della spec `## Current behaviour and impact` (avviso se manca); `sdd-bugfix` legge pagina d'area, spec,
+  test e storia dei file sospetti prima di riprodurre.
+- **`AGENTS.md` mantenuto:** aggiornamenti proposti come opzioni alla PR di design (fatti durevoli: comandi, aree
+  sensibili, zone da non toccare, convenzioni, ADR) e alla chiusura della feature (una riga nel nuovo indice
+  `## Areas`, lezioni valide per tutto il progetto); il revisore rifiuta una regola allentata.
+- **PR su qualunque piattaforma:** GitHub (`gh`), GitLab (`glab`), o il link stampato dal push.
 - **Documentazione:** playbook breve scritto direttamente (senza generatore), README, guida rapida, skill, script e
   architettura riscritti nelle due lingue.
 

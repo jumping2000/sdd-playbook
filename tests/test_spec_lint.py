@@ -44,6 +44,8 @@ class TestSpec(unittest.TestCase):
         self.assertTrue(any("AC-001: vague words (etc, quickly)" in w for w in spec_lint.lint_spec(vague)[1]))
         no_goals = SPEC_OK.replace("- **Anti-goals:** a CSV that spreadsheets open with broken columns\n", "")
         self.assertTrue(any("Anti-goals" in w for w in spec_lint.lint_spec(no_goals)[1]))
+        no_impact = SPEC_OK.replace("## Current behaviour and impact\n- none (new area)\n\n", "")
+        self.assertTrue(any("Current behaviour and impact" in w for w in spec_lint.lint_spec(no_impact)[1]))
         assumption = SPEC_OK.replace("Export the report as CSV.", "Export the report as CSV. [ASSUMPTION] UTF-8")
         self.assertTrue(any("[ASSUMPTION]" in w for w in spec_lint.lint_spec(assumption)[1]))
 

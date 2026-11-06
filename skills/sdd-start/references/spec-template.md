@@ -14,6 +14,12 @@
 - **Non-scope (explicit):** <what must NOT be done or touched>
 - **Anti-goals:** <what would make this a failure even if it technically works>
 
+## Current behaviour and impact
+<!-- From the impact analysis of sdd-start. "- none (new area)" for new code. -->
+- Today: <what the affected area does now, with its area page or spec>
+- Changes: <what this spec changes>
+- Must not change: <behaviour to preserve>, protected by <test paths>
+
 ## Use cases
 - UC-001 <name>: actor, preconditions, main flow, alternative/error flows
 

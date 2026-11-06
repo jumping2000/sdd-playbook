@@ -78,6 +78,9 @@ Export the report as CSV.
 - **Non-scope (explicit):** no change to the PDF format
 - **Anti-goals:** a CSV that spreadsheets open with broken columns
 
+## Current behaviour and impact
+- none (new area)
+
 ## Requirements
 - REQ-001 (functional): the report can be exported as CSV
 

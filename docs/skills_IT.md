@@ -40,9 +40,11 @@ task chiude la feature. Codice esistente: prima `sdd-map`. Bug: `sdd-bugfix`. In
   `verify.py` provando ogni comando, crea `AGENTS.md`, `CLAUDE.md`, `.gitattributes`, le voci di `.gitignore`,
   `.vscode/tasks.json`, `docs/constitution.md` e le cartelle `docs/*`; per GitHub Copilot copia skill e revisore in
   `.github/`. Non sovrascrive mai file esistenti. Aggiorna anche gli script di un progetto già inizializzato.
-- **Poi:** legge codice e materiale prima di chiedere; riformula la richiesta; fa brainstorming a giri di opzioni
+- **Poi:** legge il materiale prima di chiedere; per una modifica a codice esistente, un'**analisi d'impatto**
+  (pagine d'area e spec collegate, codice e chiamanti, i test che lo proteggono eseguiti e verdi, `git log`) mostrata
+  come cosa esiste, cosa cambia, cosa non deve cambiare e quali test lo proteggono; riformula la richiesta; fa brainstorming a giri di opzioni
   (obiettivo, utenti, esiti, non-scope, anti-goal, vincoli, errori); chiede conferma della comprensione; scrive
-  `spec.md` su un branch `spec/<id>` con REQ verificabili, AC Dato/quando/allora (solo quelli che scoprirebbero un
+  `spec.md` su un branch `spec/<id>` con `## Current behaviour and impact`, REQ verificabili, AC Dato/quando/allora (solo quelli che scoprirebbero un
   difetto reale), non-scope, anti-goal, assunzioni marcate, domande aperte `blocking: yes|no`; `spec_lint.py` deve
   passare.
 - **Decisione:** `Confirm the spec` imposta `- Status: approved` (solo senza domande bloccanti).
@@ -54,7 +56,8 @@ task chiude la feature. Codice esistente: prima `sdd-map`. Bug: `sdd-bugfix`. In
   componenti, il **flowchart** obbligatorio, da 3 a 8 **task verticali** (`covers`, `files`, `depends`, `verify`), il
   review focus e i rischi; autoverifica contro la spec; `spec_lint.py --plan` deve passare. Propone ADR per nuove
   dipendenze o decisioni di architettura.
-- **Decisione:** `Confirm the plan`, poi la **PR di design** (spec e piano insieme) e la sua domanda di merge: il merge
+- **Decisione:** `Confirm the plan`, poi l'aggiornamento proposto di `AGENTS.md` (solo fatti durevoli; `Apply` o
+  `Skip`), poi la **PR di design** (spec e piano insieme) e la sua domanda di merge: il merge
   approva entrambi.
 
 ### sdd-task
@@ -64,7 +67,7 @@ task chiude la feature. Codice esistente: prima `sdd-map`. Bug: `sdd-bugfix`. In
   `Test-Lock: T-nn`; il codice con `Task: T-nn`; `verify`, `trace_check.py --task`, `diff_scope.py --task`; la
   documentazione che il task cambia; la casella del task spuntata; la PR (`references/pr-body.md`); la review di
   `sdd-reviewer`. L'**ultimo task** scrive anche la pagina d'area con i cinque diagrammi dal codice finale e porta la
-  spec a `implemented`.
+  spec a `implemented`, e propone per `AGENTS.md` la riga di `## Areas` e le lezioni valide per tutto il progetto.
 - **Decisione:** `Merge into main` (oppure `Change it`, `Leave it open`), con davanti controlli, verdetto del revisore,
   stato della CI e file sensibili.
 - **Regole:** mai indebolire un test; una modifica a spec o piano è una nuova PR di design; un task che supera i suoi
@@ -87,7 +90,8 @@ task chiude la feature. Codice esistente: prima `sdd-map`. Bug: `sdd-bugfix`. In
 
 ### sdd-bugfix
 
-- **Cosa fa:** file del bug, riproduzione (niente correzioni a intuito), comportamento atteso e invariato confermati
+- **Cosa fa:** prima legge (pagina d'area, spec, test dell'area, `git log`/`git blame` dei file sospetti); file del
+  bug, riproduzione (niente correzioni a intuito), comportamento atteso e invariato confermati
   dall'utente, test rosso bloccato con `Test-Lock: BUG-nnn`, causa radice verificata (`references/debugging.md`),
   correzione minima, non regressione, PR con review e domanda di merge. Un bug di una riga con causa evidente non
   richiede il file del bug.

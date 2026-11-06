@@ -231,7 +231,8 @@ class TestPlaybook(unittest.TestCase):
         for text in ("## Approach", "## Interfaces", "## Flowchart", "## Tasks", "## Review focus", "covers:", "files:",
                      "depends:", "verify:", "produces"):
             self.assertIn(text, plan)
-        for text in ("**Non-scope (explicit):**", "**Anti-goals:**", "blocking: <yes | no>", "- Status: draft"):
+        for text in ("**Non-scope (explicit):**", "**Anti-goals:**", "blocking: <yes | no>", "- Status: draft",
+                     "## Current behaviour and impact"):
             self.assertIn(text, spec)
         self.assertNotIn("Level:", spec + plan)
         self.assertNotIn("Approved by", spec + plan)
@@ -243,12 +244,12 @@ class TestPlaybook(unittest.TestCase):
             self.assertIn(f"`### {title}`", guide)
         agents = read("skills/sdd-start/references/AGENTS.md.tmpl")
         for heading in ("## Decision rights", "### Decides alone", "### Asks first", "### Never", "- Do not modify:",
-                        "- Sensitive areas:"):
+                        "- Sensitive areas:", "## Areas"):
             self.assertIn(heading, agents)
         for gone in ("Profile", "Approvers", "Level", "approve.py"):
             self.assertNotIn(gone, agents)
         interaction = read("skills/sdd-start/references/interaction.md")
-        for text in ("Confirm the spec", "Confirm the plan", "Merge into main", "gh pr merge", "--ff-only"):
+        for text in ("Confirm the spec", "Confirm the plan", "Merge into main", "gh pr merge", "glab mr merge", "--ff-only"):
             self.assertIn(text, interaction)
         for skill in (ROOT / "skills").glob("*/SKILL.md"):  # every decision is asked with options
             body = skill.read_text(encoding="utf-8")

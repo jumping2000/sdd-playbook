@@ -29,9 +29,11 @@ reviewer's verdict, the CI status and the `SENSITIVE` line of `diff_scope.py` wh
 ## Merging
 
 The merge of a PR into `main` is the only approval the process records: git history says who merged what and when.
-- **With a GitHub remote:** push the branch, open the PR with `gh pr create` (body from `pr-body.md` of `sdd-task`),
-  and after `Merge into main` run `gh pr merge --rebase --delete-branch` (the commits, `Test-Lock` included, stay on
-  `main`). If `main` is protected and your identity cannot merge, give the user the link.
+- **With a remote:** push the branch and open the PR (body from `pr-body.md` of `sdd-task`) with the platform's CLI
+  when it is installed (GitHub: `gh pr create`; GitLab: `glab mr create`), otherwise give the user the link the push
+  prints. After `Merge into main` merge with rebase and delete the branch (GitHub: `gh pr merge --rebase
+  --delete-branch`; GitLab: `glab mr merge --rebase --remove-source-branch`), so the commits, `Test-Lock` included,
+  stay on `main`. If `main` is protected or your identity cannot merge, give the user the link.
 - **Without a remote:** after `Merge into main`, `git switch main` then `git merge --ff-only <branch>` and
   `git branch -d <branch>`. If the fast-forward fails, `main` moved: offer `Rebase the branch on main` or `Stop here`.
 - Never stash, cherry-pick or force-push. Never merge without the user selecting it.

@@ -41,6 +41,8 @@ Playbook §4. Choices and the merge are asked as options (guide: search for `**/
    `references/area-template.md` with the **five diagrams redrawn from the final code** (guide: search for
    `**/sdd-plan/references/diagrams.md`), add the spec to its "Linked specs", set `- Status: implemented` in the spec,
    and run `python scripts/trace_check.py <spec>` (every AC of the feature) and `python scripts/docs_check.py`.
+   Propose for `AGENTS.md` (options `Apply`, `Skip`) one line in `## Areas` for the area page (path and what it
+   covers) and the lessons the feature taught that apply to the whole project (a command, a trap, a convention).
 7. **PR:** push the branch and open the PR with the body of `references/pr-body.md` (covered ACs, check results,
    `SENSITIVE` line of `diff_scope.py`, decisions taken alone, documentation touched). Without a remote, the branch
    plays the PR.

@@ -13,6 +13,9 @@ If the cause is obvious and the fix is one line: red test, fix, `verify`, PR; no
 
 ## Steps
 
+0. **Read before reproducing.** The area page of the affected area and the spec it links (the ACs say what the
+   expected behaviour is), the existing tests of the area (run them), the code path from the symptom down, and
+   `git log` / `git blame` of the suspect files: a recent change is often the cause.
 1. **Reproduction.** Create `docs/bugs/BUG-<nnn>-<slug>.md` from `references/bugfix-template.md` (`- Status: open`) and
    reproduce with minimal steps. **If you cannot, stop and ask for data**: no fix by intuition.
 2. **Definition.** Actual and expected behaviour (with the REQ or AC; if the spec did not cover it, propose a new AC)

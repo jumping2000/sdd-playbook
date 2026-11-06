@@ -30,6 +30,14 @@ goes from 14 to 7 skills and from 13 to 8 scripts; the playbook from about 1,200
   the red phase from the last `Test-Lock` commit. Removed: `approve.py`, `loop.py`, `review_package.py`, `bug_lint.py`,
   `sync_check.py`, the glossary of synonyms.
 - **CI in the projects:** optional, only `verify` on every PR; CODEOWNERS, PR template and process checks removed.
+- **Existing code and bugs:** every change to existing code starts with an impact analysis in `sdd-start` (area pages
+  and linked specs, code and callers, protecting tests run green, `git log`), recorded in the new spec section
+  `## Current behaviour and impact` (warning if missing); `sdd-bugfix` reads area page, spec, tests and the history of
+  the suspect files before reproducing.
+- **`AGENTS.md` maintained:** updates proposed as options at the design PR (durable facts: commands, sensitive areas,
+  zones not to touch, conventions, ADRs) and at the feature's close (a line in the new `## Areas` index, project-wide
+  lessons); the reviewer rejects a loosened rule.
+- **PRs on any platform:** GitHub (`gh`), GitLab (`glab`), or the link the push prints.
 - **Documentation:** short playbook written directly (no generator), README, quick guide, skills, scripts and
   architecture rewritten in both languages.
 
