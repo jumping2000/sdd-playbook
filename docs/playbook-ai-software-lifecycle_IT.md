@@ -100,6 +100,13 @@ poi "UI"). Copre i suoi AC e sta in una PR rileggibile in 15-30 minuti. Più di 
    dagli AC e senza anti-pattern, niente fuori scope, decisioni dentro i diritti decisionali;
 6. **la domanda di merge** con i risultati davanti. Il merge è l'approvazione; la storia di git la registra.
 
+**Quando un task si blocca** (un requisito ambiguo, una modifica che il non-scope vieta, un task troppo grande, tre
+tentativi falliti sullo stesso problema) l'agente si ferma, scrive nella PR cosa fallisce e cosa ha provato, e chiede:
+`Revise the spec`, `Revise the plan`, `Try another approach` o `Stop here`. Una revisione non è mai una modifica dentro
+il task: avviene su un branch `revise/<id>` con una voce in `## Revisions`, la stessa conferma e una **PR di
+revisione**; i task già uniti restano, la PR del task bloccato si chiude o si tiene, come scegli tu. `state.py` vede una
+revisione in corso e indica `sdd-start` o `sdd-plan` finché non è unita.
+
 Un task il cui predecessore non è unito non parte. **I test scritti dopo il codice** (integrazione, end to end)
 prendono la spec come oracolo: i valori attesi vengono dagli AC, mai dall'output del codice.
 

@@ -90,6 +90,7 @@ They are a safety net, not a sandbox.
 | `diff_scope.py`: "locked test changed after locking" | The tests were changed after the `Test-Lock` commit: undo it, or fix the test in a new `Test-Lock` commit explained in the PR |
 | `diff_scope.py`: "file outside the task" | Expected? Say it in the PR. Otherwise move the change to its own task |
 | `verify` red right after the tests | It is the **red phase**, expected until the implementation is done |
+| The agent stopped on a task after 3 attempts | Choose `Revise the spec`, `Revise the plan`, `Try another approach` or `Stop here`; a revision goes through a revision PR |
 
 ## Recommended trial path
 

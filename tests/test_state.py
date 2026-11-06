@@ -67,6 +67,31 @@ class TestFlow(unittest.TestCase):
             write(d, F + "spec.md", SPEC_OK.replace("Status: approved", "Status: implemented"))
             self.assertEqual(nxt(d)["skill"], "sdd-start")  # no active spec: next idea
 
+    def test_revision_after_a_stuck_task(self):
+        with TmpDir() as d:
+            project(d)
+            write(d, F + "spec.md", SPEC_OK)
+            write(d, F + "plan.md", PLAN_OK)
+            git(d, "add", "-A")
+            git(d, "commit", "-qm", "design")
+            git(d, "switch", "-qc", "task/001-x-T-01")
+            write(d, F + "plan.md", PLAN_OK.replace("- [ ] T-01", "- [x] T-01"))  # a task branch ticks its box
+            self.assertEqual(nxt(d)["skill"], "sdd-task")  # not a revision
+            git(d, "commit", "-qam", "T-01 attempts")
+            git(d, "switch", "-q", "main")
+            git(d, "switch", "-qc", "revise/001-x")  # the task got stuck: Revise the plan
+            write(d, F + "plan.md", PLAN_OK + "\n## Revisions\n- 2026-11-06: T-01 split, the CSV writer needs streaming\n")
+            step = nxt(d)
+            self.assertEqual(step["skill"], "sdd-plan")
+            self.assertIn("plan revision in progress", step["reason"])
+            write(d, F + "spec.md", SPEC_OK.replace("valid CSV", "valid UTF-8 CSV"))  # Revise the spec
+            step = nxt(d)
+            self.assertEqual(step["skill"], "sdd-start")
+            self.assertIn("spec revision in progress", step["reason"])
+            git(d, "commit", "-qam", "revision")
+            merge(d, "revise/001-x")  # the revision PR merged: tasks start again from the revised plan
+            self.assertEqual(nxt(d)["skill"], "sdd-task")
+
     def test_independent_tasks_run_in_parallel(self):
         plan = PLAN_OK.replace("— files: `src/export.py`, `tests/test_export.py` — depends: T-01",
                                "— files: `src/errors.py`, `tests/test_errors.py` — depends: none")

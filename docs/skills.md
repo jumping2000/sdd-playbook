@@ -46,6 +46,8 @@ closes the feature. Existing code: `sdd-map` first. Bugs: `sdd-bugfix`. Anytime:
   `spec.md` on a branch `spec/<id>` with `## Current behaviour and impact`, verifiable REQs, Given/when/then ACs (only those that would catch a real
   defect), non-scope, anti-goals, assumptions marked, open questions `blocking: yes|no`; `spec_lint.py` must pass.
 - **Decision:** `Confirm the spec` sets `- Status: approved` (only without blocking questions).
+- **Revising a spec on `main`:** branch `revise/<id>`, entry in `## Revisions`, the plan revised too if the ACs change,
+  the same decision, revision PR.
 
 ### sdd-plan
 
@@ -57,6 +59,8 @@ closes the feature. Existing code: `sdd-map` first. Bugs: `sdd-bugfix`. Anytime:
 - **Decision:** `Confirm the plan`, then the proposed `AGENTS.md` update (durable facts only; `Apply` or `Skip`),
   then the **design PR** (spec and plan together) and its merge question: the merge
   approves both.
+- **Revising a plan on `main`:** branch `revise/<id>`, entry in `## Revisions`, merged tasks kept, open ones changed
+  or replaced, the stuck task's PR closed or kept (options), revision PR.
 
 ### sdd-task
 
@@ -68,8 +72,9 @@ closes the feature. Existing code: `sdd-map` first. Bugs: `sdd-bugfix`. Anytime:
   spec to `implemented`, and proposes for `AGENTS.md` the `## Areas` line and the project-wide lessons.
 - **Decision:** `Merge into main` (or `Change it`, `Leave it open`), with the checks, the reviewer's verdict, the CI
   status and the sensitive files in front of you.
-- **Rules:** never weaken a test; a change to spec or plan is a new design PR; a task that outgrows its files or a
-  readable PR is split.
+- **Rules:** never weaken a test; never edit spec or plan inside a task. **When it stops** (ambiguous requirement,
+  non-scope, task too large, 3 failed attempts) it reports what fails and asks `Revise the spec`, `Revise the plan`,
+  `Try another approach` or `Stop here`, then follows the chosen skill's revision procedure.
 
 ### sdd-parallel
 

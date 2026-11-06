@@ -28,3 +28,6 @@ pin it; "- none" if you checked and found none -->
 
 ## Risks
 - <risk>: <how it is checked; rollback if it matters>
+
+## Revisions
+- none <!-- yyyy-mm-dd, what changes and why, which task got stuck -->

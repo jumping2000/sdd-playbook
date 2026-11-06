@@ -43,6 +43,10 @@ goes from 14 to 7 skills and from 13 to 8 scripts; the playbook from about 1,200
   (snake_case); `diff_scope.py` recognizes bats, Terraform tests and more manifests; `- Test files:` and
   `- Dependency manifests:` in `AGENTS.md` extend both; `state.py` and `scan_repo.py` see infrastructure (Dockerfile,
   Compose, Helm) as existing code; `**/` in a glob also matches no folder.
+- **Stuck tasks:** after 3 failed attempts (or an ambiguous requirement, the non-scope, a task too large) `sdd-task`
+  stops, reports, and asks `Revise the spec`, `Revise the plan`, `Try another approach` or `Stop here`; `sdd-start` and
+  `sdd-plan` have a revision procedure (branch `revise/<id>`, `## Revisions`, revision PR; merged tasks kept, the stuck
+  task's PR closed or kept); `state.py` recognizes a revision in progress.
 - **PRs on any platform:** GitHub (`gh`), GitLab (`glab`), or the link the push prints.
 - **Documentation:** short playbook written directly (no generator), README, quick guide, skills, scripts and
   architecture rewritten in both languages.

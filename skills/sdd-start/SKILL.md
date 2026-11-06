@@ -84,5 +84,11 @@ spec`, `Change it`, `Stop here`). Only blocking-free specs can be confirmed. On 
 `- Status: approved`, rerun `spec_lint.py` and commit the spec on its branch. Do not write the plan or code here.
 Next step: `sdd-plan`.
 
-**Changing a spec already on `main`:** a new branch, the change plus an entry in `## Revisions` (date, what, why), the
-same decision and a PR like any other.
+## Revising a spec already on `main`
+
+When a task got stuck on a requirement (`sdd-task`, option `Revise the spec`) or the user asks for it:
+1. Branch `revise/<spec id>` from an up-to-date `main`; the change plus an entry in `## Revisions` (date, what, why).
+   Questions about the change in rounds of options, as in step 3; no blocking question may remain.
+2. If REQs or ACs changed, the plan must follow on the same branch ("Revising a plan" of `sdd-plan`): an AC of a merged
+   task that changes needs a new task.
+3. The spec decision (`Confirm the spec`), then the **revision PR** with the merge question (with the plan, if revised).

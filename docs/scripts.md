@@ -145,6 +145,8 @@ several active specs, no choice ..................... choose (--spec <id>, or th
 Status draft (or missing) ........................... sdd-start (confirm the spec)
 no plan.md .......................................... sdd-plan
 spec or plan not on main yet ........................ sdd-plan (open and merge the design PR)
+spec revised outside a task branch .................. sdd-start (confirm, revise the plan, merge the revision PR)
+plan revised outside a task branch .................. sdd-plan (confirm and merge the revision PR)
 two or more ready tasks with disjoint files ......... sdd-parallel (at most 3, named)
 one ready task ...................................... sdd-task (named)
 open tasks, none ready .............................. sdd-task (merge the open PRs first)

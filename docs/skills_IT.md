@@ -48,6 +48,8 @@ task chiude la feature. Codice esistente: prima `sdd-map`. Bug: `sdd-bugfix`. In
   difetto reale), non-scope, anti-goal, assunzioni marcate, domande aperte `blocking: yes|no`; `spec_lint.py` deve
   passare.
 - **Decisione:** `Confirm the spec` imposta `- Status: approved` (solo senza domande bloccanti).
+- **Revisione di una spec su `main`:** branch `revise/<id>`, voce in `## Revisions`, anche il piano rivisto se cambiano
+  gli AC, la stessa decisione, PR di revisione.
 
 ### sdd-plan
 
@@ -59,6 +61,8 @@ task chiude la feature. Codice esistente: prima `sdd-map`. Bug: `sdd-bugfix`. In
 - **Decisione:** `Confirm the plan`, poi l'aggiornamento proposto di `AGENTS.md` (solo fatti durevoli; `Apply` o
   `Skip`), poi la **PR di design** (spec e piano insieme) e la sua domanda di merge: il merge
   approva entrambi.
+- **Revisione di un piano su `main`:** branch `revise/<id>`, voce in `## Revisions`, task uniti mantenuti, quelli aperti
+  cambiati o sostituiti, la PR del task bloccato chiusa o tenuta (opzioni), PR di revisione.
 
 ### sdd-task
 
@@ -70,8 +74,9 @@ task chiude la feature. Codice esistente: prima `sdd-map`. Bug: `sdd-bugfix`. In
   spec a `implemented`, e propone per `AGENTS.md` la riga di `## Areas` e le lezioni valide per tutto il progetto.
 - **Decisione:** `Merge into main` (oppure `Change it`, `Leave it open`), con davanti controlli, verdetto del revisore,
   stato della CI e file sensibili.
-- **Regole:** mai indebolire un test; una modifica a spec o piano è una nuova PR di design; un task che supera i suoi
-  file o una PR rileggibile si divide.
+- **Regole:** mai indebolire un test; mai modificare spec o piano dentro un task. **Quando si ferma** (requisito
+  ambiguo, non-scope, task troppo grande, 3 tentativi falliti) riporta cosa fallisce e chiede `Revise the spec`,
+  `Revise the plan`, `Try another approach` o `Stop here`, poi segue la procedura di revisione della skill scelta.
 
 ### sdd-parallel
 

@@ -59,8 +59,17 @@ Merge only after `Merge into main`, as the guide says; then report what `python 
 
 ## Stop rules
 
-- Ambiguous or missing requirement, or a change the non-scope forbids: stop and ask; a change to spec or plan is a new
-  design PR, never an edit inside a task.
-- A task that grows beyond its files or beyond a PR readable in 15-30 minutes: stop and propose to split it.
-- Never weaken, skip or delete a test to make it pass; never declare a task done without a green `verify`.
-- After 3 failed attempts at the same problem, stop and report: the cause is probably in the plan.
+- **Stop** when: a requirement is ambiguous or missing; the task needs a change the non-scope forbids; the task grows
+  beyond its files or beyond a PR readable in 15-30 minutes; after **3 failed attempts** at the same problem (the
+  cause is probably in the spec or the plan).
+- Never weaken, skip or delete a test to make it pass; never declare a task done without a green `verify`; never edit
+  spec or plan inside a task.
+- **When you stop**, report in a few lines what fails, what you tried and what you think is wrong, write it in the PR
+  description (or the branch's last commit message without a remote), then ask with options:
+  - `Revise the spec`: a requirement or an AC is wrong or missing → follow "Revising a spec" of `sdd-start` (search
+    for `**/sdd-start/SKILL.md`);
+  - `Revise the plan`: the approach, the interfaces or the task split are wrong → follow "Revising a plan" of
+    `sdd-plan` (search for `**/sdd-plan/SKILL.md`);
+  - `Try another approach`: the user describes it; one more round of at most 3 attempts on the same task;
+  - `Stop here`: the branch and its PR stay open as they are.
+  Follow the chosen skill yourself in the same session, after the selection: skills do not call each other.

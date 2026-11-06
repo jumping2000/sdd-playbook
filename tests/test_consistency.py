@@ -261,6 +261,12 @@ class TestPlaybook(unittest.TestCase):
             self.assertIn("Decides alone", read(rel), rel)
         for rel in ("agents/sdd-reviewer.md", "skills/sdd-task/SKILL.md", "skills/sdd-bugfix/SKILL.md"):
             self.assertIn("Test-Lock", read(rel), rel)
+        task = read("skills/sdd-task/SKILL.md")  # a stuck task offers the way back, and the way back exists
+        for option, skill, section in (("Revise the spec", "sdd-start", "## Revising a spec"),
+                                       ("Revise the plan", "sdd-plan", "## Revising a plan")):
+            self.assertIn(f"`{option}`", task)
+            self.assertIn(section, read(f"skills/{skill}/SKILL.md"))
+        self.assertIn("## Revisions", plan)
         self.assertIn("# Tests written after the code", read("skills/sdd-task/references/test-conventions.md"))
         ci = read("skills/sdd-start/references/ci-github-actions.yml")
         self.assertIn("python scripts/verify.py", ci)

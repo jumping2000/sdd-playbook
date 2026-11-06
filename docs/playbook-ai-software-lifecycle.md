@@ -98,6 +98,13 @@ then "UI"). It covers its ACs and fits a PR readable in 15-30 minutes. More than
    the ACs and free of anti-patterns, nothing outside the scope, decisions within the decision rights;
 6. **the merge question** with the results in front of you. The merge is the approval; git history records it.
 
+**When a task gets stuck** (an ambiguous requirement, a change the non-scope forbids, a task too large, three failed
+attempts at the same problem) the agent stops, writes what fails and what it tried in the PR, and asks:
+`Revise the spec`, `Revise the plan`, `Try another approach` or `Stop here`. A revision is never an edit inside the
+task: it happens on a `revise/<id>` branch with an entry in `## Revisions`, the same confirmation and a **revision
+PR**; merged tasks stay, the stuck task's PR is closed or kept, as you choose. `state.py` sees a revision in progress
+and points to `sdd-start` or `sdd-plan` until it is merged.
+
 A task whose predecessor is not merged does not start. **Tests written after the code** (integration, end to end)
 take the spec as the oracle: expected values come from the ACs, never from the code's output.
 

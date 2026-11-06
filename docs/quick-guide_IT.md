@@ -90,6 +90,7 @@ Sono una rete di sicurezza, non un sandbox.
 | `diff_scope.py`: "locked test changed after locking" | I test sono cambiati dopo il commit `Test-Lock`: annulla la modifica, o correggi il test in un nuovo commit `Test-Lock` spiegato nella PR |
 | `diff_scope.py`: "file outside the task" | È voluto? Dillo nella PR. Altrimenti sposta la modifica in un task suo |
 | `verify` rosso subito dopo i test | È la **fase rossa**, attesa finché l'implementazione non è fatta |
+| L'agente si è fermato su un task dopo 3 tentativi | Scegli `Revise the spec`, `Revise the plan`, `Try another approach` o `Stop here`; una revisione passa da una PR di revisione |
 
 ## Percorso di prova consigliato
 

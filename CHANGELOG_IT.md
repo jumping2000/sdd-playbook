@@ -45,6 +45,10 @@ passa da 14 a 7 skill e da 13 a 8 script; il playbook da circa 1.200 righe a cir
   estensioni e `ac_001` (snake_case); `diff_scope.py` riconosce bats, test Terraform e più manifest; `- Test files:` e
   `- Dependency manifests:` in `AGENTS.md` li estendono entrambi; `state.py` e `scan_repo.py` vedono l'infrastruttura
   (Dockerfile, Compose, Helm) come codice esistente; `**/` in un glob vale anche per nessuna cartella.
+- **Task bloccati:** dopo 3 tentativi falliti (o un requisito ambiguo, il non-scope, un task troppo grande) `sdd-task`
+  si ferma, riporta e chiede `Revise the spec`, `Revise the plan`, `Try another approach` o `Stop here`; `sdd-start` e
+  `sdd-plan` hanno una procedura di revisione (branch `revise/<id>`, `## Revisions`, PR di revisione; task uniti
+  mantenuti, la PR del task bloccato chiusa o tenuta); `state.py` riconosce una revisione in corso.
 - **PR su qualunque piattaforma:** GitHub (`gh`), GitLab (`glab`), o il link stampato dal push.
 - **Documentazione:** playbook breve scritto direttamente (senza generatore), README, guida rapida, skill, script e
   architettura riscritti nelle due lingue.

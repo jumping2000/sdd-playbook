@@ -6,6 +6,7 @@ Usage: python scripts/state.py [--json] [--spec <id>] [root]
 Read-only. Flow: sdd-start (init, brainstorming, spec) -> sdd-plan (plan with the tasks; spec and plan merged into
 main with the design PR, which is the approval) -> sdd-task for every task (one branch and one PR each; independent
 tasks with sdd-parallel) -> feature closed by the last task (area page, Status: implemented). Brownfield: sdd-map first.
+A spec or plan that differs from main outside a task or fix branch is a revision in progress: sdd-start or sdd-plan.
 "On main" is read from git: a task is done when its box is ticked in the plan on main (its PR was merged); a task is
 ready when it is not done and all its dependencies are done. Two or more ready tasks with disjoint files -> sdd-parallel.
 With several active specs the NEXT line refers to the spec given with --spec, the one whose folder name appears in the
@@ -89,15 +90,22 @@ def parallel_group(ready: list[dict], limit: int = 3) -> list[dict]:
     return group
 
 
-def analyze_spec(root: Path, ref: str | None, d: Path) -> dict:
+def same(a: str | None, b: str | None) -> bool:
+    return (a or "").replace("\r\n", "\n") == (b or "").replace("\r\n", "\n")
+
+
+def analyze_spec(root: Path, ref: str | None, d: Path, branch: str = "") -> dict:
     rel = d.relative_to(root).as_posix()
     spec, plan = _read(d / "spec.md"), _read(d / "plan.md")
     spec_main, plan_main = on_main(root, ref, f"{rel}/spec.md"), on_main(root, ref, f"{rel}/plan.md")
     tasks = spec_lint.parse_tasks(plan_main or "")
     sid = spec_lint.spec_id(spec)
+    revision = None  # spec or plan changed outside a task branch, once the design is on main
+    if ref and spec_main and plan_main and not branch.startswith(("task/", "fix/")):
+        revision = "spec" if not same(spec, spec_main) else ("plan" if not same(plan, plan_main) else None)
     return {
         "id": d.name, "title_id": f"SPEC-{sid}" if sid else None, "status": spec_lint.status(spec) or "n/a",
-        "plan": bool(plan), "design_on_main": bool(spec_main and plan_main),
+        "plan": bool(plan), "design_on_main": bool(spec_main and plan_main), "revision": revision,
         "tasks": [{"id": t["id"], "done": t["done"], "depends": t["depends"], "files": t["files"]} for t in tasks],
         "tasks_done": sum(t["done"] for t in tasks), "tasks_total": len(tasks),
     }
@@ -112,6 +120,11 @@ def next_for_spec(s: dict) -> dict:
     if not s["design_on_main"]:
         return {"skill": "sdd-plan", "spec": i,
                 "reason": "spec and plan not on main yet: open the design PR and ask whether to merge it"}
+    if s.get("revision") == "spec":
+        return {"skill": "sdd-start", "spec": i,
+                "reason": "spec revision in progress: confirm it, revise the plan if the ACs changed, merge the revision PR"}
+    if s.get("revision") == "plan":
+        return {"skill": "sdd-plan", "spec": i, "reason": "plan revision in progress: confirm it and merge the revision PR"}
     if not s["tasks"]:
         return {"skill": "sdd-plan", "spec": i, "reason": "the plan on main has no task (- [ ] T-nn ...)"}
     ready = ready_tasks(s["tasks"])
@@ -148,7 +161,8 @@ def analyze(root: Path, choice: str | None = None) -> dict:
     infra = {"AGENTS.md": (root / "AGENTS.md").is_file(), "scripts/verify.py": (root / "scripts" / "verify.py").is_file()}
     ref = main_ref(root)
     base = root / "docs" / "specs"
-    specs = [analyze_spec(root, ref, d) for d in sorted(p for p in base.glob("*") if p.is_dir())] if base.is_dir() else []
+    branch = git(root, "branch", "--show-current")[1].strip()
+    specs = [analyze_spec(root, ref, d, branch) for d in sorted(p for p in base.glob("*") if p.is_dir())] if base.is_dir() else []
     for s in specs:
         if s["status"] not in CLOSED:
             s["next"] = next_for_spec(s)
@@ -157,7 +171,7 @@ def analyze(root: Path, choice: str | None = None) -> dict:
         state = spec_lint.status(_read(p))
         if state not in BUG_CLOSED:
             bugs.append({"file": p.name, "status": state or "n/a"})
-    code, branch = has_code(root), git(root, "branch", "--show-current")[1].strip()
+    code = has_code(root)
     has_map = (root / "docs" / "system" / "map.md").is_file()
     return {"infra": infra, "main": ref, "existing_code": code, "map": has_map, "branch": branch, "specs": specs,
             "open_bugs": bugs, "next": next_step(infra, code, has_map, specs, choice, branch)}

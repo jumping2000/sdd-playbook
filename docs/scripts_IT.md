@@ -145,6 +145,8 @@ più spec attive, nessuna scelta ..................... choose (--spec <id>, o il
 Status draft (o mancante) ........................... sdd-start (confermare la spec)
 plan.md mancante .................................... sdd-plan
 spec o piano non ancora su main ..................... sdd-plan (aprire e unire la PR di design)
+spec rivista fuori da un branch di task ............. sdd-start (confermare, rivedere il piano, unire la PR di revisione)
+piano rivisto fuori da un branch di task ............ sdd-plan (confermare e unire la PR di revisione)
 due o più task pronti con file disgiunti ............ sdd-parallel (al massimo 3, indicati)
 un task pronto ...................................... sdd-task (indicato)
 task aperti, nessuno pronto ......................... sdd-task (prima unire le PR aperte)

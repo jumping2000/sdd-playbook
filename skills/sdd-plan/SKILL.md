@@ -51,3 +51,16 @@ the ADR of a new dependency; never feature details, which stay in spec, plan and
 100 lines. Ask with options (`Apply`, `Skip`); if applied, it travels in the same PR. Open the **design PR** (spec,
 plan and the `AGENTS.md` change) and ask the merge question. The merge is the approval of both: do not start any task before it.
 Next step: `sdd-task` (or `sdd-parallel` when `python scripts/state.py` proposes it).
+
+## Revising a plan already on `main`
+
+When a task got stuck (`sdd-task`, option `Revise the plan`) or the user asks for it. If the spec must change too,
+revise it first on the same branch ("Revising a spec" of `sdd-start`).
+1. Branch `revise/<spec id>` from an up-to-date `main`; add an entry to `## Revisions` of the plan (date, what changes,
+   why, which task got stuck).
+2. Merged tasks (`[x]` on `main`) stay as they are; a change to their behaviour is a new task. Open tasks: keep the ID
+   if the goal stays, otherwise remove them and add new IDs after the highest one; every AC still covered.
+3. The branch and PR of the stuck task: ask with options `Close it without merging` (recommended when the approach
+   changes: close the PR, delete the branch) or `Keep it` (when the revised task can continue from it, rebased later).
+4. `python scripts/spec_lint.py <spec> --plan <plan>` until there are no errors; then the plan decision and a
+   **revision PR** with the merge question, like the design PR. Tasks start again from the revised plan on `main`.
