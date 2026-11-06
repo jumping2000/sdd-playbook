@@ -1,7 +1,9 @@
 # Diagrams (Mermaid)
 
-Plan, area pages and codebase map have a `## Diagrams` section with five subsections, checked by `spec_lint.py`
-(plan), `sync_check.py` (area page) and `docs_check.py` (every page of `docs/system/`):
+**The plan** has one mandatory diagram, the flowchart of the feature (`## Flowchart`, checked by `spec_lint.py`), and
+other diagrams only when they help the tasks. **The final documentation** (area pages `docs/system/<area>.md`, written
+by the task that closes the feature, and the codebase map) has a `## Diagrams` section with five subsections, checked
+by `docs_check.py` on every page of `docs/system/`:
 
 | Subsection | Mermaid block starts with | Draw it when | `n/a` is acceptable when |
 |---|---|---|---|
@@ -16,9 +18,10 @@ the export writes to the HTTP response only"). A diagram drawn to fill the secti
 
 ## What each document draws
 
-- **plan.md:** the change as designed, limited to what the tasks build. Names are the ones of `## Interfaces`.
-- **docs/system/<area>.md:** the area as built, redrawn from the code at `sdd-sync` (not copied from the plan): it is the
-  living documentation of the application.
+- **plan.md:** the flow of the change as designed, limited to what the tasks build. Names are the ones of
+  `## Interfaces`.
+- **docs/system/<area>.md:** the area as built, the five diagrams redrawn from the final code by the task that closes
+  the feature (not copied from the plan): it is the living documentation of the application.
 - **docs/system/map.md:** the existing system as read in the code (brownfield): modules and their dependencies in the
   flowchart, the existing schema in the ER diagram.
 

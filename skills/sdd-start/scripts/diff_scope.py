@@ -43,7 +43,7 @@ MANIFEST = {"package.json", "package-lock.json", "yarn.lock", "pnpm-lock.yaml", 
             "Directory.Packages.props", "Gemfile", "Gemfile.lock", "composer.json", "composer.lock"}
 MANIFEST_GLOB = ("requirements*.txt", "*.csproj", "*.fsproj", "*.vbproj")
 MAX_LINES = 400  # beyond this, the PR is hard to read in one sitting (warning)
-# Process tooling: it serves the playbook, not the product, so it never counts toward the level.
+# Process tooling: it serves the playbook, not the product, so it is never "outside the task" nor counted in the size.
 SDD_SCRIPTS = {"verify.py", "state.py", "spec_lint.py", "trace_check.py", "diff_scope.py", "docs_check.py",
                "scan_repo.py", "secrets_check.py"}
 TOOLING_FILES = {"AGENTS.md", "CLAUDE.md", ".gitattributes", ".gitignore", ".secrets-ignore"}

@@ -7,7 +7,7 @@ say so: do not invent a fake one.
 `STEPS` format: `("name", ["command", "arg", ...], fast?)`. A list of arguments, never a string.
 
 The test step also writes a **JUnit XML report** (`reports/junit.xml`, to be ignored by git): `trace_check.py --junit`
-uses it to check that every AC has an executed and passing test, not just a cited one (mandatory at level L).
+uses it to check that every AC has an executed and passing test, not just a cited one (recommended for every task).
 
 | Stack | JUnit report |
 |---|---|

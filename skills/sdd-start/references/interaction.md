@@ -1,7 +1,7 @@
-# Interaction: choices and gates as options
+# Interaction: choices, confirmations and merges as options
 
-Every time the user has to choose or approve, give them options to select instead of asking for free text. Fewer
-messages, fewer typos, and the decision stays theirs.
+Every time the user has to choose, confirm or decide a merge, give them options to select instead of asking for free
+text. Fewer messages, fewer typos, and the decision stays theirs.
 
 ## How to ask
 
@@ -12,39 +12,32 @@ messages, fewer typos, and the decision stays theirs.
 - **Options:** the recommended one first, marked `(recommended)` with its reason in one line; the others with their
   trade-off. A free answer is always possible ("Other").
 - **No jargon:** the user's words, not field names. Say why the question matters when it is not obvious.
-- **Never** answer a question yourself, pre-select an approval, or read silence as consent.
+- **Never** answer a question yourself, pre-select a confirmation, or read silence as consent.
 
-## Gates (approvals and decisions)
+## The three decisions of a feature
 
-A gate is an approval the process records with a name: spec, plan, locked tests, review decision, human diff review,
-and the confirmations of `sdd-init` and `sdd-map-codebase`. Present it as one question:
+| Decision | When | Options | Effect of the first one |
+|---|---|---|---|
+| Spec | end of `sdd-start` | `Confirm the spec`, `Change it` (they say what), `Stop here` | `- Status: approved` in the spec |
+| Plan | end of `sdd-plan` | `Confirm the plan`, `Change it`, `Stop here` | spec and plan go into the design PR, then the merge question |
+| Merge | every PR (design PR, then one per task) | `Merge into main`, `Change it` (they say what), `Leave it open` | you merge (see below) |
 
-| Option | Effect |
-|---|---|
-| `Approve as <name>` (one per name of `- Approvers:` in `AGENTS.md`) | you record the approval with `python scripts/approve.py ... --by "<name>" --commit` |
-| `Approve as another person` (they type the name) | as above, with the typed name; propose adding it to `- Approvers:` |
-| `Request changes` (they say what) | change the document and ask again |
-| `Stop here` | nothing is recorded; report the state |
+Before each question, show in a few lines what is being decided: for the spec the REQs, ACs, non-scope, anti-goals and
+open questions; for the plan the approach and the task list; for a PR the covered ACs, the check results, the
+reviewer's verdict, the CI status and the `SENSITIVE` line of `diff_scope.py` when present.
 
-Before the question, show what is being approved in a few lines (for a spec: level with its reason, REQs, non-scope,
-anti-goals, open questions). Write an approval only with `approve.py`, in the turn where the user selected it, with the
-name they selected: never on your own initiative, never inside the autonomous loop.
+## Merging
 
-## Git after a gate, by profile (`- Profile:` in `AGENTS.md`)
-
-- **solo** (one person, with or without a remote): you do the git steps. Work on `feat/<spec id>`; `approve.py --commit`
-  commits the approval with a standard message. After the design gate (spec, and plan and tasks at levels M and L) and
-  after `sdd-sync`, move `main` forward with `git fetch . HEAD:main` (fast-forward only: it fails if `main` moved; then
-  stop and offer the options "rebase the branch on main" or "stop here"). At the end switch to `main`
-  (`git switch main`) and delete the branch (`git branch -d feat/<spec id>`). No stash, no cherry-pick, no merge
-  commits, no push unless the user selects it.
-- **team:** the approval is the merge of the PR into protected `main` (playbook §1.2). Offer the options
-  `Open the PR` (with `gh pr create` or the platform's CLI, when available), `Merge now, I approve as <name>` (only if
-  your identity has the permission: the platform still enforces reviews and CI), `I will merge it myself` (give the
-  link or the command).
+The merge of a PR into `main` is the only approval the process records: git history says who merged what and when.
+- **With a GitHub remote:** push the branch, open the PR with `gh pr create` (body from `pr-body.md` of `sdd-task`),
+  and after `Merge into main` run `gh pr merge --rebase --delete-branch` (the commits, `Test-Lock` included, stay on
+  `main`). If `main` is protected and your identity cannot merge, give the user the link.
+- **Without a remote:** after `Merge into main`, `git switch main` then `git merge --ff-only <branch>` and
+  `git branch -d <branch>`. If the fast-forward fails, `main` moved: offer `Rebase the branch on main` or `Stop here`.
+- Never stash, cherry-pick or force-push. Never merge without the user selecting it.
 
 ## Limit
 
-In the solo profile nothing technical stops an agent from running `approve.py` by itself: the evidence of the approval
-is the user's selection in the host's question tool and the commit that follows it. In the team profile the merge on
-protected `main` remains the gate the agent cannot pass.
+Nothing technical stops an agent from merging by itself: the evidence of the decision is the user's selection and the
+merge that follows it. Who wants a guarantee protects `main` on the platform (required review), a setting outside the
+plugin.

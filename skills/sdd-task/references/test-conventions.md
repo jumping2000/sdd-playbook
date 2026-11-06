@@ -31,7 +31,7 @@ One test for several ACs is allowed (cite all the IDs). An AC may have several t
 # What makes a test worth locking
 
 `trace_check.py` proves that a test exists, cites the AC and passes; it cannot prove that the test would catch a wrong
-implementation. Before the `Test-Lock` commit, and when the human reads the locked tests, check these points.
+implementation. Before the `Test-Lock` commit check these points; the reviewer checks them again on the PR.
 
 | Anti-pattern | Why it is a problem | Instead |
 |---|---|---|
@@ -44,22 +44,22 @@ implementation. Before the `Test-Lock` commit, and when the human reads the lock
 | Test that depends on the order or on shared state | It passes alone and fails in the suite (or the reverse) | Fresh state per test; no global fixtures that tests modify |
 | The expected value copied from the output of the code | It enshrines the bug | Derive the expected value from the AC |
 
-**Checklist for the human approval** (levels M and L): every AC of the task has a test that fails for the right
-reason; the error cases are there; the assertions fix exact values from the ACs; mocks only at the boundaries; the
-Review focus cases of the plan assigned to this task have their test.
+**Checklist before locking** (and for the reviewer): every AC of the task has a test that fails for the right reason;
+the error cases are there; the assertions fix exact values from the ACs; mocks only at the boundaries; the Review focus
+cases of the plan assigned to this task have their test.
 
 # Tests written after the code
 
-Some tests come after the code: integration and end-to-end tests added in an implementation task, tests added by a
-`T-Rnn` fix, tests for the plan's review focus written once the code exists. No `Test-Lock` commit protects them, so
+Some tests come after the code: integration and end-to-end tests added once the implementation exists, tests added
+while fixing a review finding, tests for the plan's review focus written once the code exists. No `Test-Lock` commit protects them, so
 one rule does: **the spec is the oracle, not the code.**
 
 - Expected values come from the ACs, the review focus or the bug file, never from running the code and copying its
   output.
 - If the test disagrees with code that belongs to the current task, fixing that code is the task.
 - If it disagrees with code outside the task, or the spec does not settle which side is right, the test **stays
-  failing**: do not weaken it, change the expected value, or mark it skipped. Report the disagreement (`progress.md`,
-  blockers; then the review): the human decides whether the code or the spec changes.
+  failing**: do not weaken it, change the expected value, or mark it skipped. Report the disagreement in the PR
+  description: the human decides whether the code or the spec changes.
 
-Exception: characterization tests (`sdd-characterize`) pin the **current** behaviour on purpose. There the code is the
+Exception: characterization tests (`sdd-map`) pin the **current** behaviour on purpose. There the code is the
 oracle, and a behaviour that looks wrong is marked as such in the test, not fixed.

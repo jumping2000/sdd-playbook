@@ -1,36 +1,48 @@
 ---
-name: sdd-map-codebase
-description: Use this skill at the start of work on an existing codebase (brownfield) to produce, read-only, the system map (docs/system/map.md) with real tried commands and the test baseline, before writing specs or touching code.
+name: sdd-map
+description: Use this skill at the start of work on an existing codebase (brownfield): it produces, read-only, the system map (docs/system/map.md) with its diagrams, the real tried commands and the test baseline, then pins the current behaviour of the area to change with characterization tests that can fail, before any spec or code.
 ---
 
-# Codebase map (brownfield)
+# Map and characterize an existing codebase
 
-Precondition: project initialized (`scripts/scan_repo.py` and `scripts/verify.py` exist). If they are missing, point to
-`sdd-init` (if only the scripts are missing, copy them from the `scripts/` folder of the `sdd-init` skill: search for
-`**/sdd-init/scripts/verify.py`).
+Playbook §6. Precondition: the project is initialized (`scripts/scan_repo.py` and `scripts/verify.py` exist);
+otherwise point to `sdd-start`. Choices and confirmations as options (guide: search for
+`**/sdd-start/references/interaction.md`).
 
-**Read-only on the code.** The only files you write are `docs/system/map.md` and, after confirmation, `AGENTS.md`.
-Playbook §5, steps 1-3.
+**Read-only on the production code.** You write `docs/system/map.md`, characterization tests, the area page and, after
+confirmation, `AGENTS.md`.
 
-## Steps
+## Part 1: the map (once per codebase)
 
-1. **Inventory:** `python scripts/scan_repo.py`. It is a list of facts (stack, languages, folders, tests, CI, likely
-   entry points), not understanding.
-2. **Baseline:** run `python scripts/verify.py` and, if `STEPS` does not cover the project yet, the real build and test
-   commands. Note the result **as it is**: if it is already red, it is not your fault and must be declared.
-3. **Read the code** starting from the entry points and the largest modules. Fill in `docs/system/map.md` from
-   `references/map-template.md`: modules and responsibilities, the five Mermaid diagrams of the existing system (guide:
-   search for `**/sdd-plan/references/diagrams.md`; `n/a` with a reason where nothing applies), entry points, external
-   dependencies, zones not to touch, risks and known debt. `python scripts/docs_check.py docs/system` must pass.
-4. **Real commands:** every command in the table was run by you, with its result. Do not write inferred commands.
-5. **Spot check:** pick at least 5 statements of the map and check them in the code; list them with file and line in
-   "How this map was verified". Fix the false ones.
-6. **Propose** to update `AGENTS.md` with the tried commands, the zones not to touch ("Do not modify:" line used by
-   `diff_scope.py`) and the sensitive areas ("Sensitive areas:"), paths in backticks. Show the difference and ask for
-   confirmation.
+1. **Inventory:** `python scripts/scan_repo.py`. It is a list of facts, not understanding.
+2. **Baseline:** `python scripts/verify.py` and the real build and test commands. Note the result **as it is**: a red
+   baseline is not your fault and must be declared.
+3. **Read the code** from the entry points and the largest modules, and fill in `docs/system/map.md` from
+   `references/map-template.md`: modules and responsibilities, the five Mermaid diagrams of the existing system
+   (guide: search for `**/sdd-plan/references/diagrams.md`; `- n/a: <reason>` where nothing applies), entry points,
+   external dependencies, zones not to touch, risks and known debt. `python scripts/docs_check.py docs/system` must
+   pass.
+4. **Real commands:** every command in the table was run by you, with its result.
+5. **Spot check:** check at least 5 statements of the map in the code and list them with file and line.
+6. **Propose** for `AGENTS.md` the tried commands, the `- Do not modify:` zones and the `- Sensitive areas:`, paths in
+   backticks; show the difference and ask (options).
+
+Ask the user to spot-check the map (options: `Map is right`, `Correct it`, `Stop here`).
+
+## Part 2: characterization tests (per area, before changing it)
+
+Only where the user is about to work: there is no need to document everything upfront.
+1. **Identify** the behaviours of the area to preserve (code, callers, existing tests) and list what you plan to pin.
+2. **Write tests of the current behaviour**, even when it is odd or wrong: a behaviour that looks like a bug is pinned
+   and marked as such in the test, not fixed. Prefix `char` (`test_char_...`).
+3. **They must pass on the unmodified code**: if one fails, fix the test, not the code. `verify` stays as the baseline.
+4. **Prove they can fail:** a deliberate, minimal break in the area, the tests turn red, then `git restore <file>` and
+   an empty `git diff` on the production files. A test that stays green is useless: strengthen it.
+5. **Record** them in the area page `docs/system/<area>.md` ("Characterization tests"), created if needed from the area
+   template of `sdd-task` (search for `**/sdd-task/references/area-template.md`).
+6. Commit on a branch and ask the merge question like any PR (map and characterization tests change no behaviour).
 
 ## STOP
 
-Present the map and the baseline result. Ask for the spot check with options (guide: search for `**/sdd-init/references/interaction.md`): `Map is right`, `Correct it`
-(they say what), `Stop here`. Do not write specs.
-Next step: `sdd-characterize` on the area to change, then `sdd-spec`.
+Report the baseline, the map, the tests and the failure proof, and the defects noted (they become bugs, not fixes).
+Next step: `sdd-start` with a spec that describes **only the change**.
