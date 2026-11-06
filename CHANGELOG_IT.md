@@ -4,6 +4,55 @@
 
 Le voci precedenti alla 0.13.0 usano i nomi del loro tempo (`sdlc-*`, `SDLC_*`, campi in italiano).
 
+## 0.30.0
+Una semplificazione, dalla revisione del metodo dopo la sua prima prova reale: **un rischio, un meccanismo**. Il plugin
+passa da 14 a 7 skill e da 13 a 8 script; il playbook da circa 1.200 righe a circa 140.
+- **Un solo flusso, nessuna variante:** spariscono i livelli S/M/L e i profili solo/team. Task verticali piccoli fanno
+  PR piccole; le aree sensibili di `AGENTS.md` sono segnalate nella PR (riga `SENSITIVE` di `diff_scope.py`) invece di
+  alzare un livello.
+- **Tre tipi di decisione, tutte a opzioni:** confermi la spec, confermi il piano, unisci ogni PR. **Il merge è
+  l'approvazione:** spariscono hash, `Approved by`, `Based on spec/plan`, `tests approved:`, `Decided by`, `review.md` e
+  `approve.py`; git registra chi ha unito cosa.
+- **Nuove skill:** `sdd-start` (inizializza il progetto la prima volta, esplora la richiesta, fa brainstorming a giri
+  di opzioni, scrive la spec), `sdd-task` (un task, un branch, una PR: test bloccati, codice, verify, docs, review,
+  domanda di merge; l'ultimo task chiude la feature), `sdd-parallel` (task indipendenti in worktree separati, una PR
+  ciascuno, uniti uno alla volta), `sdd-map` (mappa e caratterizzazione). Riscritte `sdd-plan`, `sdd-bugfix` e
+  `sdd-next`. Rimosse: `sdd-init`, `sdd-spec`, `sdd-tasks`, `sdd-tests-from-ac`, `sdd-implement`, `sdd-review-diff`,
+  `sdd-docs`, `sdd-sync`, `sdd-loop`, `sdd-characterize`, `sdd-map-codebase`.
+- **Piano con task verticali:** sparisce `tasks.md`; il piano elenca da 3 a 8 task, ognuno con `covers`, `files`,
+  `depends` e `verify`; `spec_lint.py --plan` li controlla (dipendenze e cicli compresi) e avvisa oltre 8.
+- **Test:** nessuna approvazione umana dei singoli test; sono scritti dagli AC, bloccati da un commit `Test-Lock` prima
+  del codice (`diff_scope.py`) e controllati dall'agente revisore su ogni PR.
+- **Diagrammi:** il flowchart è obbligatorio nel piano; i cinque diagrammi restano completi nella documentazione finale,
+  la pagina d'area scritta dall'ultimo task dal codice reale.
+- **Script:** `trace_check.py --task`; `diff_scope.py --task` (errori: zone vietate e test bloccati; avvisi: file fuori
+  dal task, dipendenze, più di 400 righe modificate, aree sensibili); `state.py` legge spec, piano e task uniti da
+  `main` e propone `sdd-parallel` per i task pronti con file disgiunti; l'hook `Stop` riconosce la fase rossa
+  dall'ultimo commit `Test-Lock`. Rimossi: `approve.py`, `loop.py`, `review_package.py`, `bug_lint.py`,
+  `sync_check.py`, il glossario dei sinonimi.
+- **CI nei progetti:** facoltativa, solo `verify` su ogni PR; rimossi CODEOWNERS, template della PR e controlli di
+  processo.
+- **Codice esistente e bug:** ogni modifica a codice esistente parte da un'analisi d'impatto in `sdd-start` (pagine
+  d'area e spec collegate, codice e chiamanti, test che lo proteggono eseguiti e verdi, `git log`), registrata nella
+  nuova sezione della spec `## Current behaviour and impact` (avviso se manca); `sdd-bugfix` legge pagina d'area, spec,
+  test e storia dei file sospetti prima di riprodurre.
+- **`AGENTS.md` mantenuto:** aggiornamenti proposti come opzioni alla PR di design (fatti durevoli: comandi, aree
+  sensibili, zone da non toccare, convenzioni, ADR) e alla chiusura della feature (una riga nel nuovo indice
+  `## Areas`, lezioni valide per tutto il progetto); il revisore rifiuta una regola allentata.
+- **Qualunque linguaggio:** `sdd-start` controlla per primo Python 3.8+ (l'unico requisito degli strumenti) e registra
+  l'interprete in `AGENTS.md`; `stacks.md` aggiunge Rust, C/C++, shell (bats, shellcheck), PowerShell (Pester,
+  PSScriptAnalyzer), Docker Compose e Helm/Kubernetes con i loro report JUnit; `trace_check.py` legge molte più
+  estensioni e `ac_001` (snake_case); `diff_scope.py` riconosce bats, test Terraform e più manifest; `- Test files:` e
+  `- Dependency manifests:` in `AGENTS.md` li estendono entrambi; `state.py` e `scan_repo.py` vedono l'infrastruttura
+  (Dockerfile, Compose, Helm) come codice esistente; `**/` in un glob vale anche per nessuna cartella.
+- **Task bloccati:** dopo 3 tentativi falliti (o un requisito ambiguo, il non-scope, un task troppo grande) `sdd-task`
+  si ferma, riporta e chiede `Revise the spec`, `Revise the plan`, `Try another approach` o `Stop here`; `sdd-start` e
+  `sdd-plan` hanno una procedura di revisione (branch `revise/<id>`, `## Revisions`, PR di revisione; task uniti
+  mantenuti, la PR del task bloccato chiusa o tenuta); `state.py` riconosce una revisione in corso.
+- **PR su qualunque piattaforma:** GitHub (`gh`), GitLab (`glab`), o il link stampato dal push.
+- **Documentazione:** playbook breve scritto direttamente (senza generatore), README, guida rapida, skill, script e
+  architettura riscritti nelle due lingue.
+
 ## 0.20.0
 Dalla prima prova reale: troppo processo per un compito semplice, troppi passaggi manuali, approvazioni a testo libero e git a mano. Il numero salta alla 0.20.0 per segnare il cambio di approccio.
 - **Livello scelto dall'utente:** `sdd-spec` propone il livello più basso consentito dai criteri vincolanti e mostra S, M

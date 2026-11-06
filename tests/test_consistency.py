@@ -55,7 +55,8 @@ def frontmatter(text: str) -> str:
 
 class TestMetadata(unittest.TestCase):
     def test_skills(self):
-        self.assertEqual(len(SKILLS), 14)
+        self.assertEqual(SKILLS, ["sdd-bugfix", "sdd-map", "sdd-next", "sdd-parallel", "sdd-plan", "sdd-start",
+                                  "sdd-task"])
         for name in SKILLS:
             self.assertTrue(name.startswith("sdd-"), name)
             f = ROOT / "skills" / name / "SKILL.md"
@@ -122,12 +123,12 @@ class TestMetadata(unittest.TestCase):
                 self.assertTrue(any(needle in b for b in badges), f"{f}: badge {needle}")
 
     def test_agents_hooks_and_json(self):
-        for rel in ("agents/sdd-reviewer.md", "skills/sdd-init/references/copilot/sdd-reviewer.agent.md"):
+        for rel in ("agents/sdd-reviewer.md", "skills/sdd-start/references/copilot/sdd-reviewer.agent.md"):
             fm = frontmatter(read(rel))
             for field in ("name", "description", "tools"):
                 self.assertRegex(fm, rf"(?m)^{field}:", f"{rel}: {field}")
             self.assertRegex(fm, r"(?m)^name:\s*sdd-reviewer\s*$", rel)
-        json.loads(read("skills/sdd-init/references/vscode-tasks.json"))
+        json.loads(read("skills/sdd-start/references/vscode-tasks.json"))
         hooks = json.loads(read("hooks/hooks.json"))["hooks"]
         for event in hooks.values():
             for block in event:
@@ -174,23 +175,14 @@ class TestReferences(unittest.TestCase):
         for s in re.findall(r'"skill": "(sdd-[a-z-]+)"', state):
             self.assertIn(s, SKILLS)
 
-    def test_playbook_sections_and_phases(self):
-        titles = set(re.findall(r"^#{2,3} (\d+(?:\.\d+)?)[. ]", PLAYBOOK, re.M))
-        titles_it = set(re.findall(r"^#{2,3} (\d+(?:\.\d+)?)[. ]", PLAYBOOK_IT, re.M))
-        self.assertEqual(titles, titles_it, "the two playbooks must have the same § numbering")
-        phases = set(re.findall(r"^\| (\d+)\. ", PLAYBOOK.split("## 4.")[1].split("## 5.")[0], re.M))
-        steps = set(re.findall(r"^(\d+)\. \*\*", PLAYBOOK.split("## 5.")[1].split("## 6.")[0], re.M))
-        self.assertTrue({"1.1", "1.2", "3.8", "6.1", "7.3", "11"} <= titles)
-        for rel, text in {**md_texts(), "playbook_it": PLAYBOOK_IT}.items():
-            for n in re.findall(r"§\s?(\d+(?:\.\d+)?)", text):
+    def test_playbook_sections(self):
+        titles = set(re.findall(r"^## (\d+)\. ", PLAYBOOK, re.M))
+        self.assertEqual(titles, set(re.findall(r"^## (\d+)\. ", PLAYBOOK_IT, re.M)), "same § numbering in both")
+        self.assertEqual(titles, {str(n) for n in range(10)})
+        self.assertLess(len(PLAYBOOK.splitlines()), 300, "the playbook stays short: details live in the templates")
+        for rel, text in {**md_texts(history=False), "playbook_it": PLAYBOOK_IT}.items():  # history keeps old §
+            for n in re.findall(r"§\s?(\d+)", text):
                 self.assertIn(n, titles, f"{rel}: §{n} does not exist in the playbook")
-            for n in re.findall(r"§4 \((?:phase|fase) (\d+)\)", text):
-                self.assertIn(n, phases, f"{rel}: missing phase {n}")
-            for group in re.findall(r"§5(?: \((?:step|passo) |, (?:steps?|passi?) |\)?,? (?:step|passo) )(\d+)(?:-(\d+))?",
-                                    text):
-                for n in group:
-                    if n:
-                        self.assertIn(n, steps, f"{rel}: missing step {n}")
 
     def test_environment_variables_documented(self):
         hooks = "".join(p.read_text(encoding="utf-8") for p in (ROOT / "hooks").glob("*.py"))
@@ -206,10 +198,6 @@ class TestReferences(unittest.TestCase):
 
 
 class TestPlaybook(unittest.TestCase):
-    def test_up_to_date_with_the_embedded_files(self):
-        r = run([sys.executable, "tools/build_playbook.py", "--check"], ROOT)
-        self.assertEqual(r.returncode, 0, r.stdout)
-
     def test_no_reference_to_playbook_versions(self):
         forbidden = re.compile(r"\[v\d\]|(?<!-)\bv[12]\b|playbook v\d|versione? [12]\b", re.I)  # not stateDiagram-v2
         for rel, text in all_texts().items():
@@ -229,65 +217,60 @@ class TestPlaybook(unittest.TestCase):
     def test_plugin_files_are_in_english(self):
         italian = re.compile(r"\b(della|degli|delle|perché|anche|questo|quando|sono|senza|nella|oppure)\b", re.I)
         for p in [*(ROOT / "skills").rglob("*"), *(ROOT / "agents").rglob("*"), *(ROOT / "hooks").rglob("*"),
-                  *(ROOT / "tools").rglob("*"), *(ROOT / "tests").rglob("*.py"), ROOT / "plugin.json",
+                  *(ROOT / "tests").rglob("*.py"), ROOT / "plugin.json",
                   *(ROOT / ".claude-plugin").glob("*.json"), ROOT / ".codex-plugin" / "plugin.json"]:
-            if (p.is_file() and "__pycache__" not in p.parts and p.name != "test_consistency.py"
-                    and not p.name.endswith("_IT.src.md")):  # the Italian playbook source is documentation
+            if p.is_file() and "__pycache__" not in p.parts and p.name != "test_consistency.py":
                 m = italian.search(p.read_text(encoding="utf-8"))
                 self.assertIsNone(m, f"{p.relative_to(ROOT)}: Italian text '{m and m.group(0)}'")
 
     def test_templates_consistent_with_the_scripts(self):
-        spec = read("skills/sdd-spec/references/spec-template.md")
-        err, _ = spec_lint.lint_tasks(spec, read("skills/sdd-tasks/references/tasks-template.md"))
-        self.assertTrue(err)  # the template must be filled in: only the placeholders remain
-        self.assertTrue(all("placeholder not filled in" in e for e in err), err)
-        err, warn = spec_lint.lint_plan(spec, read("skills/sdd-plan/references/plan-template.md"))
-        self.assertEqual(err, [])
-        self.assertTrue(warn)
-        area = read("skills/sdd-sync/references/area-template.md")
-        for field in ("Last aligned", "Linked specs", "## Current behaviour", "## Constraints and delicate points",
-                      "## Characterization tests"):
-            self.assertIn(field, area)
-        review = read("skills/sdd-review-diff/references/review-template.md")
-        for field in ("- Outcome:", "- Decided by:"):
-            self.assertIn(field, review)
-        for s in ("compliant", "compliant with reservations", "non-compliant"):
-            self.assertIn(s, review)
-        agents = read("skills/sdd-init/references/AGENTS.md.tmpl")
-        for heading in ("## Decision rights", "### Decides alone", "### Asks first", "### Never", "## Process",
-                        "- Profile:", "- Approvers:", "scripts/approve.py"):
-            self.assertIn(heading, agents)
-        guide = read("skills/sdd-init/references/interaction.md")
-        for text in ("approve.py", "git fetch . HEAD:main", "Approve as <name>", "Request changes"):
-            self.assertIn(text, guide)
-        for skill in (ROOT / "skills").glob("*/SKILL.md"):  # every gate is asked with options
-            body = skill.read_text(encoding="utf-8")
-            if "STOP" in body:
-                self.assertIn("interaction.md", body, skill.parent.name)
-        for rel in ("agents/sdd-reviewer.md", "skills/sdd-init/references/copilot/sdd-reviewer.agent.md",
-                    "skills/sdd-implement/SKILL.md", "skills/sdd-loop/references/PROMPT.md.tmpl"):
-            self.assertIn("Decides alone", read(rel), rel)
-        self.assertIn("# Tests written after the code", read("skills/sdd-tests-from-ac/references/test-conventions.md"))
-        self.assertIn("blocking: <yes | no>", spec)
-        self.assertEqual(spec_lint.glossary_avoid(read("skills/sdd-init/references/glossary.md.tmpl")), {})
+        spec = read("skills/sdd-start/references/spec-template.md")
         plan = read("skills/sdd-plan/references/plan-template.md")
-        self.assertIn("## Review focus", plan)
-        for rel in ("skills/sdd-plan/references/plan-template.md", "skills/sdd-sync/references/area-template.md",
-                    "skills/sdd-map-codebase/references/map-template.md"):  # unfilled, never missing
-            problems = spec_lint.diagram_problems(read(rel))
+        err, _ = spec_lint.lint_plan(spec, plan)
+        self.assertTrue(err and all("not filled in" in e for e in err), err)  # only placeholders remain
+        for text in ("## Approach", "## Interfaces", "## Flowchart", "## Tasks", "## Review focus", "covers:", "files:",
+                     "depends:", "verify:", "produces"):
+            self.assertIn(text, plan)
+        for text in ("**Non-scope (explicit):**", "**Anti-goals:**", "blocking: <yes | no>", "- Status: draft",
+                     "## Current behaviour and impact"):
+            self.assertIn(text, spec)
+        self.assertNotIn("Level:", spec + plan)
+        self.assertNotIn("Approved by", spec + plan)
+        for rel in ("skills/sdd-task/references/area-template.md", "skills/sdd-map/references/map-template.md"):
+            problems = spec_lint.diagram_problems(read(rel))  # the five diagrams: unfilled, never missing
             self.assertTrue(problems and all("not filled in" in p for p in problems), (rel, problems))
         guide = read("skills/sdd-plan/references/diagrams.md")
         for title in spec_lint.DIAGRAMS:
             self.assertIn(f"`### {title}`", guide)
-        self.assertIn("produces", plan)
-        self.assertIn("**Anti-goals:**", spec)
-        progress = read("skills/sdd-loop/references/progress.md.tmpl")
-        prompt = read("skills/sdd-loop/references/PROMPT.md.tmpl")
-        for section in ("Rulings", "Disputed review findings"):  # the loop prompt names the progress.md sections
-            self.assertIn(f"## {section}", progress)
-            self.assertIn(f'"{section}"', prompt)
-        self.assertIn("## Components and files to create/modify", plan)
-        self.assertIn("- Approved by / date:", plan)
+        agents = read("skills/sdd-start/references/AGENTS.md.tmpl")
+        for heading in ("## Decision rights", "### Decides alone", "### Asks first", "### Never", "- Do not modify:",
+                        "- Sensitive areas:", "## Areas", "- Test files:", "- Dependency manifests:",
+                        "Python for the playbook scripts"):
+            self.assertIn(heading, agents)
+        for gone in ("Profile", "Approvers", "Level", "approve.py"):
+            self.assertNotIn(gone, agents)
+        interaction = read("skills/sdd-start/references/interaction.md")
+        for text in ("Confirm the spec", "Confirm the plan", "Merge into main", "gh pr merge", "glab mr merge", "--ff-only"):
+            self.assertIn(text, interaction)
+        for skill in (ROOT / "skills").glob("*/SKILL.md"):  # every decision is asked with options
+            body = skill.read_text(encoding="utf-8")
+            if "STOP" in body:
+                self.assertIn("interaction.md", body, skill.parent.name)
+        for rel in ("agents/sdd-reviewer.md", "skills/sdd-start/references/copilot/sdd-reviewer.agent.md",
+                    "skills/sdd-task/SKILL.md", "skills/sdd-task/references/pr-body.md"):
+            self.assertIn("Decides alone", read(rel), rel)
+        for rel in ("agents/sdd-reviewer.md", "skills/sdd-task/SKILL.md", "skills/sdd-bugfix/SKILL.md"):
+            self.assertIn("Test-Lock", read(rel), rel)
+        task = read("skills/sdd-task/SKILL.md")  # a stuck task offers the way back, and the way back exists
+        for option, skill, section in (("Revise the spec", "sdd-start", "## Revising a spec"),
+                                       ("Revise the plan", "sdd-plan", "## Revising a plan")):
+            self.assertIn(f"`{option}`", task)
+            self.assertIn(section, read(f"skills/{skill}/SKILL.md"))
+        self.assertIn("## Revisions", plan)
+        self.assertIn("# Tests written after the code", read("skills/sdd-task/references/test-conventions.md"))
+        ci = read("skills/sdd-start/references/ci-github-actions.yml")
+        self.assertIn("python scripts/verify.py", ci)
+        self.assertNotIn("spec_lint", ci)  # no process checks in the CI: only the definition of "done"
 
 
 class TestDocumentation(unittest.TestCase):

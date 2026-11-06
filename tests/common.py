@@ -9,7 +9,7 @@ import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-SCRIPTS = ROOT / "skills" / "sdd-init" / "scripts"
+SCRIPTS = ROOT / "skills" / "sdd-start" / "scripts"
 HOOKS = ROOT / "hooks"
 
 
@@ -69,7 +69,6 @@ SPEC_OK = """# SPEC-001: Example
 
 - Status: approved
 - Owner: Anna
-- Approved by / date: Anna Smith, 2026-10-19
 
 ## Problem and goal
 Export the report as CSV.
@@ -78,6 +77,9 @@ Export the report as CSV.
 - Included: CSV export
 - **Non-scope (explicit):** no change to the PDF format
 - **Anti-goals:** a CSV that spreadsheets open with broken columns
+
+## Current behaviour and impact
+- none (new area)
 
 ## Requirements
 - REQ-001 (functional): the report can be exported as CSV
@@ -112,37 +114,26 @@ flowchart TD
 """
 PLAN_OK = """# PLAN for SPEC-001
 
-- Approved by / date: Anna Smith, 2026-10-19
+## Approach
+A csv.writer over the report rows; discarded: a hand-made join, which breaks on commas.
 
-## Components and files to create/modify
-- src/export.py: new export function
-- `tests/`: new tests
+## Interfaces
+- External: GET /reports/<id>/export returns text/csv
 
-## Test strategy (mapped to ACs)
-| AC-001 | unit |
-| AC-002 | unit |
+## Flowchart
+```mermaid
+flowchart TD
+    A[export] --> B{rows?}
+    B -- no --> E[clear error]
+    B -- yes --> C[CSV]
+```
+
+## Tasks
+- [ ] T-01 Export a report as CSV — covers: AC-001 — files: `src/export.py`, `tests/test_export.py` — depends: none — verify: `pytest -k AC_001`
+- [ ] T-02 Clear error on an empty report — covers: AC-002 — files: `src/export.py`, `tests/test_export.py` — depends: T-01 — verify: `pytest -k AC_002`
 
 ## Review focus
 - none
-""" + DIAGRAMS_OK
-_spec_lint = load("spec_lint")
-APPROVED_SPEC = "- Approved by / date: Anna Smith, 2026-10-19\n"
-SPEC_OK = SPEC_OK.replace(APPROVED_SPEC, APPROVED_SPEC + f"- Hash: {_spec_lint.fingerprint(SPEC_OK)}\n")
-PLAN_OK = PLAN_OK.replace(APPROVED_SPEC, APPROVED_SPEC + f"- Based on spec: {_spec_lint.fingerprint(SPEC_OK)}\n"
-                          f"- Hash: {_spec_lint.fingerprint(PLAN_OK)}\n")
-TASKS_OK = """- [ ] T-01 Test — verify: `pytest -k AC_001` (expected: red) — covers: AC-001, AC-002 — tests approved: Anna Smith, 2026-10-19, abc1234
-- [ ] T-02 Implement — verify: `pytest` — covers: AC-001, AC-002
-- [ ] T-DOC Documentation
-- [ ] T-SYNC Reconciliation
-"""
-REVIEW_OK = """# Review of SPEC-001
-
-- Outcome: compliant
-- Date: 2026-10-19
-- Diff base: main
-
-## Human decision
-- Decided by: Anna Smith, 2026-10-19
 """
 AREA_OK = """# Area: export
 
@@ -158,32 +149,3 @@ Exports to CSV.
 ## Characterization tests
 - tests/test_char.py: current CSV format
 """ + DIAGRAMS_OK
-BUG_OK = """# BUG-001: Broken export
-
-- Status: verified
-- Severity / impact: medium
-- Affected spec or area: SPEC-001
-
-## Reproduction
-Export a report with a comma in the name.
-
-## Actual vs expected behaviour
-- Actual: the CSV is malformed
-- Expected: the field is enclosed in quotes
-
-## Behaviour that must NOT change
-- The separator stays the comma
-
-## Root cause
-Escaping is missing in the writer.
-
-## Fix and tests
-- Red test reproducing the bug: `tests/test_export.py::test_comma`
-- Minimal fix: use csv.writer in src/export.py
-- Non-regression test on the unchanged behaviour: `tests/test_export.py::test_separator`
-
-## Closure
-- [x] verify green
-- [x] spec updated
-- [x] lesson recorded
-"""

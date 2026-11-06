@@ -3,8 +3,8 @@
 
 Active only with the environment variable SDD_ENFORCE_VERIFY=1. Otherwise it does nothing.
 Reads the event JSON from stdin. Exits 0 (go ahead) if: not active, the project has no scripts/verify.py, verify is
-green, or a spec is in the **red phase** (the last closed T-nn task is marked "expected: red" and the next one is open:
-red tests are the expected result).
+green, or the branch is in the **red phase**: its last commit carries the trailer "Test-Lock: T-nn" (the red tests of a
+task were just locked and the implementation has not started: red tests are the expected result).
 If verify is red it exits 2 and writes the result on stderr, which Claude Code returns to the agent.
 It blocks up to SDD_STOP_MAX times in a row per session (default 3, counter per `session_id` in a private user folder:
 %LOCALAPPDATA%\\sdd-playbook or ~/.cache/sdd-playbook; reset when verify turns green); then it lets the agent stop with
@@ -21,28 +21,18 @@ import sys
 import tempfile
 from pathlib import Path
 
-TASK = re.compile(r"^\s*-\s+\[([ xX])\]\s+(T-\d+)\b(.*)$", re.M)
+TEST_LOCK = re.compile(r"^Test-Lock:\s*(T-\d+)", re.M)
 
 
-def red_phase(tasks: str) -> str | None:
-    """ID of the "expected: red" test task just closed, if the next task is still open."""
-    previous = None
-    for state, tid, rest in TASK.findall(tasks):
-        if state == " ":
-            if previous and re.search(r"expected:\s*red", previous[1], re.I):
-                return previous[0]
-            return None
-        previous = (tid, rest)
-    return None
-
-
-def specs_in_red_phase(root: Path) -> list[str]:
-    out = []
-    for t in sorted((root / "docs" / "specs").glob("*/tasks.md")):
-        tid = red_phase(t.read_text(encoding="utf-8", errors="replace"))
-        if tid:
-            out.append(f"{t.parent.name} ({tid})")
-    return out
+def red_phase(root: Path) -> str | None:
+    """Task of the Test-Lock trailer of the last commit, if the branch is in the red phase."""
+    try:
+        r = subprocess.run(["git", "-C", str(root), "log", "-1", "--format=%B"], capture_output=True, text=True,
+                           encoding="utf-8", errors="replace")
+    except OSError:
+        return None
+    m = TEST_LOCK.search(r.stdout) if r.returncode == 0 else None
+    return m.group(1) if m else None
 
 
 def state_dir() -> Path:
@@ -104,9 +94,9 @@ def main() -> int:
         if counter:
             counter.unlink(missing_ok=True)
         return 0
-    red = specs_in_red_phase(root)
+    red = red_phase(root)
     if red:
-        notice("verify red as expected: red phase in " + ", ".join(red))
+        notice(f"verify red as expected: red phase of {red} (tests locked, implementation not started)")
         return 0
     try:
         cap = max(1, int(os.environ.get("SDD_STOP_MAX", "3")))

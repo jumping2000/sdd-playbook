@@ -2,29 +2,24 @@
 
 *Versione italiana: [scripts_IT.md](scripts_IT.md)*
 
-All scripts live in `skills/sdd-init/scripts/` and `sdd-init` copies them into the project's `scripts/`. They are
-Python, standard library only, with no shell commands, and behave the same on Windows, Linux and macOS. Run them from the
-**project root**. Line 2 of every script carries the plugin version (`# sdd-playbook: <version>`), to know which copies
-to update (`sdd-init`, section "Updating an already initialized project"). Exit codes: `0` ok, `1` check failed, `2` wrong usage or
-missing precondition. Output is always UTF-8, even on a Windows console in cp1252. Messages are in English.
+All scripts live in `skills/sdd-start/scripts/` and `sdd-start` copies them into the project's `scripts/`. They are
+Python, standard library only, with no shell commands, and behave the same on Windows, Linux and macOS. Run them from
+the **project root**. Line 2 of every script carries the plugin version (`# sdd-playbook: <version>`), to know which
+copies to update (`sdd-start`, "Updating"). Exit codes: `0` ok, `1` check failed, `2` wrong usage or missing
+precondition. Output is always UTF-8, even on a Windows console in cp1252. Messages are in English.
 
 The file formats the scripts read are described in [architecture.md](architecture.md#file-contracts).
 
 | Script | Used by | Purpose |
 |---|---|---|
 | `verify.py` | all | the project's definition of "done" |
-| `state.py` | `sdd-next` | state and next phase |
-| `spec_lint.py` | spec, plan, tasks, implement, loop | lint of spec, plan and tasks |
-| `trace_check.py` | tests-from-ac, review-diff | AC → test traceability |
-| `bug_lint.py` | bugfix | completeness of a bug file |
-| `diff_scope.py` | review-diff, sync, loop | changes vs plan, forbidden zones, locked tests and level |
-| `scan_repo.py` | map-codebase | inventory of a codebase |
-| `docs_check.py` | docs, sync, map-codebase | links, Mermaid diagrams and examples |
-| `sync_check.py` | sync | closure of a feature |
-| `secrets_check.py` | review-diff, loop, `verify` | secrets in files |
-| `loop.py` | loop | external autonomous loop |
-| `review_package.py` | implement, review-diff, loop | review package for one task or the whole branch |
-| `approve.py` | spec, plan, tasks, tests-from-ac, review-diff | records an approval the user selected |
+| `spec_lint.py` | start, plan, task | lint of the spec and of the plan with its tasks |
+| `trace_check.py` | task, bugfix | AC → test traceability, per task or for the whole feature |
+| `diff_scope.py` | task, parallel | the task branch: forbidden zones, locked tests, scope, sensitive areas, size |
+| `state.py` | next, task, parallel | the next step and the ready tasks |
+| `docs_check.py` | task, map | links, Mermaid diagrams, the five diagrams of `docs/system/`, examples |
+| `secrets_check.py` | `verify` | secrets in files |
+| `scan_repo.py` | map | inventory of a codebase |
 
 ---
 
@@ -43,68 +38,25 @@ python scripts/verify.py --keep-going    # does not stop at the first red
 
 Exit: `0` green, `1` at least one step red or command not found, `2` no step selected. Sets `PYTHONUTF8=1`.
 
-### state.py
-
-Read-only. Reports infrastructure (`AGENTS.md`, `verify.py`, CI, `docs/`), presence of existing code and of the map,
-state and level of every spec with its next step (`-> skill`), unverified bugs, current branch and the `NEXT`
-(next) line. Order of the suggestion for a spec: `sdd-spec` (draft, `in-revision`, lapsed approval) → `sdd-plan`
-(missing, to approve or lapsed) → `sdd-tasks` (missing or based on another plan) → `sdd-implement` (open `T-nn`/`T-Rnn`
-tasks; `sdd-spec` instead when the next task covers an AC named by a non-blocking open question) → `sdd-review-diff` (missing review; with `non-compliant`: create the `T-R` tasks, or repeat the review once they
-are closed) → `sdd-docs` (`T-DOC` open) → `sdd-sync`. First of all `sdd-init` and, in brownfield without map or specs,
-`sdd-map-codebase`. `scripts/`, `docs/`, `.github/` and `.vscode/` do not count as existing code.
-
-**Levels** (playbook §2.1). Level S: after the approved spec `sdd-tasks` (no plan), then `sdd-implement`, `sdd-docs`
-if `T-DOC` is open and `sdd-sync`; `review.md` counts only if present and `non-compliant`. Levels M and L: a closed
-"expected: red" test task without `tests approved:` leads to `sdd-tests-from-ac` before implementation. Level L (or M with
-`- Task review: on` in `progress.md`): once the `T-nn` tasks are closed, every one needs `- T-nn: pass` in the
-`## Task reviews` section of `progress.md`, otherwise `sdd-implement`. Level L: after an accepted review,
-`- Human diff review:` is also required in `review.md`, otherwise `sdd-review-diff`. Without
-the `- Level:` field the spec counts as M.
-
-**Profile solo.** With `- Profile: solo` in `AGENTS.md`, when the design is approved (spec, and plan and tasks at levels
-M and L) but `main` does not hold the same files yet, `NEXT` is `sdd-tasks` with the instruction to move `main` forward
-(`git fetch . HEAD:main`). In the team profile that step is the merge of the design PR, which `spec_lint.py --base`
-checks.
-
-**Several active specs.** `NEXT` refers to the spec given with `--spec <id>` (folder name or title ID), the one whose
-folder name appears in the current branch (`feat/2026-10-24-export-csv`), or the only active one. Otherwise it reports
-`choose` (choose) with the list of specs and their step: the choice belongs to the user.
-
-```
-python scripts/state.py [--json] [--spec <id>] [root]
-```
-
 ### spec_lint.py
 
 ```
-python scripts/spec_lint.py <spec.md> [--plan <plan.md>] [--tasks <tasks.md>] [--base <ref>]
-python scripts/spec_lint.py <file.md> --hash
+python scripts/spec_lint.py <spec.md> [--plan <plan.md>]
 ```
 
-**Approval.** `--hash` prints the hash of the file body (from the first `## ` section on, line endings and trailing
-spaces normalized, plus the level if the spec declares one: lowering it after approval voids the approval), the value
-of `- Hash:`; after a selected approval `approve.py` writes it, so nobody copies it by hand. An `approved`/`implemented` spec without a hash, or with a hash that no longer matches the
-content, is an error. An approved plan must have a valid `- Hash:` and `- Based on spec:` equal to the current hash of
-the spec: if the spec changes, the plan lapses. With `--base <ref>` spec and plan must exist on `<ref>` and be identical
-to the working copy: in the team profile merging the design PR into a protected branch is the approval the agent
-cannot give itself; in the solo profile `main` holds the design after the fast-forward that follows the selected gate
-(playbook §1.2).
+| Mode | Errors | Warnings |
+|---|---|---|
+| spec | `- Status:` not one of `draft`, `approved`, `implemented`, `superseded`; title without `# SPEC-<id>:`, invalid date or ID different from the folder name; missing sections (Problem and goal, Scope, Requirements, Acceptance criteria, Open questions); duplicate REQ or AC IDs; REQ without AC; AC citing a REQ that does not exist; non-scope missing or a placeholder; an `approved` or `implemented` spec with blocking open questions (or without `blocking: yes|no`) | anti-goals or `## Current behaviour and impact` missing; vague words in REQs and ACs ("fast", "appropriate", "should", "etc", ...); non-blocking open questions and `[ASSUMPTION]` left in an approved spec |
+| `--plan` | `## Flowchart` missing or without a ```` ```mermaid ```` flowchart; `## Tasks` missing or empty; a task line with a placeholder, without `covers:` (or covering an AC not in the spec), without `files:`, `verify: `<command>`` or `depends:`, depending on a task that does not exist, or in a dependency cycle; duplicate task IDs; an AC of the spec covered by no task; `## Review focus` missing or not filled in (`- none` is valid) | `## Approach` missing; more than 8 tasks (split the feature) |
 
-| Mode | Errors detected |
-|---|---|
-| spec | warning above 6 ACs at level S or 15 at level M (proportion); invalid state (`draft`, `approved`, `in-revision`, `implemented`, `superseded`); level other than S, M, L (warning if missing: counts as M); title without ID `# SPEC-<id>:`, invalid date or ID different from the folder name; `in-revision` without an entry in `## Revisions`; missing sections; duplicate REQ/AC IDs; REQ without AC; AC citing a non-existent REQ; non-scope missing or a placeholder (warning for missing anti-goals); if `approved`/`implemented`: missing approver, missing or mismatching hash, blocking open questions or questions without `blocking: yes|no` (warning for non-blocking ones and if `[ASSUMPTION]` remain); in any state an open question `about:` a REQ or AC that does not exist; warnings for vague words in REQs and ACs and, when `docs/glossary.md` exists, for the synonyms its "Avoid" column lists |
-| `--plan` | missing `## Test strategy` section; spec ACs missing from that section (exact ID: `AC-001` does not match `AC-0011`); missing `## Review focus` section; review focus with placeholders or empty (warning before approval, error once approved; `- none` is valid); `## Diagrams` section missing, or one of its subsections `### Flowchart`, `### Sequence diagram`, `### State diagram`, `### Class diagram`, `### ER diagram` missing (error); a subsection without a Mermaid block of its type (`flowchart`/`graph`, `sequenceDiagram`, `stateDiagram-v2`, `classDiagram`, `erDiagram`) or `- n/a: <reason>`, an empty block, an `n/a` flowchart (warning before approval, error once approved); approved plan with invalid hash or based on another version of the spec; warning if the plan is not approved |
-| `--base` | spec or plan missing on `<ref>` or different from the version on `<ref>` |
-| `--tasks` | no tasks; `T-nn` tasks without `verify:` or `covers:` or with `<...>` placeholders; `T-Rnn` tasks without `verify:` or with placeholders (`covers:` optional); duplicate IDs; missing `T-SYNC`, or missing `T-DOC` except at level S; AC not covered by any task; warning for an open `T-nn` task covering an AC named by a non-blocking open question |
-| `--plan` and `--tasks` together | tasks whose `- Based on plan:` differs from the plan hash (warning if the field is missing) |
-
-The approval of locked tests (`tests approved: <name, yyyy-mm-dd, sha>`) is valid only with name, date and the SHA of the
-`Test-Lock` commit; "expected: red" is matched case-insensitively.
+There is no field to sign: the approval of spec and plan is the merge of the design PR, recorded by git. The same
+module checks the `## Diagrams` section of the documentation pages for `docs_check.py` (five diagrams, each a Mermaid
+block of its type or `- n/a: <reason>`; the flowchart always applies).
 
 ### trace_check.py
 
 ```
-python scripts/trace_check.py <spec.md> [--tests DIR ...] [--junit FILE|DIR ...] [--warn-only]
+python scripts/trace_check.py <spec.md> [--task T-nn] [--tests DIR ...] [--junit FILE|DIR ...] [--warn-only]
 ```
 
 Looks for AC citations in test files (default folders: `tests`, `test`, `__tests__`, `spec`, `src/test`; extensions of
@@ -130,65 +82,80 @@ a test file attributed to the spec or the project has a single spec. The file of
 `file` or `classname` the longest (`tests.a.test_api` ↔ `tests/a/test_api.py`, `com.acme.ExportTest` ↔
 `.../com/acme/ExportTest.java`): files with the same name in different folders are not confused, and on a tie between
 files of different specs the case does not count. Unreadable report or `--junit` without a value: exit `2`. `verify`
-writes the report (see `references/stacks.md` in `sdd-init`).
+writes the report (see `references/stacks.md` in `sdd-start`).
 
-### bug_lint.py
+**Other languages and declared test files.** Test files are searched in the test folders with the common extensions
+(Python, JavaScript/TypeScript, Java, Kotlin, Scala, C#, F#, Go, Ruby, PHP, Rust, C/C++, Swift, Dart, Elixir, shell,
+bats, PowerShell, Gherkin, Robot, HCL, YAML), plus the paths or globs of `- Test files:` in `AGENTS.md`. The short
+citation also accepts `ac_001` (Rust and other snake_case names) and the qualified one is case-insensitive.
 
-```
-python scripts/bug_lint.py docs/bugs/BUG-001-example.md
-```
-
-Requirements grow with the state: `open` (open) → reproduction filled in; `diagnosed` (diagnosed) → expected and
-actual, "must NOT change", root cause, path of the red test; `fixed` (fixed) → minimal fix described and
-non-regression test indicated; `verified` (verified) → all "Closure" items ticked. `<...>` placeholders and
-empty labels do not count as content.
+**`--task T-nn`: the check of a task's PR.** Only the ACs the task covers (`covers:` in the `plan.md` next to the spec)
+must have tests (executed and passed with `--junit`); the ACs of later tasks are not reported. Without `--task` every
+AC of the spec, and every REQ needs a tested AC: the check of the whole feature, run by its last task. An unknown task:
+exit `2`.
 
 ### diff_scope.py
 
 ```
-python scripts/diff_scope.py docs/specs/001-x [--base main] [--strict]
+python scripts/diff_scope.py docs/specs/<id> --task T-nn [--base main] [--strict]
+python scripts/diff_scope.py docs/specs/<id> [--base main] [--strict]        # the whole branch
 ```
 
-Computes the files changed since the merge-base with the base ref (default: the first existing among `main`, `master`,
-`origin/main`, `origin/master`), including uncommitted and untracked files. Renames count with both the source and the
-target path (`--no-renames`); generated files (`__pycache__/`, `*.pyc`, `reports/`) do not count. `AGENTS.md` and the spec
-level are read **from the merge-base** when they exist there: the branch cannot loosen them (if the branch changes
-`AGENTS.md` there is a warning). `AGENTS.md` entries count as paths (text in backticks or first word); entries that do not
-look like paths are reported and ignored. It reports:
-- **error** (exit 1): files in the zones of the `- Do not modify:` lines of `AGENTS.md` (all of them, not just the first);
-- **error** (exit 1): locked test files changed after locking. A commit with the trailer `Test-Lock: T-nn` locks its test
-  files (folders `tests`, `test`, `__tests__`, `spec` or names like `test_*.py`, `*_test.go`, `*.test.ts`,
-  `*Test.java`); a later change in a commit without the same trailer, or uncommitted, is a violation. Non-test files of a
-  `Test-Lock` commit (e.g. a skeleton) are not locked and are reported as a warning;
-- **warning** (error with `--strict`): files outside the plan (excluding `docs/specs/<this spec>/`, `docs/system/`,
-  `docs/bugs/`, `docs/adr/`, `docs/glossary.md`). The plan includes the lines of "Components and files" (path = first word or text in backticks,
-  so `- src/a.py (new): ...` means `src/a.py`) and the "Where" column of the test strategy and of the review focus;
-- **error** (exit 1): **level below its hard criteria** (playbook §2.1). A file in the `- Sensitive areas:` lines of
-  `AGENTS.md` requires L; a change to a dependency manifest or lockfile (`package.json`, `pyproject.toml`,
-  `requirements*.txt`, `go.mod`, `*.csproj`, the lockfiles, ...) requires at least M. The declared level comes from the
-  spec's `- Level:` (M if missing); at level S without a plan, the plan comparison is skipped;
-- **warning**: level S with more than 3 production files. Tests, `docs/`, `*.md`, generated files and the process
-  tooling (the playbook scripts in `scripts/`, `AGENTS.md`, `CLAUDE.md`, `.github/`, `.vscode/`, `.gitattributes`,
-  `.gitignore`, `.secrets-ignore`) do not count. The approver chose the level: the size alone does not overrule them;
-  `[INFO]` when the declared level is higher than the hard criteria require;
-- **error** (exit 1): **dependencies without a decision**: a changed manifest or lockfile that the plan does not list (a
-  lockfile counts if the plan lists its manifest in the same folder), in a diff that does not **add** an ADR in
-  `docs/adr/` (README and index files do not count). Playbook §8: new dependencies only with an ADR or in the approved plan;
-- **error** (exit 1): **voided test approvals**: the SHA in `tests approved: <name, date, sha>` is not a `Test-Lock`
-  commit of the branch for that task (rebase, amend), or another `Test-Lock` commit for the same task follows it;
-- **info**: planned paths not touched.
+Computes the files changed since the merge-base with the base ref (default: the first of `main`, `master`,
+`origin/main`, `origin/master`), uncommitted and untracked files included; generated files (`__pycache__/`, `*.pyc`,
+`reports/`) do not count. `AGENTS.md` is read **from the merge-base** when it exists there: the branch cannot loosen
+it. It reports:
+- **error** (exit 1): files in the `- Do not modify:` zones of `AGENTS.md`;
+- **error** (exit 1): **locked tests** changed after locking. A commit with the trailer `Test-Lock: T-nn` locks its
+  test files (folders `tests`, `test`, `__tests__`, `spec` or names like `test_*.py`, `*_test.go`, `*.test.ts`,
+  `*Test.java`); a later change in a commit without the same trailer, or uncommitted, is a violation. Non-test files of
+  a `Test-Lock` commit are not locked (warning);
+- **warning** (error with `--strict`): files outside the task's `files:` (all the tasks without `--task`), excluding
+  the spec folder, `docs/system/`, `docs/bugs/`, `docs/adr/` and the process tooling (the playbook scripts in
+  `scripts/`, `AGENTS.md`, `CLAUDE.md`, `.github/`, `.vscode/`, git files);
+- **warning**: a dependency manifest or lockfile changed (a new dependency is asked first, and said in the PR);
+- **warning**: more than 400 changed lines outside tests and docs (the PR is hard to read: consider splitting);
+- **`SENSITIVE:` line**: files in the `- Sensitive areas:` of `AGENTS.md`, to copy into the PR description: the human
+  reads their diff before the merge. Not an error.
 
-Paths: exact, folders (prefix) or globs; the `./` prefix is ignored, leading dots (`.github/`) are kept. Exit `2` if it is
-not a git repository or the base ref is missing.
+Test files are recognized by folder (`tests`, `test`, `__tests__`, `spec`) and by name (`test_*`, `*_test.*`,
+`*.test.*`, `*.spec.*`, `*Test.*`, `*Tests.*`, `*.bats`, `*.tftest.hcl`); manifests by name, for the common ecosystems
+(npm, pip, uv, Poetry, Go, Cargo, Maven, Gradle, NuGet, Bundler, Composer, Mix, Pub, SwiftPM, Deno, Bun, conda,
+Terraform, Helm, Conan, vcpkg). A project adds its own with `- Test files: a, b` and `- Dependency manifests: a, b` in
+`AGENTS.md`.
 
-### scan_repo.py
+Paths: exact, folders (prefix) or globs (`**/` also matches no folder); the `./` prefix is ignored, leading dots
+(`.github/`) are kept. Exit `2` if it is not a git repository, the base ref is missing or the task does not exist.
+
+### state.py
 
 ```
-python scripts/scan_repo.py [root] [--json]
+python scripts/state.py [--json] [--spec <id>] [root]
 ```
 
-Read-only inventory: manifests and stack, languages (files and lines), top-level structure, test folders, CI, likely
-entry points, documentation. Uses `git ls-files` when available. It is an inventory, not understanding.
+Read-only. It reads `AGENTS.md` and `scripts/verify.py` (initialization), the specs in `docs/specs/`, and, from git,
+the version of spec and plan on `main` (or `master`; without git the working copy counts as `main`). The next step:
+
+```
+no AGENTS.md or scripts/verify.py ................... sdd-start (initialization)
+existing code, no map and no spec ................... sdd-map
+no active spec ...................................... sdd-start (next idea)
+several active specs, no choice ..................... choose (--spec <id>, or the spec's branch)
+--- for the chosen spec ---
+Status draft (or missing) ........................... sdd-start (confirm the spec)
+no plan.md .......................................... sdd-plan
+spec or plan not on main yet ........................ sdd-plan (open and merge the design PR)
+spec revised outside a task branch .................. sdd-start (confirm, revise the plan, merge the revision PR)
+plan revised outside a task branch .................. sdd-plan (confirm and merge the revision PR)
+two or more ready tasks with disjoint files ......... sdd-parallel (at most 3, named)
+one ready task ...................................... sdd-task (named)
+open tasks, none ready .............................. sdd-task (merge the open PRs first)
+all tasks merged, Status not implemented ............ sdd-task (close the feature)
+```
+
+A task is **done** when its box is ticked in the plan **on `main`** (its PR was merged), **ready** when it is not done
+and all its dependencies are done. A spec with `Status: implemented` or `superseded` is no longer active. Open bugs
+(`docs/bugs/*.md` not `fixed` or `verified`) are listed for `sdd-bugfix`. `--json` prints the whole state.
 
 ### docs_check.py
 
@@ -203,26 +170,9 @@ Default: `README.md` and `docs/`. Checks relative links and images (ignores code
 **Diagrams.** Every ```` ```mermaid ```` block must start with a known Mermaid diagram type (after `%%` comments and
 the `---` front matter) and have a body; the rest of the syntax is not checked: preview the diagram (GitHub, GitLab,
 VS Code with a Mermaid extension). Every page of `docs/system/` (area pages and map) needs the `## Diagrams` section with
-the five diagrams, each drawn or `- n/a: <reason>`, with the same rules as `spec_lint.py --plan` (always errors here).
+the five diagrams, each drawn or `- n/a: <reason>` (the flowchart always applies).
 Code fences close only on a fence of the same character at least as long as the opening one, so a template shown in a
 ```` ```` ```` block keeps its inner blocks.
-
-### sync_check.py
-
-```
-python scripts/sync_check.py docs/specs/001-x [--area docs/system/<area>.md] [--tests DIR ...] [--junit FILE|DIR ...]
-```
-
-Checks that: the spec is valid with `Status: implemented`; no task is open; `review.md` has a valid outcome other than
-`non-compliant` and `Decided by` filled in; an area page exists (or the one given) with the required sections,
-"Last aligned" filled in, the spec among the "Linked specs" and the `## Diagrams` section complete (as in
-`docs_check.py`); every AC is cited in a test **of this
-spec**, with the rules of `trace_check.py` (if tests are missing and there are ambiguous citations, the error says so).
-Level S: `review.md` and area page optional (if `review.md` exists, it is checked). Level L: `review.md` must also have
-`- Human diff review:` filled in. At levels M and L closed test tasks ("expected: red") carry `tests approved:`. At level
-L, or M with `- Task review: on`, every closed `T-nn` task has `- T-nn: pass` in `## Task reviews` of `progress.md`.
-With `--junit` ACs must be verified by the report of executed tests, as in `trace_check.py`; at level L the report is
-mandatory. The spec folder may also follow the options.
 
 ### secrets_check.py
 
@@ -241,50 +191,14 @@ fixtures, a `.env.development` versioned by convention) go into `.secrets-ignore
 read correctly (`core.quotePath=false`). Skips binary files and files over 1 MB. Exit `2` without git or base ref (use
 `--base`, `--all` or paths). It is a fast net, not a history scan: for that, use a dedicated tool in CI.
 
-### loop.py
+### scan_repo.py
 
 ```
-python scripts/loop.py docs/specs/001-x [--max 15] [--stall 3] [--timeout 1800] [--agent "claude -p"]
-                                        [--junit reports/junit.xml] [--allow-main] [--allow-red-baseline] [--dry-run]
+python scripts/scan_repo.py [root] [--json]
 ```
 
-Reads `PROMPT.md` from the spec folder and passes it to the agent on stdin. After every iteration it runs `verify`. It
-stops with exit `0` if `verify` is green, no `T-nn` or `T-Rnn` task is open (`T-DOC` and `T-SYNC` stay out) **and the
-final checks pass**: `spec_lint.py` on spec, plan and tasks, `trace_check.py` on the spec, `diff_scope.py` on the folder
-and `secrets_check.py`, when present in `scripts/`, plus the task reviews at level L (or M with `- Task review: on`).
-The agent ticks the boxes; these checks do not depend on it. If
-`diff_scope` cannot compute the diff (exit `2`, e.g. no base ref) it is a warning. It stops with exit `1` at the `--max`
-cap or after `--stall` iterations without changes (tasks.md, git HEAD, **content** of tracked and untracked changes,
-excluding generated files such as `__pycache__/` and `reports/`: an agent working on the same file is not stalled, a
-report that changes at every `verify` is not progress). With `--junit` it warns if the report is not ignored by git. Each
-iteration lasts at most `--timeout` seconds: beyond that the agent is terminated and the loop continues; a non-zero exit
-code is reported as a warning. It refuses to start (exit `2`) on `main`/`master` (unless `--allow-main` in isolated
-environments) and with `verify` already red, except in the red phase (the last closed `T-nn` task is "expected: red") or
-with `--allow-red-baseline`.
-**Tests to approve** (levels M and L): if after an iteration an "expected: red" test task is closed without
-`tests approved:`, the loop stops with exit `1` so that the human can read the locked tests; with an approval already
-pending it does not start (exit `2`). With `--junit` the final `trace_check.py` uses the report of executed tests.
-`--dry-run` checks the preconditions without launching the agent and shows whether there is a red phase. It never pushes.
-Agent permissions and non-interactive mode are configured separately: `skills/sdd-loop/references/settings.loop.json` is
-an example allowlist and deny-list for Claude Code (it also denies writes to `scripts/`, `AGENTS.md`, `.github/`, spec,
-plan and review: the loop's own checks and rules), passed with `--agent "claude -p --settings <file>"` (verify the flag on
-your version).
-
-### review_package.py
-
-```
-python scripts/review_package.py docs/specs/001-x T-03 [--base main] [--out FILE]
-python scripts/review_package.py docs/specs/001-x [--base main] [--out FILE]     # whole branch
-```
-
-Not a check: it prepares the input of the independent reviewer, who has no Bash. With a task it collects the branch
-commits whose message carries `Task: T-03` (implementation commits, see `sdd-implement`) or `Test-Lock: T-03` (locked
-tests); without a task, every commit since the merge-base. It writes one Markdown file with the task line, the text of
-the covered ACs (all of them for the branch), the plan's `## Interfaces`, `## Diagrams` and `## Review focus`, the rulings of
-`progress.md` (only the task's), the commit list, the files touched and the patches with 10 lines of context; generated
-files (`__pycache__/`, `reports/`) are excluded and uncommitted changes are not included. Default output:
-`reports/review/<spec folder>/<task or branch>.md`. Exit `2` with an invalid task ID, without git or base ref, or when no
-commit matches.
+Read-only inventory: manifests and stack, languages (files and lines), top-level structure, test folders, CI, likely
+entry points, documentation. Uses `git ls-files` when available. It is an inventory, not understanding.
 
 ---
 
@@ -300,26 +214,6 @@ not `1`, so an inactive hook does not need Python. When active it uses the first
 really is Python 3.8+ (it discards the Microsoft Store aliases and Python 2): on a clean Ubuntu only `python3` exists.
 Without Python 3 it exits `1` with a message, i.e. a visible but non-blocking error.
 
-### approve.py
-
-```
-python scripts/approve.py spec   docs/specs/<id>/spec.md  --by "<name>" [--commit]
-python scripts/approve.py plan   docs/specs/<id>/plan.md  --by "<name>" [--commit]
-python scripts/approve.py tasks  docs/specs/<id>/tasks.md [--commit]
-python scripts/approve.py tests  docs/specs/<id> T-01     --by "<name>" [--base main] [--commit]
-python scripts/approve.py review docs/specs/<id>          --by "<name>" [--diff-read] [--commit]
-```
-
-Not a check: it records the approval the user **selected** among the options of a gate (guide `interaction.md` of
-`sdd-init`), so that nobody types names, dates and hashes by hand. `spec` sets `Status: approved`, `Approved by / date`
-and `Hash`; `plan` sets `Approved by / date`, `Based on spec` (the approved spec next to it) and `Hash`; `tasks` sets
-`Based on plan` (no name: the tasks are checked, not approved); `tests` appends `— tests approved: <name, date, sha>` to
-the closed "expected: red" task, with the SHA of its last `Test-Lock` commit in the branch; `review` sets `Decided by`
-and, with `--diff-read`, `Human diff review`. The new text must pass `spec_lint.py` (or, for the review, have a valid
-outcome): otherwise nothing is written and the errors are listed (exit 1). `--commit` commits only that file with the
-message `<spec id>: approve <what> (<name>)` and the trailers `Spec:` and `Approved-by:`. The agent runs it only in the
-turn where the user selected the approval, with the selected name; the loop never does.
-
 ### `Stop` hook — `hooks/stop_verify.py`
 
 Enabled with `SDD_ENFORCE_VERIFY=1`. If `scripts/verify.py` exists and is red, it exits with code 2 and returns the last
@@ -327,8 +221,9 @@ Enabled with `SDD_ENFORCE_VERIFY=1`. If `scripts/verify.py` exists and is red, i
 (default 3; counter per `session_id` in a private user folder, `%LOCALAPPDATA%\sdd-playbook` or
 `~/.cache/sdd-playbook`, opened without following symbolic links and reset when `verify` turns green), then lets the
 agent stop with a warning for the user (`systemMessage`). Without `session_id` it blocks only once (`stop_hook_active`).
-It does nothing if the project has no `verify.py`, or if a spec is in the **red phase** (in `docs/specs/*/tasks.md` the last
-closed `T-nn` task is marked "expected: red" and the next one is open): there, red tests are the expected result.
+It does nothing if the project has no `verify.py`, or in the **red phase** of a task: the last commit of the branch
+carries the trailer `Test-Lock: T-nn` (the red tests were just locked and the implementation has not started): there,
+red tests are the expected result.
 `SDD_VERIFY_ARGS` narrows the verification (e.g. `--fast`).
 
 ### `PreToolUse` hook — `hooks/pretool_guard.py`
