@@ -16,7 +16,7 @@ tests and code; the scripts check that every step was really done. At any time `
 | What | Why |
 |---|---|
 | Install the plugin (README, "Installation") | Makes the 7 skills available |
-| Python 3 and git on the machine | The scripts are Python, standard library only |
+| Python 3.8+ and git on the machine, whatever the project's language | The playbook scripts are Python, standard library only; `sdd-start` checks it first and tells how to install it |
 | Optional: a GitHub remote | One PR per task, and a CI that runs `verify` on every PR |
 
 You invoke a skill by asking the agent, for example *"use sdd-start for a CSV export of the reports"*.

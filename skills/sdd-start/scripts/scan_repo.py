@@ -21,14 +21,19 @@ SKIP = {".git", "node_modules", ".venv", "venv", "__pycache__", "dist", "build",
         ".idea", ".vscode", ".mypy_cache", ".pytest_cache", ".gradle"}
 LANGUAGES = {".py": "Python", ".js": "JavaScript", ".jsx": "JavaScript", ".ts": "TypeScript", ".tsx": "TypeScript",
              ".java": "Java", ".kt": "Kotlin", ".cs": "C#", ".go": "Go", ".rb": "Ruby", ".php": "PHP",
-             ".rs": "Rust", ".c": "C", ".cpp": "C++", ".h": "C/C++", ".swift": "Swift", ".sql": "SQL",
-             ".sh": "Shell", ".ps1": "PowerShell"}
+             ".rs": "Rust", ".c": "C", ".cc": "C++", ".cpp": "C++", ".cxx": "C++", ".h": "C/C++", ".hpp": "C++",
+             ".swift": "Swift", ".sql": "SQL", ".sh": "Shell", ".bash": "Shell", ".bats": "Shell (bats)",
+             ".ps1": "PowerShell", ".psm1": "PowerShell", ".scala": "Scala", ".dart": "Dart", ".ex": "Elixir",
+             ".exs": "Elixir", ".fs": "F#", ".vue": "Vue", ".svelte": "Svelte", ".tf": "Terraform", ".hcl": "HCL"}
 MANIFEST = {"pyproject.toml": "Python", "requirements.txt": "Python", "setup.py": "Python", "uv.lock": "Python (uv)",
             "package.json": "Node", "pnpm-lock.yaml": "Node (pnpm)", "yarn.lock": "Node (yarn)",
             "go.mod": "Go", "pom.xml": "Java (Maven)", "build.gradle": "Java/Kotlin (Gradle)",
             "build.gradle.kts": "Java/Kotlin (Gradle)", "Cargo.toml": "Rust", "composer.json": "PHP",
-            "Gemfile": "Ruby", "Dockerfile": "Docker", "docker-compose.yml": "Docker Compose",
-            "Makefile": "make"}
+            "Gemfile": "Ruby", "Dockerfile": "Docker", "Containerfile": "Docker", "docker-compose.yml": "Docker Compose",
+            "docker-compose.yaml": "Docker Compose", "compose.yaml": "Docker Compose", "compose.yml": "Docker Compose",
+            "Chart.yaml": "Helm", "kustomization.yaml": "Kubernetes (kustomize)", "helmfile.yaml": "Helm (helmfile)",
+            "CMakeLists.txt": "C/C++ (CMake)", "meson.build": "C/C++ (Meson)", "conanfile.txt": "C/C++ (Conan)",
+            "vcpkg.json": "C/C++ (vcpkg)", "Makefile": "make"}
 MANIFEST_EXTENSIONS = {".sln": ".NET", ".csproj": ".NET", ".tf": "Terraform"}
 ENTRY = {"main.py", "app.py", "manage.py", "__main__.py", "index.js", "index.ts", "server.js", "server.ts",
          "main.go", "Program.cs", "Main.java", "Application.java", "main.rs", "lib.rs"}

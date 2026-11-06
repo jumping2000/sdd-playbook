@@ -97,6 +97,15 @@ class TestState(unittest.TestCase):
             write(d, "docs/system/map.md", "# Map\n")
             self.assertEqual(nxt(d)["skill"], "sdd-start")
 
+    def test_infrastructure_counts_as_existing_code(self):
+        with TmpDir() as d:
+            copy_scripts(d, ["state", "spec_lint"])
+            write(d, "AGENTS.md", "# A\n")
+            write(d, "scripts/verify.py", "")
+            for f in ("compose.yaml", "Dockerfile", "charts/web/Chart.yaml"):
+                write(d, f, "x\n")
+            self.assertEqual(nxt(d)["skill"], "sdd-map")
+
     def test_several_specs_bugs_and_text_output(self):
         with TmpDir() as d:
             copy_scripts(d)

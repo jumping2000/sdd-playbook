@@ -84,6 +84,11 @@ ha una sola spec. Il file di un caso è quello il cui percorso coincide più a l
 omonimi in cartelle diverse non si confondono, e a pari merito tra file di spec diverse il caso non conta. Report
 illeggibile o `--junit` senza valore: exit `2`. Il report lo scrive `verify` (vedi `references/stacks.md` di `sdd-start`).
 
+**Altri linguaggi e file di test dichiarati.** I file di test si cercano nelle cartelle di test con le estensioni
+comuni (Python, JavaScript/TypeScript, Java, Kotlin, Scala, C#, F#, Go, Ruby, PHP, Rust, C/C++, Swift, Dart, Elixir,
+shell, bats, PowerShell, Gherkin, Robot, HCL, YAML), più i percorsi o glob di `- Test files:` in `AGENTS.md`. La
+citazione breve accetta anche `ac_001` (Rust e altri nomi snake_case) e quella qualificata non distingue maiuscole.
+
 **`--task T-nn`: il controllo della PR di un task.** Solo gli AC che il task copre (`covers:` nel `plan.md` accanto alla
 spec) devono avere test (eseguiti e passati con `--junit`); gli AC dei task successivi non vengono segnalati. Senza
 `--task` ogni AC della spec, e ogni REQ deve avere un AC testato: il controllo dell'intera feature, eseguito dal suo
@@ -113,8 +118,14 @@ non contano. `AGENTS.md` si legge **dal merge-base** quando esiste lì: il branc
 - **riga `SENSITIVE:`**: file nelle `- Sensitive areas:` di `AGENTS.md`, da copiare nella descrizione della PR: l'umano
   ne legge il diff prima del merge. Non è un errore.
 
-Percorsi: esatti, cartelle (prefisso) o glob; il prefisso `./` si ignora, i punti iniziali (`.github/`) restano. Exit
-`2` se non è un repository git, manca il ref di base o il task non esiste.
+I file di test si riconoscono dalla cartella (`tests`, `test`, `__tests__`, `spec`) e dal nome (`test_*`, `*_test.*`,
+`*.test.*`, `*.spec.*`, `*Test.*`, `*Tests.*`, `*.bats`, `*.tftest.hcl`); i manifest dal nome, per gli ecosistemi
+comuni (npm, pip, uv, Poetry, Go, Cargo, Maven, Gradle, NuGet, Bundler, Composer, Mix, Pub, SwiftPM, Deno, Bun, conda,
+Terraform, Helm, Conan, vcpkg). Un progetto aggiunge i propri con `- Test files: a, b` e `- Dependency manifests: a, b`
+in `AGENTS.md`.
+
+Percorsi: esatti, cartelle (prefisso) o glob (`**/` vale anche per nessuna cartella); il prefisso `./` si ignora, i
+punti iniziali (`.github/`) restano. Exit `2` se non è un repository git, manca il ref di base o il task non esiste.
 
 ### state.py
 

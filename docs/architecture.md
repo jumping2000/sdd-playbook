@@ -29,6 +29,7 @@ result trustworthy. The plugin is done well if:
 | Diagrams | Mermaid: the flowchart in the plan; the **five diagrams** (flowchart, sequence, state, class, ER) in the area page written by the last task, drawn from the code | The plan needs the flow; the documentation needs the full picture of what was built |
 | CI in the projects | Optional, only `verify` on every PR | The only independent evidence that the tests pass on a clean machine; process checks in CI duplicated the local ones |
 | Agent-specific parts | Claude Code: `sdd-reviewer` subagent, opt-in hooks, worktree subagents for `sdd-parallel`. Copilot: the same reviewer as a custom agent, skills in `.github/skills/`. Codex: new sessions | The skills stay the same; only the orchestration changes |
+| Programming languages | Independent of the stack: `verify.py` runs the project's commands; test files and manifests recognized for the common ecosystems and extendable in `AGENTS.md`; the only requirement is Python 3.8+ for the scripts | Projects in Rust, C/C++, shell, PowerShell, Docker Compose or Helm must not need a change to the plugin |
 | Language | Documentation, changelog and review in English and Italian (`_IT`); the plugin entirely in English | File contracts (field names read by the scripts) in one language |
 
 ## Repository structure
@@ -122,7 +123,7 @@ The scripts read a few fields with fixed conventions. Field names are English an
 | JUnit XML report (`reports/junit.xml`) | `testcase` with `name`, `classname`, `file` and children `failure`, `error`, `skipped` | `trace_check --junit` |
 | `docs/system/<area>.md`, `map.md` | section `## Diagrams` with `### Flowchart`, `### Sequence diagram`, `### State diagram`, `### Class diagram`, `### ER diagram`, each a Mermaid block of its type or `- n/a: <reason>` (never the flowchart) | `docs_check` |
 | `docs/bugs/BUG-*.md` | `- Status:` (`open`, `diagnosed`, `fixed`, `verified`) | `state` (open bugs) |
-| `AGENTS.md` | lines `- Do not modify: a, b` (errors) and `- Sensitive areas: a, b` (flagged), paths in backticks or first word, read from the merge-base; sections `## Decision rights` and `## Areas` (index of the area pages; read by the agents); updated only at the design PR and at a feature's close | `diff_scope`; `sdd-task`, `sdd-reviewer` |
+| `AGENTS.md` | lines `- Do not modify: a, b` (errors), `- Sensitive areas: a, b` (flagged), `- Test files: a, b` and `- Dependency manifests: a, b` (additions to the recognized ones), paths in backticks or first word, read from the merge-base; sections `## Decision rights` and `## Areas` (index of the area pages; read by the agents); updated only at the design PR and at a feature's close | `diff_scope`; `sdd-task`, `sdd-reviewer` |
 | `scripts/verify.py` | list `STEPS` | (adapted by `sdd-start`) |
 | `scripts/*.py` | line 2 `# sdd-playbook: <version>` | `sdd-start` (update), coherence tests |
 | manifests and lockfiles | file name only | `diff_scope` (warning) |

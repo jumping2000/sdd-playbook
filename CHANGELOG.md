@@ -37,6 +37,12 @@ goes from 14 to 7 skills and from 13 to 8 scripts; the playbook from about 1,200
 - **`AGENTS.md` maintained:** updates proposed as options at the design PR (durable facts: commands, sensitive areas,
   zones not to touch, conventions, ADRs) and at the feature's close (a line in the new `## Areas` index, project-wide
   lessons); the reviewer rejects a loosened rule.
+- **Any language:** `sdd-start` checks Python 3.8+ first (the only tooling requirement) and records the interpreter in
+  `AGENTS.md`; `stacks.md` adds Rust, C/C++, shell (bats, shellcheck), PowerShell (Pester, PSScriptAnalyzer), Docker
+  Compose and Helm/Kubernetes with their JUnit reports; `trace_check.py` reads many more extensions and `ac_001`
+  (snake_case); `diff_scope.py` recognizes bats, Terraform tests and more manifests; `- Test files:` and
+  `- Dependency manifests:` in `AGENTS.md` extend both; `state.py` and `scan_repo.py` see infrastructure (Dockerfile,
+  Compose, Helm) as existing code; `**/` in a glob also matches no folder.
 - **PRs on any platform:** GitHub (`gh`), GitLab (`glab`), or the link the push prints.
 - **Documentation:** short playbook written directly (no generator), README, quick guide, skills, scripts and
   architecture rewritten in both languages.

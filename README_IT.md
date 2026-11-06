@@ -36,8 +36,9 @@ Rendere affidabile il software costruito con un coding agent **senza cerimonia**
    revisore indipendente li controlla;
 4. il lavoro arriva in **PR verticali piccole**, una per task, e l'umano decide ogni merge con i risultati davanti;
 5. spec e documentazione, diagrammi compresi, **restano allineate** al codice nella stessa PR;
-6. funziona allo stesso modo in **Claude Code, Codex e GitHub Copilot**, su **Windows e Linux**, e resta verificabile
-   senza il plugin.
+6. funziona allo stesso modo in **Claude Code, Codex e GitHub Copilot**, su **Windows e Linux**, per **qualunque
+   linguaggio** (Python, Node, .NET, Go, Java, Rust, C/C++, shell, PowerShell, Docker Compose, Helm, ...), e resta
+   verificabile senza il plugin. L'unico requisito degli strumenti è Python 3.8+ per gli script.
 
 ## Come funziona
 

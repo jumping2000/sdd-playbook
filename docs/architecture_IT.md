@@ -29,6 +29,7 @@ mantiene affidabile il risultato. Il plugin è fatto bene se:
 | Diagrammi | Mermaid: il flowchart nel piano; i **cinque diagrammi** (flowchart, sequenza, stato, classi, ER) nella pagina d'area scritta dall'ultimo task, ricavati dal codice | Al piano serve il flusso; alla documentazione serve il quadro completo di ciò che è stato costruito |
 | CI nei progetti | Facoltativa, solo `verify` su ogni PR | L'unica prova indipendente che i test passano su una macchina pulita; i controlli di processo in CI duplicavano quelli locali |
 | Parti specifiche per agente | Claude Code: subagent `sdd-reviewer`, hook opt-in, subagent in worktree per `sdd-parallel`. Copilot: lo stesso revisore come custom agent, skill in `.github/skills/`. Codex: nuove sessioni | Le skill restano le stesse; cambia solo l'orchestrazione |
+| Linguaggi di programmazione | Indipendente dallo stack: `verify.py` esegue i comandi del progetto; file di test e manifest riconosciuti per gli ecosistemi comuni ed estendibili in `AGENTS.md`; unico requisito Python 3.8+ per gli script | Progetti in Rust, C/C++, shell, PowerShell, Docker Compose o Helm non devono richiedere modifiche al plugin |
 | Lingua | Documentazione, changelog e review in inglese e in italiano (`_IT`); il plugin interamente in inglese | Contratti sui file (nomi dei campi letti dagli script) in una sola lingua |
 
 ## Struttura del repository
@@ -122,7 +123,7 @@ Gli script leggono pochi campi con convenzioni fisse. I nomi dei campi sono in i
 | report JUnit XML (`reports/junit.xml`) | `testcase` con `name`, `classname`, `file` e figli `failure`, `error`, `skipped` | `trace_check --junit` |
 | `docs/system/<area>.md`, `map.md` | sezione `## Diagrams` con `### Flowchart`, `### Sequence diagram`, `### State diagram`, `### Class diagram`, `### ER diagram`, ognuna un blocco Mermaid del suo tipo o `- n/a: <motivo>` (mai il flowchart) | `docs_check` |
 | `docs/bugs/BUG-*.md` | `- Status:` (`open`, `diagnosed`, `fixed`, `verified`) | `state` (bug aperti) |
-| `AGENTS.md` | righe `- Do not modify: a, b` (errori) e `- Sensitive areas: a, b` (segnalate), percorsi tra backtick o prima parola, lette dal merge-base; sezioni `## Decision rights` e `## Areas` (indice delle pagine d'area; lette dagli agenti); aggiornato solo alla PR di design e alla chiusura di una feature | `diff_scope`; `sdd-task`, `sdd-reviewer` |
+| `AGENTS.md` | righe `- Do not modify: a, b` (errori), `- Sensitive areas: a, b` (segnalate), `- Test files: a, b` e `- Dependency manifests: a, b` (aggiunte a quelli riconosciuti), percorsi tra backtick o prima parola, lette dal merge-base; sezioni `## Decision rights` e `## Areas` (indice delle pagine d'area; lette dagli agenti); aggiornato solo alla PR di design e alla chiusura di una feature | `diff_scope`; `sdd-task`, `sdd-reviewer` |
 | `scripts/verify.py` | lista `STEPS` | (adattata da `sdd-start`) |
 | `scripts/*.py` | seconda riga `# sdd-playbook: <versione>` | `sdd-start` (aggiornamento), test di coerenza |
 | manifest e lockfile | solo il nome del file | `diff_scope` (avviso) |

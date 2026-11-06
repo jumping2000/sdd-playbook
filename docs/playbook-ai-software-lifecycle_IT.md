@@ -31,6 +31,12 @@ reali e, con un remote GitHub, propone una CI che esegue `verify` su ogni PR. Un
 "fatto": `python scripts/verify.py` (formattazione, lint, tipi, test con report JUnit, segreti), identico su Windows,
 Linux e in CI.
 
+**Qualunque linguaggio.** Il metodo non dipende dallo stack: `verify.py` esegue i comandi del progetto (Python, Node,
+.NET, Go, Java, Rust, C/C++, shell e PowerShell, Docker Compose, Helm e altri; esempi in `stacks.md` di `sdd-start`).
+L'unico requisito degli strumenti è **Python 3.8+** per gli script del playbook, controllato per primo da `sdd-start`.
+Test e manifest delle dipendenze di ecosistemi che gli script non riconoscono si dichiarano in `AGENTS.md`
+(`- Test files:`, `- Dependency manifests:`).
+
 Permessi: l'agente lavora sui branch, non committa mai su `main`, non fa push né merge senza la tua scelta. Gli agenti
 autonomi girano in ambienti isolati senza segreti. Gli hook facoltativi di Claude Code sono una rete di sicurezza, non
 un sandbox: `SDD_ENFORCE_VERIFY=1` impedisce all'agente di dichiarare finito con `verify` rosso (salvo nella fase rossa

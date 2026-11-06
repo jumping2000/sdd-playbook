@@ -30,6 +30,12 @@ the real commands and, with a GitHub remote, offers a CI that runs `verify` on e
 of "done": `python scripts/verify.py` (format, lint, types, tests with a JUnit report, secrets), identical on Windows,
 Linux and in CI.
 
+**Any language.** The method does not depend on the stack: `verify.py` runs the project's own commands (Python, Node,
+.NET, Go, Java, Rust, C/C++, shell and PowerShell, Docker Compose, Helm and others; examples in `stacks.md` of
+`sdd-start`). The only tooling requirement is **Python 3.8+** for the playbook scripts, checked first by `sdd-start`.
+Tests and dependency manifests of ecosystems the scripts do not recognize are declared in `AGENTS.md`
+(`- Test files:`, `- Dependency manifests:`).
+
 Permissions: the agent works on branches, never commits on `main`, never pushes or merges without your selection.
 Autonomous agents run in isolated environments without secrets. The optional Claude Code hooks are a safety net, not a
 sandbox: `SDD_ENFORCE_VERIFY=1` stops the agent from declaring work done with `verify` red (except in the red phase of

@@ -16,7 +16,7 @@ codice; gli script controllano che ogni passo sia stato fatto davvero. In qualsi
 | Cosa | Perché |
 |---|---|
 | Installa il plugin (README, "Installazione") | Rende disponibili le 7 skill |
-| Python 3 e git sulla macchina | Gli script sono Python con sola libreria standard |
+| Python 3.8+ e git sulla macchina, qualunque sia il linguaggio del progetto | Gli script del playbook sono Python con sola libreria standard; `sdd-start` lo controlla per primo e indica come installarlo |
 | Facoltativo: un remote GitHub | Una PR per task, e una CI che esegue `verify` su ogni PR |
 
 Le skill si richiamano chiedendo all'agente, per esempio *"usa sdd-start per un export CSV dei report"*.

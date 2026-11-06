@@ -21,6 +21,12 @@ Citations on lines with `TODO`, `FIXME` or `XXX` do not count: a reminder is not
 | Java (JUnit) | `// SPEC-2026-10-24-export-csv` at the top, then `@Test void AC_001_exportsCsv() { ... }` (the ID in the method name: `@DisplayName` does not reach the Surefire JUnit report) |
 | C# (xUnit) | `// SPEC-2026-10-24-export-csv` at the top, then `[Fact] public void AC_001_ExportsValidCsv() { ... }` |
 | Go | `// SPEC-2026-10-24-export-csv` at the top, then `func TestAC001_ExportsCsv(t *testing.T) { ... }`; with several specs and `--junit`, use the qualified form (`Test_SPEC_2026_10_24_export_csv_AC_001`): in the report the classname is the package, not the file |
+| Rust | `// SPEC-2026-10-24-export-csv` at the top of a file in `tests/`, then `#[test] fn ac_001_exports_csv() { ... }` (snake_case `ac_001` is recognized) |
+| C / C++ (GoogleTest) | `// SPEC-2026-10-24-export-csv` at the top, then `TEST(Export, AC_001_ExportsCsv) { ... }` |
+| Shell (bats) | `# SPEC-2026-10-24-export-csv` at the top, then `@test "AC-001: the stack starts with all services healthy" { ... }` |
+| PowerShell (Pester) | `# SPEC-2026-10-24-export-csv` at the top, then `It 'AC-001: exports a valid CSV' { ... }` |
+| Docker / Compose | smoke tests in bats, pytest or Pester against `docker compose up -d --wait`, with the IDs as above |
+| Helm (helm-unittest) | `# SPEC-2026-10-24-export-csv` at the top of `tests/*_test.yaml`, then `- it: "AC-001: renders the ingress"` |
 | Gherkin | `# SPEC-2026-10-24-export-csv/AC-001` above the `Scenario:` |
 
 With `--junit` a report case is attributed to the file whose path best matches `file` or `classname`

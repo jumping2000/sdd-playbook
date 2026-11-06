@@ -195,6 +195,24 @@ class TestJUnitAttribution(unittest.TestCase):  # I4
             self.assertEqual(cli(d, "trace_check", "spec.md", "--junit").returncode, 2)
 
 
+class TestOtherEcosystems(unittest.TestCase):
+    def test_rust_bats_and_declared_test_files(self):
+        with TmpDir() as d:
+            copy_scripts(d)
+            write(d, "spec.md", SPEC_OK)
+            write(d, "tests/export.rs", "// SPEC-001\n#[test]\nfn ac_001_exports_csv() {}\n")
+            write(d, "tests/errors.bats", '# SPEC-001\n@test "AC-002: clear error" { true; }\n')
+            self.assertEqual(cli(d, "trace_check", "spec.md").returncode, 0)
+        with TmpDir() as d:  # tests outside the default folders, declared in AGENTS.md
+            copy_scripts(d)
+            write(d, "spec.md", SPEC_OK)
+            write(d, "e2e/export.robot", "# SPEC-001\nAC-001 export\nAC-002 error\n")
+            self.assertEqual(cli(d, "trace_check", "spec.md").returncode, 2)  # no test folder
+            write(d, "AGENTS.md", "# A\n- Test files: `e2e/**/*.robot`\n")
+            r = cli(d, "trace_check", "spec.md")
+            self.assertEqual(r.returncode, 0, r.stdout)
+
+
 class TestTaskScope(unittest.TestCase):
     def test_only_the_acs_of_the_task(self):
         with TmpDir() as d:

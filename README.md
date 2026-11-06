@@ -36,8 +36,9 @@ Make software built with a coding agent **trustworthy without ceremony**:
 4. the work arrives in **small vertical PRs**, one per task, and the human decides every merge with the results in
    front of them;
 5. specs and documentation, diagrams included, **stay aligned** with the code in the same PR;
-6. it works the same in **Claude Code, Codex and GitHub Copilot**, on **Windows and Linux**, and remains verifiable
-   without the plugin.
+6. it works the same in **Claude Code, Codex and GitHub Copilot**, on **Windows and Linux**, for **any language**
+   (Python, Node, .NET, Go, Java, Rust, C/C++, shell, PowerShell, Docker Compose, Helm, ...), and remains verifiable
+   without the plugin. The only tooling requirement is Python 3.8+ for the scripts.
 
 ## How it works
 

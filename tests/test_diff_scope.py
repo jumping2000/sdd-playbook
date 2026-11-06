@@ -68,6 +68,24 @@ class TestDiffScope(unittest.TestCase):
             self.assertNotIn("outside the task: scripts/verify.py", r.stdout)
             self.assertNotIn("outside the task: .github", r.stdout)
 
+    def test_test_files_and_manifests_of_other_ecosystems(self):
+        for p in ("tests/smoke.bats", "infra/main.tftest.hcl", "charts/web/tests/ingress_test.yaml", "src/Export.Tests.ps1",
+                  "src/export_test.cc"):
+            self.assertTrue(diff_scope.is_test(p), p)
+        for p in ("Chart.lock", "mix.exs", "pubspec.yaml", ".terraform.lock.hcl", "vcpkg.json"):
+            self.assertTrue(diff_scope.is_manifest(p), p)
+        with TmpDir() as d:  # declared in AGENTS.md: locked like any test, flagged like any manifest
+            self.prepare(d, agents="- Test files: `e2e/**/*.robot`\n- Dependency manifests: `deps/versions.lock`\n")
+            write(d, "e2e/suite/export.robot", "AC-001\n")
+            git(d, "add", "-A")
+            git(d, "commit", "-qm", "red tests", "-m", "Test-Lock: T-01")
+            write(d, "e2e/suite/export.robot", "weakened\n")
+            write(d, "deps/versions.lock", "x\n")
+            r = cli(d, "diff_scope", "docs/specs/001-x", "--task", "T-01")
+            self.assertEqual(r.returncode, 1, r.stdout)
+            self.assertIn("locked test (Test-Lock) changed after locking: e2e/suite/export.robot", r.stdout)
+            self.assertIn("dependency manifest or lockfile changed: deps/versions.lock", r.stdout)
+
     def test_errors_of_use(self):
         with TmpDir() as d:
             copy_scripts(d)
@@ -79,6 +97,7 @@ class TestDiffScope(unittest.TestCase):
     def test_paths(self):
         self.assertTrue(diff_scope.matches("src/a/b.py", "src/"))
         self.assertTrue(diff_scope.matches("src/a/b.py", "src/**/*.py"))
+        self.assertTrue(diff_scope.matches("src/b.py", "src/**/*.py"))  # "**/" matches no folder too
         self.assertFalse(diff_scope.matches("srcx/b.py", "src"))
         self.assertTrue(diff_scope.matches(".github/workflows/ci.yml", "./.github"))
         self.assertFalse(diff_scope.matches("github/x.yml", ".github/"))

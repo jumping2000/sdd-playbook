@@ -84,6 +84,11 @@ a test file attributed to the spec or the project has a single spec. The file of
 files of different specs the case does not count. Unreadable report or `--junit` without a value: exit `2`. `verify`
 writes the report (see `references/stacks.md` in `sdd-start`).
 
+**Other languages and declared test files.** Test files are searched in the test folders with the common extensions
+(Python, JavaScript/TypeScript, Java, Kotlin, Scala, C#, F#, Go, Ruby, PHP, Rust, C/C++, Swift, Dart, Elixir, shell,
+bats, PowerShell, Gherkin, Robot, HCL, YAML), plus the paths or globs of `- Test files:` in `AGENTS.md`. The short
+citation also accepts `ac_001` (Rust and other snake_case names) and the qualified one is case-insensitive.
+
 **`--task T-nn`: the check of a task's PR.** Only the ACs the task covers (`covers:` in the `plan.md` next to the spec)
 must have tests (executed and passed with `--junit`); the ACs of later tasks are not reported. Without `--task` every
 AC of the spec, and every REQ needs a tested AC: the check of the whole feature, run by its last task. An unknown task:
@@ -113,8 +118,14 @@ it. It reports:
 - **`SENSITIVE:` line**: files in the `- Sensitive areas:` of `AGENTS.md`, to copy into the PR description: the human
   reads their diff before the merge. Not an error.
 
-Paths: exact, folders (prefix) or globs; the `./` prefix is ignored, leading dots (`.github/`) are kept. Exit `2` if it
-is not a git repository, the base ref is missing or the task does not exist.
+Test files are recognized by folder (`tests`, `test`, `__tests__`, `spec`) and by name (`test_*`, `*_test.*`,
+`*.test.*`, `*.spec.*`, `*Test.*`, `*Tests.*`, `*.bats`, `*.tftest.hcl`); manifests by name, for the common ecosystems
+(npm, pip, uv, Poetry, Go, Cargo, Maven, Gradle, NuGet, Bundler, Composer, Mix, Pub, SwiftPM, Deno, Bun, conda,
+Terraform, Helm, Conan, vcpkg). A project adds its own with `- Test files: a, b` and `- Dependency manifests: a, b` in
+`AGENTS.md`.
+
+Paths: exact, folders (prefix) or globs (`**/` also matches no folder); the `./` prefix is ignored, leading dots
+(`.github/`) are kept. Exit `2` if it is not a git repository, the base ref is missing or the task does not exist.
 
 ### state.py
 

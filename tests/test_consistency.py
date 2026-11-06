@@ -244,7 +244,8 @@ class TestPlaybook(unittest.TestCase):
             self.assertIn(f"`### {title}`", guide)
         agents = read("skills/sdd-start/references/AGENTS.md.tmpl")
         for heading in ("## Decision rights", "### Decides alone", "### Asks first", "### Never", "- Do not modify:",
-                        "- Sensitive areas:", "## Areas"):
+                        "- Sensitive areas:", "## Areas", "- Test files:", "- Dependency manifests:",
+                        "Python for the playbook scripts"):
             self.assertIn(heading, agents)
         for gone in ("Profile", "Approvers", "Level", "approve.py"):
             self.assertNotIn(gone, agents)

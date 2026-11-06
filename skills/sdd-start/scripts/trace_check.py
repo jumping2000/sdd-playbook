@@ -26,7 +26,8 @@ of different specs the case does not count. Skipped cases do not count.
 The spec ID is read from the title "# SPEC-<id>: ..." (date + lower-case slug, or a number).
 --task T-nn: only the ACs the task covers ("covers:" in plan.md next to the spec): the check of a task's PR.
 Without --task every AC of the spec, and every REQ needs a tested AC: the check of the feature.
-Test folders searched by default: tests, test, __tests__, spec, src/test.
+Test folders searched by default: tests, test, __tests__, spec, src/test; a project adds paths or globs with the line
+"- Test files: a, b" of AGENTS.md (e.g. `e2e/**/*.robot`, `src/**/*_test.rs`).
 Exit code: 0 all ACs cited (and, with --junit, verified); 1 ACs without tests; 2 wrong usage or unreadable report.
 Standard library only, cross-platform.
 """
@@ -40,17 +41,20 @@ from typing import NamedTuple
 
 sys.dont_write_bytecode = True  # no __pycache__ in the project: it would count as a changed file
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import diff_scope  # noqa: E402
 import spec_lint  # noqa: E402
 
-EXTENSIONS = {".py", ".js", ".jsx", ".ts", ".tsx", ".java", ".kt", ".cs", ".go", ".rb", ".php",
-              ".rs", ".feature", ".robot", ".cpp", ".c", ".swift"}
+EXTENSIONS = {".py", ".js", ".jsx", ".mjs", ".cjs", ".ts", ".tsx", ".mts", ".java", ".kt", ".scala", ".cs", ".fs",
+              ".go", ".rb", ".php", ".rs", ".c", ".cc", ".cpp", ".cxx", ".h", ".hpp", ".swift", ".dart", ".ex", ".exs",
+              ".sh", ".bash", ".bats", ".ps1", ".psm1", ".feature", ".robot", ".hcl", ".yaml", ".yml"}
+EXTRA_TESTS: list[str] = []  # "- Test files: a, b" of AGENTS.md (paths or globs), read by main()
 FOLDERS = ("tests", "test", "__tests__", "spec", "src/test")
 SKIP = {"node_modules", ".git", ".venv", "venv", "__pycache__", "dist", "build", "target", "bin", "obj"}
-AC_REF = re.compile(r"(?:(?<=Test)|(?<![A-Za-z0-9]))AC[-_]?0*(\d+)(?!\d)")  # also TestAC001 (Go)
+AC_REF = re.compile(r"(?:(?<=Test)|(?<![A-Za-z0-9]))(?:AC[-_]?|ac_)0*(\d+)(?!\d)")  # TestAC001 (Go), ac_001 (Rust)
 # Spec ID: date + lower-case slug (also with "_" instead of "-", for function names) or number.
 ID_REF = r"(\d{4}[-_]\d{2}[-_]\d{2}[-_][a-z0-9]+(?:[-_][a-z0-9]+)*|\d+)"
 SPEC_REF = re.compile(rf"(?<![A-Za-z0-9])SPEC[-_]?{ID_REF}(?!\d)")
-QUALIFIED = re.compile(rf"(?<![A-Za-z0-9])SPEC[-_]?{ID_REF}[-_/:. ]{{0,3}}AC[-_]?0*(\d+)(?!\d)")
+QUALIFIED = re.compile(rf"(?<![A-Za-z0-9])SPEC[-_]?{ID_REF}[-_/:. ]{{0,3}}AC[-_]?0*(\d+)(?!\d)", re.I)  # also snake_case
 REMINDER = re.compile(r"\b(TODO|FIXME|XXX)\b")
 
 
@@ -76,9 +80,17 @@ def specs_in_project() -> int:
 
 
 def test_files(folders: list[Path]):
+    seen: set[Path] = set()
     for base in folders:
         for f in sorted(base.rglob("*")):
             if f.is_file() and f.suffix in EXTENSIONS and not SKIP & set(f.parts):
+                seen.add(f)
+                yield f
+    if EXTRA_TESTS:
+        for f in sorted(Path(".").rglob("*")):
+            rel = f.as_posix()
+            if (f.is_file() and f not in seen and not SKIP & set(f.parts)
+                    and any(diff_scope.matches(rel, g) for g in EXTRA_TESTS)):
                 yield f
 
 
@@ -227,8 +239,10 @@ def main(argv: list[str]) -> int:
         return 2
     folders = [Path(d) for d in dirs] if dirs else [Path(c) for c in FOLDERS if Path(c).is_dir()]
     folders = [c for c in folders if c.is_dir()]
-    if not folders:
-        print("[ERROR] no test folder found: use --tests <folder>")
+    agents = Path("AGENTS.md")
+    EXTRA_TESTS[:] = diff_scope.agents_entries(agents.read_text(encoding="utf-8"), "Test files") if agents.is_file() else []
+    if not folders and not EXTRA_TESTS:
+        print("[ERROR] no test folder found: use --tests <folder> or '- Test files:' in AGENTS.md")
         return 2
     text = Path(spec_path).read_text(encoding="utf-8")
     tid = values(opts, "--task")[0] if values(opts, "--task") else None

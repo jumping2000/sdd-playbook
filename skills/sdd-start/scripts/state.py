@@ -25,8 +25,12 @@ sys.dont_write_bytecode = True  # no __pycache__ in the project: it would count 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import spec_lint  # noqa: E402
 
-SOURCES = {".py", ".js", ".jsx", ".ts", ".tsx", ".java", ".kt", ".cs", ".go", ".rb", ".php", ".rs", ".c", ".cpp",
-           ".swift"}
+SOURCES = {".py", ".js", ".jsx", ".mjs", ".ts", ".tsx", ".vue", ".svelte", ".java", ".kt", ".scala", ".cs", ".fs", ".vb",
+           ".go", ".rb", ".php", ".rs", ".c", ".cc", ".cpp", ".cxx", ".h", ".hpp", ".swift", ".m", ".dart", ".ex", ".exs",
+           ".lua", ".r", ".jl", ".hs", ".pl", ".sql", ".sh", ".bash", ".ps1", ".psm1", ".tf", ".hcl"}
+# Infrastructure as code counts as existing code too (a Compose stack, a Helm chart, a Dockerfile).
+INFRA = {"Dockerfile", "Containerfile", "compose.yaml", "compose.yml", "docker-compose.yaml", "docker-compose.yml",
+         "Chart.yaml", "kustomization.yaml", "helmfile.yaml", "CMakeLists.txt", "Makefile"}
 IGNORE = {".git", "node_modules", ".venv", "venv", "__pycache__", "dist", "build", "target", "bin", "obj",
           "scripts", "docs", ".github", ".vscode"}
 CLOSED = ("implemented", "superseded")
@@ -63,7 +67,7 @@ def has_code(root: Path, threshold: int = 3) -> bool:
     n = 0
     for _, dirs, files in os.walk(root):
         dirs[:] = [d for d in dirs if d not in IGNORE]
-        n += sum(1 for f in files if Path(f).suffix in SOURCES)
+        n += sum(1 for f in files if Path(f).suffix in SOURCES or f in INFRA)
         if n >= threshold:
             return True
     return False
