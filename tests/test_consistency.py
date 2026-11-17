@@ -20,7 +20,8 @@ LANGUAGES = {"README": ("README.md", "README_IT.md"), "skills": ("docs/skills.md
              "quick-guide": ("docs/quick-guide.md", "docs/quick-guide_IT.md"),
              "CHANGELOG": ("CHANGELOG.md", "CHANGELOG_IT.md"), "REVIEW": ("REVIEW.md", "REVIEW_IT.md")}
 HISTORY = ("CHANGELOG", "REVIEW")  # historical records: they keep the names of their time
-NON_SKILL = {"sdd-playbook", "sdd-reviewer", "sdd-playbook-marketplace"}
+AGENTS = ("sdd-reviewer", "sdd-test-writer", "sdd-multitask")
+NON_SKILL = {"sdd-playbook", "sdd-playbook-marketplace", *AGENTS}
 ENV_VARS = ("SDD_ENFORCE_VERIFY", "SDD_VERIFY_ARGS", "SDD_STOP_MAX", "SDD_GUARD")
 
 
@@ -123,11 +124,19 @@ class TestMetadata(unittest.TestCase):
                 self.assertTrue(any(needle in b for b in badges), f"{f}: badge {needle}")
 
     def test_agents_hooks_and_json(self):
-        for rel in ("agents/sdd-reviewer.md", "skills/sdd-start/references/copilot/sdd-reviewer.agent.md"):
-            fm = frontmatter(read(rel))
-            for field in ("name", "description", "tools"):
-                self.assertRegex(fm, rf"(?m)^{field}:", f"{rel}: {field}")
-            self.assertRegex(fm, r"(?m)^name:\s*sdd-reviewer\s*$", rel)
+        for name in AGENTS:  # the same agents for Claude Code and GitHub Copilot
+            for rel in (f"agents/{name}.md", f"skills/sdd-start/references/copilot/{name}.agent.md"):
+                fm = frontmatter(read(rel))
+                for field in ("name", "description"):
+                    self.assertRegex(fm, rf"(?m)^{field}:", f"{rel}: {field}")
+                self.assertRegex(fm, rf"(?m)^name:\s*{name}\s*$", rel)
+            self.assertRegex(frontmatter(read(f"agents/{name}.md")), r"(?m)^tools:", name)
+        for name in ("sdd-test-writer", "sdd-multitask"):  # writers: they never launch agents, merge or ask the user
+            body = read(f"agents/{name}.md")
+            self.assertIn("you do not launch other subagents", body)
+            self.assertIn("you do not merge", body)
+            self.assertEqual(body.split("---", 2)[2], read(f"skills/sdd-start/references/copilot/{name}.agent.md")
+                             .split("---", 2)[2], name)
         json.loads(read("skills/sdd-start/references/vscode-tasks.json"))
         hooks = json.loads(read("hooks/hooks.json"))["hooks"]
         for event in hooks.values():
@@ -261,7 +270,16 @@ class TestPlaybook(unittest.TestCase):
             self.assertIn("Decides alone", read(rel), rel)
         for rel in ("agents/sdd-reviewer.md", "skills/sdd-task/SKILL.md", "skills/sdd-bugfix/SKILL.md"):
             self.assertIn("Test-Lock", read(rel), rel)
-        task = read("skills/sdd-task/SKILL.md")  # a stuck task offers the way back, and the way back exists
+        task = read("skills/sdd-task/SKILL.md")
+        for text in ("sdd-test-writer", "sdd-multitask", "`NEEDS_DECISION`", "`TEST_DISPUTE`", "`BLOCKED`",
+                     "Without subagents", "`Standard (T-nn)`"):
+            self.assertIn(text, task)
+        for status in ("NEEDS_DECISION", "TEST_DISPUTE", "BLOCKED"):  # every status an agent returns is handled
+            self.assertIn(status, read("agents/sdd-multitask.md") + read("agents/sdd-test-writer.md"))
+        parallel = read("skills/sdd-parallel/SKILL.md")
+        self.assertIn("one `sdd-test-writer`", parallel)
+        self.assertIn("N `sdd-multitask` in parallel", parallel)
+        self.assertIn("| Mode |", read("skills/sdd-start/references/interaction.md"))
         for option, skill, section in (("Revise the spec", "sdd-start", "## Revising a spec"),
                                        ("Revise the plan", "sdd-plan", "## Revising a plan")):
             self.assertIn(f"`{option}`", task)

@@ -31,8 +31,8 @@ the difference and ask):
    `.vscode/tasks.json` from `references/vscode-tasks.json`, `docs/constitution.md` from
    `references/constitution.md.tmpl`, the folders `docs/specs/`, `docs/system/`, `docs/bugs/`, `docs/adr/`, and, if
    chosen, `.github/workflows/verify.yml` from `references/ci-github-actions.yml`. GitHub Copilot outside the CLI
-   plugin: copy the plugin's `skills/` folders into `.github/skills/` and `references/copilot/sdd-reviewer.agent.md`
-   into `.github/agents/`.
+   plugin: copy the plugin's `skills/` folders into `.github/skills/` and the three agents of `references/copilot/`
+   (`sdd-test-writer`, `sdd-multitask`, `sdd-reviewer`) into `.github/agents/`.
 6. **Run** `python scripts/verify.py` and report the result as it is; ask to confirm `AGENTS.md` and the `verify` steps
    (options), then commit the initialization on `main` (it is the starting point, not a feature).
 

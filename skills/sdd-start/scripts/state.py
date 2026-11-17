@@ -8,7 +8,8 @@ main with the design PR, which is the approval) -> sdd-task for every task (one 
 tasks with sdd-parallel) -> feature closed by the last task (area page, Status: implemented). Brownfield: sdd-map first.
 A spec or plan that differs from main outside a task or fix branch is a revision in progress: sdd-start or sdd-plan.
 "On main" is read from git: a task is done when its box is ticked in the plan on main (its PR was merged); a task is
-ready when it is not done and all its dependencies are done. Two or more ready tasks with disjoint files -> sdd-parallel.
+ready when it is not done and all its dependencies are done. Two or more ready tasks with disjoint files -> sdd-parallel
+is possible; the user always chooses the mode, and "not_parallel" says why the parallel mode is not possible.
 With several active specs the NEXT line refers to the spec given with --spec, the one whose folder name appears in the
 current branch, or the only active one; otherwise it asks to choose. Without git, the working copy counts as main.
 Standard library only (+ git, if present), cross-platform.
@@ -94,6 +95,21 @@ def same(a: str | None, b: str | None) -> bool:
     return (a or "").replace("\r\n", "\n") == (b or "").replace("\r\n", "\n")
 
 
+def not_parallel(tasks: list[dict], ready: list[dict], group: list[dict]) -> str:
+    """Why the ready tasks cannot run in parallel ("" when they can)."""
+    if len(group) > 1:
+        return ""
+    if len(ready) > 1:
+        a, b = ready[0], next(t for t in ready[1:] if set(t["files"]) & set(ready[0]["files"]))
+        shared = sorted(set(a["files"]) & set(b["files"]))
+        return f"{a['id']} and {b['id']} share {', '.join(f'`{f}`' for f in shared)}"
+    waiting = [t for t in tasks if not t["done"] and t not in ready]
+    if not waiting:
+        return f"only {ready[0]['id']} is left" if ready else ""
+    w = waiting[0]
+    return f"only {ready[0]['id']} is ready: {w['id']} depends on {', '.join(w['depends'])}"
+
+
 def analyze_spec(root: Path, ref: str | None, d: Path, branch: str = "") -> dict:
     rel = d.relative_to(root).as_posix()
     spec, plan = _read(d / "spec.md"), _read(d / "plan.md")
@@ -136,11 +152,14 @@ def next_for_spec(s: dict) -> dict:
         return {"skill": "sdd-task", "spec": i,
                 "reason": f"no task ready: finish and merge the open PRs first ({', '.join(pending)} wait for them)"}
     group = parallel_group(ready)
+    mode = {"ready": [t["id"] for t in ready], "parallel": [t["id"] for t in group] if len(group) > 1 else [],
+            "not_parallel": not_parallel(s["tasks"], ready, group)}
     if len(group) > 1:
-        return {"skill": "sdd-parallel", "spec": i, "tasks": [t["id"] for t in group],
-                "reason": f"{', '.join(t['id'] for t in group)} are ready and touch different files: they can run in "
-                          "parallel (one worktree and one PR each)"}
-    return {"skill": "sdd-task", "spec": i, "tasks": [ready[0]["id"]], "reason": f"next task: {ready[0]['id']}"}
+        return {"skill": "sdd-parallel", "spec": i, "tasks": [t["id"] for t in group], **mode,
+                "reason": f"{', '.join(t['id'] for t in group)} are ready and touch different files: the user chooses "
+                          f"Parallel (sdd-parallel) or Standard (sdd-task, {ready[0]['id']} first)"}
+    return {"skill": "sdd-task", "spec": i, "tasks": [ready[0]["id"]], **mode,
+            "reason": f"next task: {ready[0]['id']} (not parallel: {mode['not_parallel']})"}
 
 
 def choose_spec(active: list[dict], choice: str | None, branch: str) -> dict | None:
@@ -207,6 +226,9 @@ def show(st: dict) -> None:
         print("OPEN BUGS: " + ", ".join(f"{b['file']} ({b['status']})" for b in st["open_bugs"]) + "  -> sdd-bugfix")
     p = st["next"]
     print(f"NEXT: {p['skill']}{' on ' + p['spec'] if 'spec' in p else ''} - {p['reason']}")
+    if "ready" in p:
+        print(f"MODE: ready {', '.join(p['ready'])}; parallel " + (", ".join(p["parallel"]) if p["parallel"]
+                                                                    else f"not possible ({p['not_parallel']})"))
 
 
 def main(argv: list[str]) -> int:
