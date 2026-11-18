@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# sdd-playbook: 0.30.0
+# sdd-playbook: 0.40.0
 """Project state according to the playbook and suggested next step.
 
 Usage: python scripts/state.py [--json] [--spec <id>] [root]

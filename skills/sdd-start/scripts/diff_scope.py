@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# sdd-playbook: 0.30.0
+# sdd-playbook: 0.40.0
 """Check the diff of a task branch against the task, the forbidden zones and the locked tests.
 
 Usage:

@@ -4,6 +4,25 @@
 
 Entries before 0.13.0 use the names of their time (`sdlc-*`, `SDLC_*`, Italian field names).
 
+## 0.40.0
+Coding with subagents: the code's author never wrote its tests, and the user chooses before every task whether to run
+one task or several in parallel.
+- **Two new agents:** `sdd-test-writer` writes the tests of the task from its ACs and locks them with a `Test-Lock`
+  commit; `sdd-multitask` writes the smallest code that passes them, runs the checks and updates the documentation.
+  They return `DONE`, `NEEDS_DECISION`, `TEST_DISPUTE` or `BLOCKED`, write their report to
+  `reports/tasks/<spec id>/`, never launch other agents, never merge and never ask the user: the main agent asks.
+- **Mode question before every task:** `Standard (T-nn)`, `Parallel (T-aa, T-bb)`, `Stop here`. `state.py` gives the
+  ready tasks, the parallel group and, when parallel is not possible, the reason (a dependency, a shared file, one
+  task left), which the question shows.
+- **Standard:** one `sdd-test-writer`, then one `sdd-multitask`. **Parallel:** one `sdd-test-writer` for the group,
+  then N `sdd-multitask` in separate worktrees, one PR each, merged one at a time as before.
+- **`TEST_DISPUTE`:** when a locked test looks wrong, the user chooses `Fix the test`, `Keep the test` or
+  `Revise the spec`.
+- **Hosts without subagents (Codex):** the main agent does the two phases in sequence; Copilot gets the three agents
+  in `.github/agents/`, delegation between them not verified.
+- Compared with superpowers 7.0.2, which runs one implementer at a time and forbids parallel implementers: here the
+  declared files, the worktrees and the recheck after every merge make the parallel run safe.
+
 ## 0.30.0
 A simplification, from the review of the method after its first real trial: **one risk, one mechanism**. The plugin
 goes from 14 to 7 skills and from 13 to 8 scripts; the playbook from about 1,200 lines to about 140.

@@ -1,6 +1,6 @@
-# SDD Playbook (versione 0.30.0)
+# SDD Playbook (versione 0.40.0)
 
-[![Version](https://img.shields.io/badge/version-0.30.0-blue)](CHANGELOG_IT.md)
+[![Version](https://img.shields.io/badge/version-0.40.0-blue)](CHANGELOG_IT.md)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![CI](https://github.com/jumping2000/sdd-playbook/actions/workflows/ci.yml/badge.svg)](https://github.com/jumping2000/sdd-playbook/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/python-3.8%2B-3776AB?logo=python&logoColor=white)](docs/scripts_IT.md)
@@ -17,8 +17,9 @@
 *English version: [README.md](README.md)*
 
 > **Stato: in progettazione.** Provato una volta su un piccolo progetto reale (uno stack Docker, con la 0.17.0): era
-> troppo pesante per il compito. La 0.30.0 è il metodo semplificato che risponde a quella prova; non è ancora stata
-> provata su un progetto. Formati e contratti possono ancora cambiare senza compatibilità.
+> troppo pesante per il compito. La 0.30.0 è il metodo semplificato che risponde a quella prova e la 0.40.0 aggiunge gli
+> agenti di scrittura; nessuna delle due è ancora stata provata su un progetto. Formati e contratti possono ancora
+> cambiare senza compatibilità.
 
 **SDD Playbook** (`sdd-playbook`) è un plugin di sviluppo guidato dalle specifiche per Claude Code, Codex e GitHub
 Copilot: tu decidi **cosa** costruire e **se unirlo**, l'agente scrive spec, piano, test e codice, gli script
@@ -67,7 +68,9 @@ flowchart TD
   15-30 minuti; da 3 a 8 per feature.
 - **Prima i test, bloccati:** scritti dagli AC, committati con `Test-Lock: T-nn` prima del codice; `diff_scope.py`
   rifiuta ogni modifica successiva. Il revisore indipendente `sdd-reviewer` controlla che derivino dagli AC.
-- **Agenti in parallelo** per i task indipendenti: un worktree, un branch e una PR ciascuno, uniti uno alla volta.
+- **Due agenti di scrittura:** `sdd-test-writer` scrive e blocca i test, `sdd-multitask` scrive il codice; scegli tu la
+  modalità prima di ogni task: **standard** (un task) o **parallela** (un test-writer, poi N `sdd-multitask` in
+  worktree separati, una PR ciascuno, uniti uno alla volta).
 - `sdd-next` (o `python scripts/state.py`) indica in ogni momento il passo successivo, leggendo da git spec, piano e
   task uniti.
 
@@ -78,7 +81,7 @@ flowchart TD
 | 7 skill | `sdd-start`, `sdd-plan`, `sdd-task`, `sdd-parallel`, `sdd-map`, `sdd-bugfix`, `sdd-next` | [docs/skills_IT.md](docs/skills_IT.md) |
 | 8 script Python | `verify`, `spec_lint`, `trace_check`, `diff_scope`, `state`, `docs_check`, `secrets_check`, `scan_repo` | [docs/scripts_IT.md](docs/scripts_IT.md) |
 | 2 hook opzionali | `Stop` (verify obbligatorio) e `PreToolUse` (guardia), solo Claude Code | [docs/scripts_IT.md](docs/scripts_IT.md#hook-opzionali-solo-claude-code) |
-| 1 agente revisore | `sdd-reviewer`, indipendente e in sola lettura, rivede ogni PR: subagent di Claude Code e custom agent di GitHub Copilot | [docs/skills_IT.md](docs/skills_IT.md) |
+| 3 agenti | `sdd-test-writer` (test dagli AC, bloccati), `sdd-multitask` (il codice, anche N in parallelo), `sdd-reviewer` (indipendente, in sola lettura, rivede ogni PR): subagent di Claude Code e custom agent di GitHub Copilot | [docs/skills_IT.md](docs/skills_IT.md#agenti) |
 | Playbook | Il metodo in dieci paragrafi brevi | [docs/playbook-ai-software-lifecycle_IT.md](docs/playbook-ai-software-lifecycle_IT.md) |
 
 ## Razionale
@@ -135,7 +138,7 @@ template, script, hook, agente, test) è in inglese; i nomi dei campi che usa (`
 
 - Lo stesso da terminale: `claude plugin marketplace add jumping2000/sdd-playbook`, poi
   `claude plugin install sdd-playbook@sdd-playbook-marketplace`; `claude plugin list` mostra la versione installata.
-- **Una versione fissa:** aggiungi il marketplace con un riferimento git, `jumping2000/sdd-playbook#v0.30.0` (ogni
+- **Una versione fissa:** aggiungi il marketplace con un riferimento git, `jumping2000/sdd-playbook#v0.40.0` (ogni
   rilascio ha un tag `vX.Y.Z`). Senza riferimento il marketplace segue `main`; `/plugin marketplace update` scarica
   l'ultima.
 - Prova locale di una copia: `claude --plugin-dir <percorso>/sdd-playbook`.
@@ -187,13 +190,13 @@ quello di Git for Windows). Nella fase rossa di un task (ultimo commit `Test-Loc
 | Cosa | Esito |
 |---|---|
 | Suite di test | Passa su Linux (script su repository git temporanei, il flusso completo di una feature attraverso `state.py`, hook e launcher `run.sh`); la matrice CI `windows-latest` copre Windows |
-| `claude plugin validate .` | Passa sulla 0.30.0 (Claude Code 2.1.312); unico avviso: manca l'icona, che serve solo per la directory ufficiale dei plugin |
+| `claude plugin validate .` | Passa sulla 0.40.0 (Claude Code 2.1.312); unico avviso: manca l'icona, che serve solo per la directory ufficiale dei plugin |
 | Installazione dal marketplace su GitHub (Claude Code) | **Fatta** sulla 0.16.0; un riferimento git dopo `#` fissa la versione (provato con un branch) |
 | Manifest Codex | **Non validato** con uno strumento Codex |
 | GitHub Copilot (`plugin.json`, `.github/skills/`, custom agent) | **Non provato** |
 | Versione di Python | 3.8+ dall'analisi del codice (sola libreria standard); la CI usa la 3.12 |
-| Skill eseguite da un agente reale su un progetto | **Una volta**, con la 0.17.0 (troppo pesante per il compito); la 0.30.0 non ancora provata |
-| Agenti in parallelo nei worktree | **Non provato** con un agente reale |
+| Skill eseguite da un agente reale su un progetto | **Una volta**, con la 0.17.0 (troppo pesante per il compito); la 0.30.0 e la 0.40.0 non ancora provate |
+| Agenti di scrittura (`sdd-test-writer`, `sdd-multitask`), anche in parallelo nei worktree | **Non provato** con un agente reale |
 | Hook in una sessione reale di Claude Code | **Non fatto**: provati solo come script con l'input JSON atteso |
 
 Dettagli e limiti noti: [docs/architecture_IT.md](docs/architecture_IT.md). Storia delle modifiche:
@@ -201,9 +204,9 @@ Dettagli e limiti noti: [docs/architecture_IT.md](docs/architecture_IT.md). Stor
 
 ## Da completare prima di distribuirlo
 
-- Rifare lo stack Docker di Langfuse con la 0.30.0 e confrontarlo con la prima prova (il percorso è in fondo alla
+- Rifare lo stack Docker di Langfuse con la 0.40.0 e confrontarlo con la prima prova (il percorso è in fondo alla
   [guida rapida](docs/quick-guide_IT.md)).
-- Provare `sdd-parallel` con due task indipendenti.
+- Provare la modalità standard, poi `sdd-parallel` con due task indipendenti.
 - Verificare su Codex e GitHub Copilot.
 
 ## Licenza

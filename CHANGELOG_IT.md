@@ -4,6 +4,26 @@
 
 Le voci precedenti alla 0.13.0 usano i nomi del loro tempo (`sdlc-*`, `SDLC_*`, campi in italiano).
 
+## 0.40.0
+Scrittura del codice con i subagent: l'autore del codice non ha scritto i suoi test, e l'utente sceglie prima di ogni
+task se eseguirne uno o più in parallelo.
+- **Due nuovi agenti:** `sdd-test-writer` scrive i test del task dai suoi AC e li blocca con un commit `Test-Lock`;
+  `sdd-multitask` scrive il codice minimo che li fa passare, esegue i controlli e aggiorna la documentazione.
+  Restituiscono `DONE`, `NEEDS_DECISION`, `TEST_DISPUTE` o `BLOCKED`, scrivono il report in
+  `reports/tasks/<spec id>/`, non lanciano altri agenti, non fanno merge e non fanno domande all'utente: le fa
+  l'agente principale.
+- **Domanda sulla modalità prima di ogni task:** `Standard (T-nn)`, `Parallel (T-aa, T-bb)`, `Stop here`. `state.py`
+  dà i task pronti, il gruppo parallelo e, quando il parallelo non è possibile, il motivo (una dipendenza, un file
+  condiviso, un solo task rimasto), che la domanda mostra.
+- **Standard:** un `sdd-test-writer`, poi un `sdd-multitask`. **Parallela:** un `sdd-test-writer` per il gruppo, poi
+  N `sdd-multitask` in worktree separati, una PR ciascuno, uniti uno alla volta come prima.
+- **`TEST_DISPUTE`:** quando un test bloccato sembra sbagliato, l'utente sceglie `Fix the test`, `Keep the test` o
+  `Revise the spec`.
+- **Host senza subagent (Codex):** l'agente principale fa le due fasi in sequenza; Copilot riceve i tre agenti in
+  `.github/agents/`, con la delega tra agenti non verificata.
+- Rispetto a superpowers 7.0.2, che esegue un implementatore alla volta e vieta gli implementatori in parallelo: qui
+  lo rendono sicuro i file dichiarati, i worktree e il ricontrollo dopo ogni merge.
+
 ## 0.30.0
 Una semplificazione, dalla revisione del metodo dopo la sua prima prova reale: **un rischio, un meccanismo**. Il plugin
 passa da 14 a 7 skill e da 13 a 8 script; il playbook da circa 1.200 righe a circa 140.

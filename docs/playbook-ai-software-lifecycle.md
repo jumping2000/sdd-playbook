@@ -85,10 +85,18 @@ Your decisions for a feature of five tasks: the spec, the plan and five merges, 
 **Vertical tasks.** A task delivers a behaviour someone can observe end to end, not a layer ("models", then "API",
 then "UI"). It covers its ACs and fits a PR readable in 15-30 minutes. More than 8 tasks means two features.
 
-**One task, one branch, one PR** (`sdd-task`):
-1. **tests first**, from the task's ACs, red for the right reason, committed alone with the trailer `Test-Lock: T-nn`:
-   from then on they do not change (`diff_scope.py`), and the implementation must make them pass as they are;
-2. **the code**, committed with `Task: T-nn`, within the task's files and the plan's interfaces;
+**The mode is always your choice.** Before every task the agent asks `Standard (T-nn)`, `Parallel (T-aa, T-bb)` or
+`Stop here`; when the parallel mode is not possible it says why ("only T-01 is ready: T-02 depends on T-01", "T-01 and
+T-02 share `src/x.py`"), as `state.py` computes it.
+
+**One task, one branch, one PR** (`sdd-task`), written by two different agents:
+1. **tests first**, by the `sdd-test-writer` agent, from the task's ACs, red for the right reason, committed alone with
+   the trailer `Test-Lock: T-nn`: from then on they do not change (`diff_scope.py`), and the code must make them pass
+   as they are;
+2. **the code**, by the `sdd-multitask` agent, committed with `Task: T-nn`, within the task's files and the plan's
+   interfaces. The agents return a status (`DONE`, `NEEDS_DECISION`, `TEST_DISPUTE` when a test looks wrong,
+   `BLOCKED` after three attempts) and never ask you directly: the main agent asks, with options. Where the host has no
+   subagents (Codex), the main agent does the two phases in sequence;
 3. **the checks**: `verify` green, `trace_check.py --task` (every covered AC has a test, executed and passed in the
    JUnit report), `diff_scope.py --task` (forbidden zones and locked tests are errors; files outside the task,
    dependencies, size and sensitive areas are warnings);
@@ -110,8 +118,11 @@ take the spec as the oracle: expected values come from the ACs, never from the c
 
 ## 5. Parallel agents
 
-Independent tasks (no dependency between them, disjoint files in the plan) can run in parallel (`sdd-parallel`): one
-git worktree, one branch, one agent and one PR per task, at most three at a time. The merges happen one at a time;
+Independent tasks (no dependency between them, disjoint files in the plan) can run in parallel (`sdd-parallel`), if you
+choose it: one git worktree, one branch and one PR per task, at most three at a time. **One `sdd-test-writer`** locks
+the tests of every task of the group, then **N `sdd-multitask` agents** write the code in parallel, one per worktree.
+superpowers, for comparison, never runs implementers in parallel; here it is safe only because the plan declares the
+files and the dependencies, each task has its own worktree, and nothing is merged without a check on the new `main`. The merges happen one at a time;
 after each one the other branches are rebased on `main` and checked again before their merge question. A conflict
 means the plan's files or interfaces were wrong: the plan is corrected, not the code forced.
 

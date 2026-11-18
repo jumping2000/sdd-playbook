@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# sdd-playbook: 0.30.0
+# sdd-playbook: 0.40.0
 """Documentation checks: valid relative links, Mermaid diagrams and runnable Python examples.
 
 Usage:
