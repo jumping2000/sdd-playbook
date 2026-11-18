@@ -1,6 +1,6 @@
-# SDD Playbook (version 0.30.0)
+# SDD Playbook (version 0.40.0)
 
-[![Version](https://img.shields.io/badge/version-0.30.0-blue)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.40.0-blue)](CHANGELOG.md)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![CI](https://github.com/jumping2000/sdd-playbook/actions/workflows/ci.yml/badge.svg)](https://github.com/jumping2000/sdd-playbook/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/python-3.8%2B-3776AB?logo=python&logoColor=white)](docs/scripts.md)
@@ -17,8 +17,8 @@
 *Versione italiana: [README_IT.md](README_IT.md)*
 
 > **Status: in design.** Tried once on a small real project (a Docker stack, with 0.17.0): it was too heavy for the
-> task. 0.30.0 is the simplified method that answers that trial; it has not been tried on a project yet. Formats and
-> contracts may still change without compatibility.
+> task. 0.30.0 is the simplified method that answers that trial and 0.40.0 adds the writing agents; neither has been
+> tried on a project yet. Formats and contracts may still change without compatibility.
 
 **SDD Playbook** (`sdd-playbook`) is a spec-driven development plugin for Claude Code, Codex and GitHub Copilot: you
 decide **what** to build and **whether to merge it**, the agent writes spec, plan, tests and code, scripts check that
@@ -66,7 +66,9 @@ flowchart TD
   minutes; 3 to 8 per feature.
 - **Tests first, locked:** written from the ACs, committed with `Test-Lock: T-nn` before the code; `diff_scope.py`
   rejects any later change. The independent `sdd-reviewer` checks that they derive from the ACs.
-- **Parallel agents** for independent tasks: one worktree, one branch and one PR each, merged one at a time.
+- **Two writing agents:** `sdd-test-writer` writes and locks the tests, `sdd-multitask` writes the code; you choose
+  the mode before every task: **standard** (one task) or **parallel** (one test-writer, then N `sdd-multitask` in
+  separate worktrees, one PR each, merged one at a time).
 - `sdd-next` (or `python scripts/state.py`) tells the next step at any time, reading spec, plan and merged tasks from
   git.
 
@@ -77,7 +79,7 @@ flowchart TD
 | 7 skills | `sdd-start`, `sdd-plan`, `sdd-task`, `sdd-parallel`, `sdd-map`, `sdd-bugfix`, `sdd-next` | [docs/skills.md](docs/skills.md) |
 | 8 Python scripts | `verify`, `spec_lint`, `trace_check`, `diff_scope`, `state`, `docs_check`, `secrets_check`, `scan_repo` | [docs/scripts.md](docs/scripts.md) |
 | 2 optional hooks | `Stop` (verify mandatory) and `PreToolUse` (guard), Claude Code only | [docs/scripts.md](docs/scripts.md#optional-hooks-claude-code-only) |
-| 1 reviewer agent | `sdd-reviewer`, independent and read-only, reviews every PR: Claude Code subagent and GitHub Copilot custom agent | [docs/skills.md](docs/skills.md) |
+| 3 agents | `sdd-test-writer` (tests from the ACs, locked), `sdd-multitask` (the code, also N in parallel), `sdd-reviewer` (independent, read-only, reviews every PR): Claude Code subagents and GitHub Copilot custom agents | [docs/skills.md](docs/skills.md#agents) |
 | Playbook | The method in ten short sections | [docs/playbook-ai-software-lifecycle.md](docs/playbook-ai-software-lifecycle.md) |
 
 ## Rationale
@@ -134,7 +136,7 @@ the plugin version on line 2; `sdd-start` updates them on request (it never touc
 
 - The same from a terminal: `claude plugin marketplace add jumping2000/sdd-playbook`, then
   `claude plugin install sdd-playbook@sdd-playbook-marketplace`; `claude plugin list` shows the installed version.
-- **A fixed version:** add the marketplace with a git ref, `jumping2000/sdd-playbook#v0.30.0` (every release has a tag
+- **A fixed version:** add the marketplace with a git ref, `jumping2000/sdd-playbook#v0.40.0` (every release has a tag
   `vX.Y.Z`). Without a ref the marketplace follows `main`; `/plugin marketplace update` fetches the latest.
 - Local trial of a checkout: `claude --plugin-dir <path>/sdd-playbook`.
 - Skills are invoked with the plugin prefix; hooks and subagent load with the plugin.
@@ -185,22 +187,22 @@ not block.
 | What | Result |
 |---|---|
 | Test suite | Passes on Linux (scripts on temporary git repositories, a whole feature flow through `state.py`, hooks and `run.sh` launcher); the `windows-latest` CI matrix covers Windows |
-| `claude plugin validate .` | Passed on 0.30.0 (Claude Code 2.1.312); only warning: no icon, needed just for the official plugin directory |
+| `claude plugin validate .` | Passed on 0.40.0 (Claude Code 2.1.312); only warning: no icon, needed just for the official plugin directory |
 | Installation from the GitHub marketplace (Claude Code) | **Done** on 0.16.0; a git ref after `#` pins the version (tried with a branch) |
 | Codex manifest | **Not validated** with a Codex tool |
 | GitHub Copilot (`plugin.json`, `.github/skills/`, custom agent) | **Not tried** |
 | Python version | 3.8+ from code analysis (standard library only); CI runs 3.12 |
-| Skills run by a real agent on a project | **Once**, with 0.17.0 (too heavy for the task); 0.30.0 not tried yet |
-| Parallel agents in worktrees | **Not tried** with a real agent |
+| Skills run by a real agent on a project | **Once**, with 0.17.0 (too heavy for the task); 0.30.0 and 0.40.0 not tried yet |
+| Writing agents (`sdd-test-writer`, `sdd-multitask`), also in parallel in worktrees | **Not tried** with a real agent |
 | Hooks in a real Claude Code session | **Not done**: tested only as scripts with the expected JSON input |
 
 Details and known limits: [docs/architecture.md](docs/architecture.md). Change history: [CHANGELOG.md](CHANGELOG.md).
 
 ## To complete before distribution
 
-- Redo the Langfuse Docker stack with 0.30.0 and compare with the first trial (the path is at the end of the
+- Redo the Langfuse Docker stack with 0.40.0 and compare with the first trial (the path is at the end of the
   [quick guide](docs/quick-guide.md)).
-- Try `sdd-parallel` with two independent tasks.
+- Try the standard mode, then `sdd-parallel` with two independent tasks.
 - Verify on Codex and GitHub Copilot.
 
 ## License

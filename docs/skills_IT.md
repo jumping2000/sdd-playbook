@@ -67,8 +67,11 @@ task chiude la feature. Codice esistente: prima `sdd-map`. Bug: `sdd-bugfix`. In
 ### sdd-task
 
 - **Precondizione:** spec e piano su `main`; il task pronto (dipendenze unite).
-- **Cosa fa:** branch `task/<id>-T-nn`; test dagli AC del task, rossi per il motivo giusto, committati da soli con
-  `Test-Lock: T-nn`; il codice con `Task: T-nn`; `verify`, `trace_check.py --task`, `diff_scope.py --task`; la
+- **Modalità:** chiesta per prima, `Standard (T-nn)`, `Parallel (...)` o `Stop here`, con il motivo quando il
+  parallelo non è possibile.
+- **Cosa fa:** branch `task/<id>-T-nn`; l'agente `sdd-test-writer` scrive i test dagli AC del task, rossi per il motivo
+  giusto, committati da soli con `Test-Lock: T-nn`; l'agente `sdd-multitask` scrive il codice con `Task: T-nn`; gli
+  stati che restituiscono si gestiscono con opzioni; `verify`, `trace_check.py --task`, `diff_scope.py --task`; la
   documentazione che il task cambia; la casella del task spuntata; la PR (`references/pr-body.md`); la review di
   `sdd-reviewer`. L'**ultimo task** scrive anche la pagina d'area con i cinque diagrammi dal codice finale e porta la
   spec a `implemented`, e propone per `AGENTS.md` la riga di `## Areas` e le lezioni valide per tutto il progetto.
@@ -80,8 +83,9 @@ task chiude la feature. Codice esistente: prima `sdd-map`. Bug: `sdd-bugfix`. In
 
 ### sdd-parallel
 
-- **Quando:** `state.py` indica due o più task pronti con file disgiunti.
-- **Cosa fa:** un worktree, un branch e un agente per task (al massimo 3), ognuno segue `sdd-task` fino alla review;
+- **Quando:** l'utente ha scelto `Parallel` per due o più task pronti con file disgiunti (`state.py` li indica).
+- **Cosa fa:** un worktree e un branch per task (al massimo 3); un `sdd-test-writer` blocca i test di tutti i task, poi
+  un `sdd-multitask` per task scrive il codice in parallelo; controlli, PR e review per task come in `sdd-task`;
   merge uno alla volta, con rebase e ricontrollo degli altri dopo ogni merge; un conflitto ferma il task e porta a una
   correzione del piano.
 
@@ -106,7 +110,27 @@ task chiude la feature. Codice esistente: prima `sdd-map`. Bug: `sdd-bugfix`. In
 - **Cosa fa:** esegue `state.py` e riporta infrastruttura, spec, task uniti e il passo `NEXT`; chiede quale spec quando
   ce ne sono più di una; segnala i bug aperti; non modifica nulla.
 
-## Agente revisore: sdd-reviewer
+## Agenti
+
+Gli stessi tre agenti per Claude Code (`agents/`, subagent) e GitHub Copilot (custom agent copiati da `sdd-start` in
+`.github/agents/`). Codex non ha sub-agent: l'agente principale segue le stesse istruzioni in sequenza. Gli agenti non
+lanciano altri agenti, non fanno merge e non fanno domande all'utente: restituiscono uno stato e l'agente principale
+chiede, con opzioni.
+
+### sdd-test-writer
+
+Scrive i test di un task, o di tutti i task di un gruppo parallelo, dagli AC e dal review focus, rossi per il motivo
+giusto, e li blocca con un commit `Test-Lock: T-nn` nel branch di ciascun task. Restituisce `DONE` (con lo SHA del
+`Test-Lock`) o `NEEDS_DECISION` (un AC troppo vago da testare). Report completo in `reports/tasks/<id spec>/T-nn-tests.md`.
+
+### sdd-multitask
+
+Scrive il codice di un task perché i suoi test bloccati passino, senza modificarli; esegue `verify`, `trace_check
+--task`, `diff_scope --task`; aggiorna la documentazione; nell'ultimo task anche la pagina d'area e `Status:
+implemented`. Più istanze girano in parallelo, una per worktree. Restituisce `DONE`, `NEEDS_DECISION`, `TEST_DISPUTE`
+(un test sembra sbagliato) o `BLOCKED` (dopo tre tentativi). Report completo in `reports/tasks/<id spec>/T-nn-code.md`.
+
+### sdd-reviewer
 
 Revisore indipendente, in sola lettura per costruzione (subagent di Claude Code con Read, Grep, Glob; custom agent di
 GitHub Copilot con `read` e `search`; Codex: una nuova sessione con le stesse istruzioni). Rivede **una PR**: AC del

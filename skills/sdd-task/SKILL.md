@@ -1,6 +1,6 @@
 ---
 name: sdd-task
-description: Use this skill to carry out one task of a merged plan: its own branch, tests written from the task's acceptance criteria and locked before the code, the implementation, verify, the documentation the task changes, a PR reviewed by the independent sdd-reviewer and the question whether to merge it into main. The last task also closes the feature.
+description: Use this skill to carry out one task of a merged plan: its own branch, tests written by the sdd-test-writer agent from the task's acceptance criteria and locked before the code, the implementation by the sdd-multitask agent, verify, the documentation the task changes, a PR reviewed by the independent sdd-reviewer and the question whether to merge it into main. The last task also closes the feature.
 ---
 
 # One task, one PR
@@ -15,33 +15,40 @@ Playbook §4. Choices and the merge are asked as options (guide: search for `**/
   predecessor is not merged yet does not start: it would build on code that may still change.
 - `python scripts/verify.py` on `main` gives the baseline: if it is already red, say so; it is not your fault and must
   not be hidden.
+- **The mode, chosen by the user:** run `python scripts/state.py` and ask with options `Standard (T-nn)`, `Parallel
+  (T-aa, T-bb)` when it lists a parallel group, `Stop here`; when it gives a `not parallel` reason, show it and offer
+  `Standard` or `Stop here`. `Parallel` continues with `sdd-parallel`.
 
 ## Steps
 
 1. **Branch** `task/<spec id>-T-nn` from an up-to-date `main`. Read the task line, its ACs in the spec, the plan's
    interfaces and review focus, the decision rights of `AGENTS.md`.
-2. **Tests first, from the ACs** (`references/test-conventions.md`): one or more tests per covered AC, with the error
-   cases and the review focus cases assigned to the task; the ID in the name or a declared file. They must be **red
-   for the right reason** (an assertion, not an import or syntax error): run the task's `verify:` command and show the
-   failure. Check the anti-patterns of the conventions, then commit the test files alone with the trailer
-   `Test-Lock: T-nn` (a minimal skeleton, if needed to run them, goes in an earlier commit). From now on those tests
-   do not change: `diff_scope.py` reports any later change as an error. A test that turns out wrong is fixed in a new
-   `Test-Lock: T-nn` commit, explained in the PR.
-3. **Implement** the smallest code that makes the tests pass, within the task's files and the plan's interfaces.
-   Commit with the trailer `Task: T-nn`. Decide alone only what "Decides alone" allows and write each such decision
-   in the PR description; for "Asks first", or a decision no line names, stop and ask with options; never do what
-   "Never" lists.
-4. **Verify:** `python scripts/verify.py` green (full, not only the new tests);
-   `python scripts/trace_check.py <spec> --task T-nn` (with `--junit reports/junit.xml` when `verify` writes it);
-   `python scripts/diff_scope.py <spec dir> --task T-nn`. Fix until there are no errors; read the warnings.
-5. **Documentation in the same PR:** if the task changes documented behaviour, update README, API docs or the area
-   page `docs/system/<area>.md`; run the examples you write (`python scripts/docs_check.py --run-examples` for marked
-   Python blocks). Tick the task's box in `plan.md`.
-6. **Last task of the feature** (every other task already merged): also write or update the area page from
-   `references/area-template.md` with the **five diagrams redrawn from the final code** (guide: search for
-   `**/sdd-plan/references/diagrams.md`), add the spec to its "Linked specs", set `- Status: implemented` in the spec,
-   and run `python scripts/trace_check.py <spec>` (every AC of the feature) and `python scripts/docs_check.py`.
-   Propose for `AGENTS.md` (options `Apply`, `Skip`) one line in `## Areas` for the area page (path and what it
+2. **Tests, by `sdd-test-writer`** (a subagent in Claude Code, a custom agent in GitHub Copilot). Give it the spec,
+   the plan, the task ID, the folder and branch, and the report path `reports/tasks/<spec id>/T-nn-tests.md`. It writes
+   the tests from the task's ACs (`references/test-conventions.md`), red for the right reason, and commits them alone
+   with the trailer `Test-Lock: T-nn` (a minimal skeleton, if needed, in an earlier commit). From now on those tests do
+   not change: `diff_scope.py` reports any later change as an error.
+3. **Code, by `sdd-multitask`**, a different agent. Give it the spec, the plan, the task ID, the folder and branch, the
+   SHA of the `Test-Lock` commit, the report path `reports/tasks/<spec id>/T-nn-code.md`, and whether it is the last
+   task (step 6). It writes the smallest code that makes the locked tests pass (commits `Task: T-nn`), runs the checks,
+   updates the documentation the task changes and ticks the task's box in `plan.md`. It decides alone only what
+   "Decides alone" of `AGENTS.md` allows and lists those decisions in its report: copy them into the PR description.
+4. **Handle the status** each agent returns, then relaunch it with the answer:
+   - `NEEDS_DECISION`: ask the user its question with options;
+   - `TEST_DISPUTE`: ask `Fix the test` (`sdd-test-writer` fixes it in a new `Test-Lock: T-nn` commit, explained in the
+     PR), `Keep the test` (`sdd-multitask` goes on) or `Revise the spec`;
+   - `BLOCKED`: the stop options below.
+   Agents do not launch other agents and do not ask the user: you do. **Without subagents** (Codex, or a host that
+   cannot delegate) do both phases yourself, one after the other, following `agents/sdd-test-writer.md` and then
+   `agents/sdd-multitask.md` of the plugin: tests committed and locked before any code.
+5. **Check again yourself:** `python scripts/verify.py` (full), `python scripts/trace_check.py <spec> --task T-nn`
+   (with `--junit reports/junit.xml` when `verify` writes it), `python scripts/diff_scope.py <spec dir> --task T-nn`.
+   The agents' reports are evidence; these checks are the proof. Fix with the agent that owns the problem.
+6. **Last task of the feature** (every other task already merged): `sdd-multitask`, told it is the last one, also
+   writes or updates the area page from `references/area-template.md` with the **five diagrams redrawn from the final
+   code** (guide: `**/sdd-plan/references/diagrams.md`), adds the spec to its "Linked specs", sets
+   `- Status: implemented` and runs `python scripts/trace_check.py <spec>` (every AC) and `python scripts/docs_check.py`.
+   You propose for `AGENTS.md` (options `Apply`, `Skip`) one line in `## Areas` for the area page (path and what it
    covers) and the lessons the feature taught that apply to the whole project (a command, a trap, a convention).
 7. **PR:** push the branch and open the PR with the body of `references/pr-body.md` (covered ACs, check results,
    `SENSITIVE` line of `diff_scope.py`, decisions taken alone, documentation touched). Without a remote, the branch

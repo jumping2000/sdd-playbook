@@ -18,6 +18,8 @@ Read-only: this skill **does not modify files** and does not start the next step
 5. The flow (playbook §3): `sdd-start` (spec) → `sdd-plan` (plan with tasks, design PR) → `sdd-task` per task, or
    `sdd-parallel` for independent ones → the last task closes the feature. Existing code: `sdd-map` first.
 6. Ask with options whether to proceed with the indicated skill (guide: search for
-   `**/sdd-start/references/interaction.md`). Do not invoke it by yourself.
+   `**/sdd-start/references/interaction.md`); when the next step is a task, ask the **mode** instead: `Standard
+   (T-nn)`, `Parallel (...)` when `state.py` lists a group, `Stop here`, with the `not parallel` reason when there is
+   one. Do not invoke it by yourself.
 
 Do not infer the state from the conversation: only the script output counts.

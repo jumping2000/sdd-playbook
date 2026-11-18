@@ -14,12 +14,13 @@ text. Fewer messages, fewer typos, and the decision stays theirs.
 - **No jargon:** the user's words, not field names. Say why the question matters when it is not obvious.
 - **Never** answer a question yourself, pre-select a confirmation, or read silence as consent.
 
-## The three decisions of a feature
+## The decisions of a feature
 
 | Decision | When | Options | Effect of the first one |
 |---|---|---|---|
 | Spec | end of `sdd-start` | `Confirm the spec`, `Change it` (they say what), `Stop here` | `- Status: approved` in the spec |
 | Plan | end of `sdd-plan` | `Confirm the plan`, `Change it`, `Stop here` | spec and plan go into the design PR, then the merge question |
+| Mode | before every task, and after every merge that makes new tasks ready | `Standard (T-nn)`, `Parallel (T-aa, T-bb)` when `state.py` lists a group, `Stop here`; when it gives a `not parallel` reason, show it and offer `Standard` or `Stop here` | `sdd-task` (one test-writer, then one `sdd-multitask`), or `sdd-parallel` |
 | Merge | every PR (design PR, then one per task) | `Merge into main`, `Change it` (they say what), `Leave it open` | you merge (see below) |
 
 Before each question, show in a few lines what is being decided: for the spec the REQs, ACs, non-scope, anti-goals and

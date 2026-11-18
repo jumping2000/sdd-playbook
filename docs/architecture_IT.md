@@ -2,7 +2,7 @@
 
 *English version: [architecture.md](architecture.md)*
 
-Documento di progetto **come costruito** (versione 0.30.0): scelte, struttura, contratti tra i file e limiti.
+Documento di progetto **come costruito** (versione 0.40.0): scelte, struttura, contratti tra i file e limiti.
 
 ## Obiettivo e criterio di successo
 
@@ -24,7 +24,8 @@ mantiene affidabile il risultato. Il plugin è fatto bene se:
 | Proporzionalità | **Un solo flusso per tutto**; task verticali piccoli fanno PR piccole; aree sensibili segnalate nella PR, non un livello di processo | Livelli S/M/L e profili solo/team moltiplicavano le varianti senza coprire un rischio nuovo |
 | Test | Scritti dagli AC, **bloccati** (commit `Test-Lock`) prima del codice, controllati da `diff_scope.py` e dall'agente revisore; nessuna approvazione umana dei singoli test | Il rischio di test che confermano gli errori dell'agente resta coperto da un controllo automatico e da un agente indipendente |
 | Review indipendente | `sdd-reviewer`, in sola lettura, **una review per PR** | Una review dove il diff è piccolo, invece di review per task più una review finale di un diff grande |
-| Parallelismo | Task indipendenti (nessuna dipendenza, file disgiunti nel piano) in worktree separati, una PR ciascuno, uniti uno alla volta | Fa risparmiare tempo dove è sicuro; decide il piano, non l'agente, cosa è indipendente |
+| Agenti di scrittura | `sdd-test-writer` scrive e blocca i test, `sdd-multitask` scrive il codice: due agenti, così l'autore del codice non ha scritto i suoi test; stati `DONE`, `NEEDS_DECISION`, `TEST_DISPUTE`, `BLOCKED`; niente agenti annidati, nessuna domanda all'utente da parte di un agente | Sostituisce l'approvazione umana dei test con una separazione dei ruoli più il controllo `Test-Lock` |
+| Parallelismo | Scelto dall'utente: un `sdd-test-writer` per il gruppo, poi N `sdd-multitask` in worktree separati, una PR ciascuno, uniti uno alla volta; `state.py` dice quando non è possibile e perché | Fa risparmiare tempo dove è sicuro; decide il piano, non l'agente, cosa è indipendente. superpowers non fa mai girare gli implementatori in parallelo: qui lo rendono sicuro i file dichiarati, i worktree e il ricontrollo dopo ogni merge |
 | Interazione | Ogni scelta e decisione come **opzioni da selezionare** (`interaction.md` di `sdd-start`) | Approvazioni a testo libero e dialoghi a una domanda per messaggio erano la fonte principale di attrito |
 | Diagrammi | Mermaid: il flowchart nel piano; i **cinque diagrammi** (flowchart, sequenza, stato, classi, ER) nella pagina d'area scritta dall'ultimo task, ricavati dal codice | Al piano serve il flusso; alla documentazione serve il quadro completo di ciò che è stato costruito |
 | CI nei progetti | Facoltativa, solo `verify` su ogni PR | L'unica prova indipendente che i test passano su una macchina pulita; i controlli di processo in CI duplicavano quelli locali |
@@ -49,7 +50,8 @@ sdd-playbook/
 │   ├── sdd-map/          SKILL.md, references/map-template.md
 │   ├── sdd-bugfix/       SKILL.md, references/bugfix-template.md, debugging.md
 │   └── sdd-next/         SKILL.md
-├── agents/sdd-reviewer.md       subagent (Claude Code); copia per Copilot in skills/sdd-start/references/copilot/
+├── agents/                       sdd-test-writer, sdd-multitask, sdd-reviewer (subagent di Claude Code); copie per
+│                                 Copilot in skills/sdd-start/references/copilot/
 ├── hooks/                        hooks.json, run.sh (launcher), stop_verify.py, pretool_guard.py (Claude Code, opt-in)
 ├── docs/                         in inglese e in italiano (_IT): guida rapida, playbook, skill, script, architettura
 ├── tests/                        test di script, hook, un flusso completo di feature, e coerenza
@@ -173,7 +175,8 @@ erDiagram
 |---|---|---|---|
 | Skill | sì, con il prefisso del plugin | sì (formato Agent Skills) | Copilot CLI: plugin dal `plugin.json` alla radice; cloud agent e IDE: `.github/skills/` copiate da `sdd-start` |
 | Revisore `sdd-reviewer` | subagent | una nuova sessione con le stesse istruzioni | custom agent `.github/agents/sdd-reviewer.agent.md` (strumenti `read`, `search`) |
-| Task in parallelo | subagent con isolamento in worktree | sessioni separate, una per worktree | il coding agent su una issue per task, o sessioni CLI separate |
+| `sdd-test-writer`, `sdd-multitask` | subagent (strumenti di scrittura) | non disponibili: l'agente principale fa le due fasi in sequenza | custom agent in `.github/agents/` (delega tra agenti non verificata) |
+| Task in parallelo | N subagent `sdd-multitask`, uno per worktree | sessioni separate, una per worktree | gli stessi custom agent se l'host delega, o il coding agent su una issue per task |
 | Hook `Stop` e `PreToolUse` | sì, opt-in | non previsti | non portati |
 | Contesto del progetto | `CLAUDE.md` con `@AGENTS.md` | legge `AGENTS.md` | legge `AGENTS.md` |
 
@@ -193,7 +196,8 @@ erDiagram
 ## Limiti e punti non verificati
 
 - **Stato:** in progettazione; provato una volta su un piccolo progetto con la 0.17.0, i cui rilievi hanno prodotto la
-  0.30.0. La 0.30.0 non è ancora stata eseguita da un agente reale su un progetto, né i worktree in parallelo.
+  0.30.0. Né la 0.30.0 né la 0.40.0 sono ancora state eseguite da un agente reale su un progetto, né gli agenti di
+  scrittura e i worktree in parallelo.
 - **Il merge come approvazione:** niente di tecnico impedisce a un agente di unire da solo; la prova della decisione è
   la selezione dell'utente e il merge che la segue. Chi ha bisogno di una garanzia protegge `main` sulla piattaforma.
 - **Test senza approvazione umana:** il blocco ferma le modifiche successive, il revisore giudica come i test derivano
@@ -204,6 +208,9 @@ erDiagram
 - **Guardia e segreti:** la guardia analizza i comandi per parole e segmenti e un comando costruito apposta la aggira;
   `secrets_check.py` riconosce solo formati noti e non legge la storia di git.
 - **Codex e GitHub Copilot:** manifest e percorsi costruiti dalla documentazione pubblica, non provati.
+- **Agenti di scrittura:** `sdd-test-writer` e `sdd-multitask` sono istruzioni più elenchi di strumenti; il passaggio
+  di consegne con l'agente principale e l'esecuzione in parallelo non sono stati eseguiti da un agente reale su un
+  progetto.
 - **Hook di Claude Code:** exit code 2 come blocco e formato JSON sono quelli attesi, non osservati in una sessione; su
   Windows richiedono una shell che trovi `sh` (Git for Windows).
 - **Perimetro:** rilascio, infrastruttura e operazioni sono fuori dal plugin.

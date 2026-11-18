@@ -49,6 +49,7 @@ class TestFlow(unittest.TestCase):
             merge(d, "spec/001-x")  # the merge of the design PR is the approval
             step = nxt(d)
             self.assertEqual((step["skill"], step["tasks"]), ("sdd-task", ["T-01"]))  # T-02 depends on T-01
+            self.assertEqual(step["not_parallel"], "only T-01 is ready: T-02 depends on T-01")
             git(d, "switch", "-qc", "task/001-x-T-01")
             write(d, "src/export.py", "x\n")
             write(d, F + "plan.md", PLAN_OK.replace("- [ ] T-01", "- [x] T-01"))
@@ -103,10 +104,13 @@ class TestFlow(unittest.TestCase):
             git(d, "commit", "-qm", "design")
             step = nxt(d)
             self.assertEqual((step["skill"], step["tasks"]), ("sdd-parallel", ["T-01", "T-02"]))
+            self.assertEqual((step["parallel"], step["not_parallel"]), (["T-01", "T-02"], ""))
             shared = plan.replace("`src/errors.py`", "`src/export.py`")  # same file: one after the other
             write(d, F + "plan.md", shared)
             git(d, "commit", "-qam", "plan revised")
-            self.assertEqual(nxt(d)["skill"], "sdd-task")
+            step = nxt(d)
+            self.assertEqual(step["skill"], "sdd-task")
+            self.assertEqual(step["not_parallel"], "T-01 and T-02 share `src/export.py`")
 
 
 class TestState(unittest.TestCase):

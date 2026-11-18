@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# sdd-playbook: 0.30.0
+# sdd-playbook: 0.40.0
 """Deterministic checks on the playbook's spec and plan.
 
 Usage:

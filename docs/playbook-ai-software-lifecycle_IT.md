@@ -87,10 +87,17 @@ uniti.
 **Task verticali.** Un task porta un comportamento osservabile da capo a fondo, non uno strato ("modelli", poi "API",
 poi "UI"). Copre i suoi AC e sta in una PR rileggibile in 15-30 minuti. Più di 8 task vuol dire due feature.
 
-**Un task, un branch, una PR** (`sdd-task`):
-1. **prima i test**, dagli AC del task, rossi per il motivo giusto, committati da soli con il trailer
-   `Test-Lock: T-nn`: da lì non cambiano (`diff_scope.py`), e l'implementazione deve farli passare così come sono;
-2. **il codice**, committato con `Task: T-nn`, dentro i file del task e le interfacce del piano;
+**La modalità la scegli sempre tu.** Prima di ogni task l'agente chiede `Standard (T-nn)`, `Parallel (T-aa, T-bb)` o
+`Stop here`; quando il parallelo non è possibile dice perché ("only T-01 is ready: T-02 depends on T-01", "T-01 and
+T-02 share `src/x.py`"), come lo calcola `state.py`.
+
+**Un task, un branch, una PR** (`sdd-task`), scritti da due agenti diversi:
+1. **prima i test**, dall'agente `sdd-test-writer`, dagli AC del task, rossi per il motivo giusto, committati da soli con
+   il trailer `Test-Lock: T-nn`: da lì non cambiano (`diff_scope.py`), e il codice deve farli passare così come sono;
+2. **il codice**, dall'agente `sdd-multitask`, committato con `Task: T-nn`, dentro i file del task e le interfacce del
+   piano. Gli agenti restituiscono uno stato (`DONE`, `NEEDS_DECISION`, `TEST_DISPUTE` quando un test sembra sbagliato,
+   `BLOCKED` dopo tre tentativi) e non ti fanno mai domande direttamente: le fa l'agente principale, con opzioni. Dove
+   l'host non ha sub-agent (Codex), l'agente principale fa le due fasi in sequenza;
 3. **i controlli**: `verify` verde, `trace_check.py --task` (ogni AC coperto ha un test, eseguito e passato nel report
    JUnit), `diff_scope.py --task` (zone vietate e test bloccati sono errori; file fuori dal task, dipendenze,
    dimensione e aree sensibili sono avvisi);
@@ -113,7 +120,11 @@ prendono la spec come oracolo: i valori attesi vengono dagli AC, mai dall'output
 ## 5. Agenti in parallelo
 
 I task indipendenti (nessuna dipendenza tra loro, file disgiunti nel piano) possono girare in parallelo
-(`sdd-parallel`): un worktree git, un branch, un agente e una PR per task, al massimo tre insieme. I merge avvengono
+(`sdd-parallel`), se lo scegli: un worktree git, un branch e una PR per task, al massimo tre insieme. **Un solo
+`sdd-test-writer`** blocca i test di tutti i task del gruppo, poi **N agenti `sdd-multitask`** scrivono il codice in
+parallelo, uno per worktree. superpowers, per confronto, non fa mai girare gli implementatori in parallelo; qui è sicuro
+solo perché il piano dichiara file e dipendenze, ogni task ha il suo worktree e niente si unisce senza un controllo sul
+nuovo `main`. I merge avvengono
 uno alla volta; dopo ognuno gli altri branch si ribasano su `main` e si ricontrollano prima della loro domanda di
 merge. Un conflitto vuol dire che file o interfacce del piano erano sbagliati: si corregge il piano, non si forza il
 codice.

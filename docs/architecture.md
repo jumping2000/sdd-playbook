@@ -2,7 +2,7 @@
 
 *Versione italiana: [architecture_IT.md](architecture_IT.md)*
 
-Design document **as built** (version 0.30.0): choices, structure, contracts between files and limits.
+Design document **as built** (version 0.40.0): choices, structure, contracts between files and limits.
 
 ## Goal and success criterion
 
@@ -24,7 +24,8 @@ result trustworthy. The plugin is done well if:
 | Proportionality | **One flow for everything**; small vertical tasks make small PRs; sensitive areas flagged in the PR, not a process level | Levels S/M/L and solo/team profiles multiplied the variants without covering a new risk |
 | Tests | Written from the ACs, **locked** (`Test-Lock` commit) before the code, checked by `diff_scope.py` and by the reviewer agent; no human approval of single tests | The risk of tests that confirm the agent's bugs stays covered by a machine check and an independent agent |
 | Independent review | `sdd-reviewer`, read-only, **one review per PR** | One review where the diff is small, instead of per-task review plus a final review of a large diff |
-| Parallelism | Independent tasks (no dependency, disjoint files in the plan) in separate worktrees, one PR each, merged one at a time | Saves time where it is safe; the plan, not the agent, decides what is independent |
+| Writing agents | `sdd-test-writer` writes and locks the tests, `sdd-multitask` writes the code: two agents, so the code's author never wrote its tests; statuses `DONE`, `NEEDS_DECISION`, `TEST_DISPUTE`, `BLOCKED`; no nested agents, no questions to the user from an agent | Replaces the human approval of the tests with a separation of roles plus the `Test-Lock` check |
+| Parallelism | Chosen by the user: one `sdd-test-writer` for the group, then N `sdd-multitask` in separate worktrees, one PR each, merged one at a time; `state.py` says when it is not possible and why | Saves time where it is safe; the plan, not the agent, decides what is independent. superpowers never runs implementers in parallel: here the declared files, the worktrees and the recheck after every merge make it safe |
 | Interaction | Every choice and decision as **options to select** (`interaction.md` of `sdd-start`) | Free-text approvals and one-question-per-message dialogues were the main source of friction |
 | Diagrams | Mermaid: the flowchart in the plan; the **five diagrams** (flowchart, sequence, state, class, ER) in the area page written by the last task, drawn from the code | The plan needs the flow; the documentation needs the full picture of what was built |
 | CI in the projects | Optional, only `verify` on every PR | The only independent evidence that the tests pass on a clean machine; process checks in CI duplicated the local ones |
@@ -49,7 +50,8 @@ sdd-playbook/
 │   ├── sdd-map/          SKILL.md, references/map-template.md
 │   ├── sdd-bugfix/       SKILL.md, references/bugfix-template.md, debugging.md
 │   └── sdd-next/         SKILL.md
-├── agents/sdd-reviewer.md       subagent (Claude Code); Copilot copy in skills/sdd-start/references/copilot/
+├── agents/                       sdd-test-writer, sdd-multitask, sdd-reviewer (Claude Code subagents); Copilot
+│                                 copies in skills/sdd-start/references/copilot/
 ├── hooks/                        hooks.json, run.sh (launcher), stop_verify.py, pretool_guard.py (Claude Code, opt-in)
 ├── docs/                         English and Italian (_IT): quick guide, playbook, skills, scripts, architecture
 ├── tests/                        tests of scripts, hooks, a whole feature flow, and coherence
@@ -173,7 +175,8 @@ erDiagram
 |---|---|---|---|
 | Skills | yes, with the plugin prefix | yes (Agent Skills format) | Copilot CLI: plugin from the root `plugin.json`; cloud agent and IDEs: `.github/skills/` copied by `sdd-start` |
 | Reviewer `sdd-reviewer` | subagent | a new session with the same instructions | custom agent `.github/agents/sdd-reviewer.agent.md` (tools `read`, `search`) |
-| Parallel tasks | subagents with worktree isolation | separate sessions, one per worktree | the coding agent on one issue per task, or separate CLI sessions |
+| `sdd-test-writer`, `sdd-multitask` | subagents (writing tools) | not available: the main agent does both phases in sequence | custom agents in `.github/agents/` (delegation between agents not verified) |
+| Parallel tasks | N `sdd-multitask` subagents, one per worktree | separate sessions, one per worktree | the same custom agents if the host delegates, or the coding agent on one issue per task |
 | `Stop` and `PreToolUse` hooks | yes, opt-in | not provided | not ported |
 | Project context | `CLAUDE.md` with `@AGENTS.md` | reads `AGENTS.md` | reads `AGENTS.md` |
 
@@ -191,8 +194,8 @@ erDiagram
 
 ## Limits and unverified points
 
-- **Status:** in design; tried once on a small project with 0.17.0, whose findings produced 0.30.0. 0.30.0 itself has
-  not been run by a real agent on a project, nor have the parallel worktrees.
+- **Status:** in design; tried once on a small project with 0.17.0, whose findings produced 0.30.0. Neither 0.30.0 nor
+  0.40.0 has been run by a real agent on a project, nor have the writing agents and the parallel worktrees.
 - **Merge as approval:** nothing technical stops an agent from merging by itself; the evidence of the decision is the
   user's selection and the merge that follows it. Who needs a guarantee protects `main` on the platform.
 - **Tests without human approval:** the lock stops later changes, the reviewer judges how the tests derive from the ACs;
@@ -203,6 +206,8 @@ erDiagram
 - **Guard and secrets:** the guard analyses commands by words and segments and can be bypassed by a purpose-built
   command; `secrets_check.py` recognizes only known formats and does not read the git history.
 - **Codex and GitHub Copilot:** manifests and paths built from the public documentation, not tried.
+- **Writing agents:** `sdd-test-writer` and `sdd-multitask` are instructions plus tool lists; the hand-off between
+  them and the main agent, and the parallel run, have not been run by a real agent on a project.
 - **Claude Code hooks:** exit code 2 as a block and the JSON format are the expected ones, not observed in a session;
   on Windows they require a shell that finds `sh` (Git for Windows).
 - **Scope:** release, infrastructure and operations are outside the plugin.

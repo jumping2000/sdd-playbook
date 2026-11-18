@@ -27,8 +27,8 @@ You invoke a skill by asking the agent, for example *"use sdd-start for a CSV ex
 |---|---|---|---|
 | 1 | `sdd-start` | The first time: scripts in `scripts/`, `AGENTS.md`, `verify.py` adapted to your commands. Then: questions in rounds of options and `docs/specs/<date-slug>/spec.md` with requirements, acceptance criteria, non-scope, anti-goals | `Confirm the spec` |
 | 2 | `sdd-plan` | `plan.md`: approach, interfaces, flowchart, 3 to 8 vertical tasks (each with its ACs, files, dependencies and verify command); the design PR | `Confirm the plan`, then `Merge into main` for the design PR |
-| 3 | `sdd-task` (one per task) | Branch, tests from the task's ACs locked by a `Test-Lock` commit, the code, `verify` green, the documentation it changes, a PR reviewed by `sdd-reviewer` | `Merge into main`, `Change it` or `Leave it open` |
-| — | `sdd-parallel` (when proposed) | Independent tasks with different files run together, one worktree and one PR each | `Run them in parallel`, then each merge |
+| 3 | `sdd-task` (one per task) | Branch, tests from the task's ACs locked by a `Test-Lock` commit, the code, `verify` green, the documentation it changes, a PR reviewed by `sdd-reviewer`; `sdd-test-writer` writes the tests, `sdd-multitask` the code | the mode `Standard`, then `Merge into main`, `Change it` or `Leave it open` |
+| — | `sdd-parallel` (when you choose it) | Independent tasks with different files: one `sdd-test-writer` locks the tests of all of them, then one `sdd-multitask` per task writes the code in parallel, one worktree and one PR each | the mode `Parallel`, then each merge |
 | 4 | the last `sdd-task` | Also the area page in `docs/system/` with the five diagrams from the final code, and the spec `implemented` | `Merge into main` |
 
 Before every merge question you see the covered ACs, the check results, the reviewer's verdict, the CI status and the
